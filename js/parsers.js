@@ -1,13 +1,7 @@
-/**
- * NeuroScope - EEG File Parsers
- * Supports: EDF, BDF, CSV, TSV, JSON, TXT, GDF, VHDR (BrainVision)
- */
-
+// neuroScope: edf bdf csv tsv json txt gdf vhdr
 const EEGParsers = {
 
-    /**
-     * Detect file type from extension and dispatch to the right parser
-     */
+    // detect file type dispatch parser
     async parseFile(file) {
         const ext = file.name.split('.').pop().toLowerCase();
         const buffer = await file.arrayBuffer();
@@ -38,9 +32,7 @@ const EEGParsers = {
         }
     },
 
-    /**
-     * Read ASCII string from ArrayBuffer
-     */
+    // read ascii str buffer
     readStr(buffer, offset, length) {
         const bytes = new Uint8Array(buffer, offset, length);
         let str = '';
@@ -50,9 +42,7 @@ const EEGParsers = {
         return str.trim();
     },
 
-    /**
-     * Parse European Data Format (EDF/EDF+)
-     */
+    // parse edf+
     parseEDF(buffer, filename) {
         const header = {};
 
@@ -116,27 +106,27 @@ const EEGParsers = {
         }
         offset += ns * 8;
 
-        // Skip reserved per signal
+        // skip reserved signal
         offset += ns * 32;
 
-        // Compute gain and offset for digital to physical conversion
+        // compute gain offset digital physical
         for (let i = 0; i < ns; i++) {
             const s = signals[i];
             s.gain = (s.physicalMax - s.physicalMin) / (s.digitalMax - s.digitalMin);
             s.offset = s.physicalMin - s.gain * s.digitalMin;
         }
 
-        // Read data records
+        // read data records
         const dataView = new DataView(buffer);
         const dataOffset = header.headerBytes;
         const numRecords = header.numRecords > 0 ? header.numRecords : 1;
 
-        // Calculate total samples per signal
+        // calc total samples signal
         const channelData = [];
         const channelLabels = [];
         let sampleRate = 0;
 
-        // Filter out annotation channels
+        // filter annotation channels
         const eegSignals = [];
         for (let i = 0; i < ns; i++) {
             const label = signals[i].label.toUpperCase();
@@ -157,7 +147,7 @@ const EEGParsers = {
             sampleRate = signals[signalIndices[0]].samplesPerRecord / header.recordDuration;
         }
 
-        // Parse data records - 16-bit signed integers (little-endian)
+        // parse 16bit signed ints
         let bytePos = dataOffset;
         for (let rec = 0; rec < numRecords; rec++) {
             for (let sigIdx = 0; sigIdx < ns; sigIdx++) {
@@ -196,9 +186,7 @@ const EEGParsers = {
         };
     },
 
-    /**
-     * Parse BioSemi Data Format (BDF) - similar to EDF but 24-bit
-     */
+    // parse bdf 24bit
     parseBDF(buffer, filename) {
         const header = {};
         const firstByte = new Uint8Array(buffer, 0, 1)[0];
@@ -278,7 +266,7 @@ const EEGParsers = {
             ? signals[signalIndices[0]].samplesPerRecord / header.recordDuration
             : 256;
 
-        // Parse data records - 24-bit signed integers (little-endian)
+        // parse 24bit signed ints
         const bytes = new Uint8Array(buffer);
         let bytePos = header.headerBytes;
 
@@ -290,7 +278,7 @@ const EEGParsers = {
                 for (let s = 0; s < nSamples; s++) {
                     if (bytePos + 2 < buffer.byteLength) {
                         let val = bytes[bytePos] | (bytes[bytePos + 1] << 8) | (bytes[bytePos + 2] << 16);
-                        if (val >= 0x800000) val -= 0x1000000; // Sign extend
+                        if (val >= 0x800000) val -= 0x1000000; // sign extend
                         if (channelIdx >= 0) {
                             const sampleOffset = rec * signals[sigIdx].samplesPerRecord + s;
                             channelData[channelIdx][sampleOffset] = val * signals[sigIdx].gain + signals[sigIdx].offset;
@@ -318,11 +306,9 @@ const EEGParsers = {
         };
     },
 
-    /**
-     * Parse GDF (General Data Format) - basic support
-     */
+    // parse gdf
     parseGDF(buffer, filename) {
-        // GDF has a different header structure
+        // gdf header
         const version = this.readStr(buffer, 0, 8);
         const isGDF = version.startsWith('GDF');
 
@@ -339,7 +325,8 @@ const EEGParsers = {
                 signals.push({ label: this.readStr(buffer, offset + i * 16, 16) });
             }
             offset += ns * 16;
-            offset += ns * 80; // transducer
+            // transducer
+            offset += ns * 80;
             offset += ns * 8;  // physical dim
 
             for (let i = 0; i < ns; i++) {
@@ -360,26 +347,25 @@ const EEGParsers = {
             offset += ns * 8;
             offset += ns * 80; // prefiltering
 
+            // samples record
             for (let i = 0; i < ns; i++) {
                 signals[i].samplesPerRecord = dv.getUint32(offset + i * 4, true);
             }
 
-            // Create basic channel data from available bytes
+            // create basic channel from bytes
             return this._createBasicResult(filename, 'GDF', signals.map(s => s.label), 256, buffer);
         }
 
-        // Fallback: try EDF parsing
+        // fallback edf
         return this.parseEDF(buffer, filename);
     },
 
-    /**
-     * Parse CSV/TSV data
-     */
+    // parse csv tsv
     parseCSV(text, filename, delimiter) {
         const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
         if (lines.length < 2) throw new Error('The file appears to have too few lines for analysis');
 
-        // Auto-detect delimiter if needed
+        // auto detect delimiter
         if (!delimiter) {
             const firstLine = lines[0];
             const commas = (firstLine.match(/,/g) || []).length;
@@ -392,7 +378,7 @@ const EEGParsers = {
 
         const headerFields = lines[0].split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, ''));
 
-        // Check if first row is a header (contains text)
+        // header check text
         let hasHeader = false;
         let channelLabels = [];
         let startRow = 0;
@@ -404,7 +390,7 @@ const EEGParsers = {
             }
         }
 
-        // Determine columns - skip time/index columns
+        // determine columns skip time index
         let dataColumns = [];
         let timeColumn = -1;
 
@@ -428,10 +414,10 @@ const EEGParsers = {
             }
         }
 
-        // Parse numeric data
+        // parse numeric
         const numSamples = lines.length - startRow;
         const channelData = dataColumns.map(() => new Float64Array(numSamples));
-        let sampleRate = 256; // Default
+        let sampleRate = 256; // default
 
         const timeValues = [];
 
@@ -449,7 +435,7 @@ const EEGParsers = {
             }
         }
 
-        // Estimate sample rate from time column
+        // estimate sr time column
         if (timeValues.length > 2) {
             const dt = timeValues[1] - timeValues[0];
             if (dt > 0) {
@@ -477,9 +463,7 @@ const EEGParsers = {
         };
     },
 
-    /**
-     * Parse plain text files - try to auto-detect format
-     */
+    // parse txt auto detect
     parseTXT(text, filename) {
         // Try tab-separated first, then space, then comma
         const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
@@ -500,9 +484,7 @@ const EEGParsers = {
         }
     },
 
-    /**
-     * Parse whitespace-separated numeric data
-     */
+    // parse whitespace numeric
     parseWhitespaceSeparated(text, filename) {
         const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
         const numericLines = lines.filter(l => {
@@ -537,13 +519,11 @@ const EEGParsers = {
         };
     },
 
-    /**
-     * Parse JSON formatted EEG data
-     */
+    // parse json
     parseJSON(text, filename) {
         const data = JSON.parse(text);
 
-        // Support various JSON structures
+        // support various json
         let channelLabels = [];
         let channelData = [];
         let sampleRate = data.sampleRate || data.sample_rate || data.fs || data.samplingRate || 256;
@@ -614,9 +594,7 @@ const EEGParsers = {
         };
     },
 
-    /**
-     * Parse BrainVision header file (.vhdr)
-     */
+    // parse vhdr braivision header
     parseVHDR(text, filename) {
         const lines = text.split(/\r?\n/);
         const channelLabels = [];
@@ -650,7 +628,7 @@ const EEGParsers = {
             }
         }
 
-        // Generate placeholder data since we only have the header
+        // generate placeholder since only header
         const numSamples = sampleRate * 10;
         const channelData = channelLabels.map(() => {
             const data = new Float64Array(numSamples);
@@ -677,20 +655,16 @@ const EEGParsers = {
         };
     },
 
-    /**
-     * Basic parser for SET files (EEGLAB) - limited support
-     */
+    // set parser limited
     parseSET(buffer, filename) {
-        // EEGLAB .set files are complex MATLAB format
+        // eeglab complex matlab format
         // Provide basic support by reading viewable data
         return this._createBasicResult(filename, 'SET', ['Ch1'], 256, buffer);
     },
 
-    /**
-     * Basic parser for CNT files (Neuroscan)
-     */
+    // cnt parser neuroscan
     parseCNT(buffer, filename) {
-        // Neuroscan CNT has proprietary format
+        // neuroscan proprietary
         // Try to extract basic header info
         try {
             const dv = new DataView(buffer);
@@ -717,11 +691,9 @@ const EEGParsers = {
         }
     },
 
-    /**
-     * Try to auto-detect file format
-     */
+    // auto detect
     tryAutoDetect(buffer, text, filename) {
-        // Check for EDF signature
+        // check edf sig
         const firstByte = new Uint8Array(buffer, 0, 1)[0];
         if (firstByte === 0x30 || (firstByte >= 0x20 && firstByte <= 0x7E)) {
             const version = this.readStr(buffer, 0, 8);
@@ -733,13 +705,13 @@ const EEGParsers = {
             try { return this.parseBDF(buffer, filename); } catch (e) { /* continue */ }
         }
 
-        // Try JSON
+        // try json
         try {
             JSON.parse(text);
             return this.parseJSON(text, filename);
         } catch (e) { /* continue */ }
 
-        // Try CSV/TXT
+        // try csv txt
         try {
             return this.parseTXT(text, filename);
         } catch (e) { /* continue */ }
@@ -747,9 +719,7 @@ const EEGParsers = {
         throw new Error('Unable to determine the format of this file, please try a supported format');
     },
 
-    /**
-     * Create a basic result object with default data
-     */
+    // basic result default data
     _createBasicResult(filename, format, labels, sampleRate, buffer) {
         const numSamples = sampleRate * 10;
         const channelData = labels.map(() => {
@@ -772,15 +742,13 @@ const EEGParsers = {
         };
     },
 
-    /**
-     * Generate synthetic EEG sample data for testing
-     */
+    // generate synthetic eeg test
     generateSampleData() {
         const sampleRate = 256;
         const duration = 30; // seconds
         const numSamples = sampleRate * duration;
 
-        // Standard 10-20 system channels
+        // standard 10-20 channels
         const channelLabels = [
             'Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4',
             'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6',
@@ -789,7 +757,7 @@ const EEGParsers = {
 
         const channelData = [];
 
-        // Different frequency compositions for different brain regions
+        // freq compositions brain regions
         const profiles = {
             'Fp1': { delta: 15, theta: 8, alpha: 5, beta: 3, gamma: 1 },
             'Fp2': { delta: 14, theta: 9, alpha: 5, beta: 3, gamma: 1 },
@@ -819,45 +787,45 @@ const EEGParsers = {
             for (let i = 0; i < numSamples; i++) {
                 const t = i / sampleRate;
 
-                // Delta band (0.5-4 Hz)
-                const delta = p.delta * (
+            // delta band
+            const delta = p.delta * (
                     Math.sin(2 * Math.PI * 1.5 * t + Math.random() * 0.1) * 0.6 +
                     Math.sin(2 * Math.PI * 2.5 * t + Math.random() * 0.1) * 0.4
                 );
 
-                // Theta band (4-8 Hz)
+                // theta band
                 const theta = p.theta * (
                     Math.sin(2 * Math.PI * 5 * t + Math.random() * 0.15) * 0.5 +
                     Math.sin(2 * Math.PI * 6.5 * t + Math.random() * 0.1) * 0.5
                 );
 
-                // Alpha band (8-13 Hz) - dominant in posterior
+                // alpha band dominant posterior
                 const alpha = p.alpha * (
                     Math.sin(2 * Math.PI * 10 * t + Math.random() * 0.2) * 0.7 +
                     Math.sin(2 * Math.PI * 11 * t + Math.random() * 0.15) * 0.3
                 );
 
-                // Beta band (13-30 Hz)
+                // beta band
                 const beta = p.beta * (
                     Math.sin(2 * Math.PI * 18 * t + Math.random() * 0.3) * 0.5 +
                     Math.sin(2 * Math.PI * 22 * t + Math.random() * 0.2) * 0.3 +
                     Math.sin(2 * Math.PI * 26 * t + Math.random() * 0.2) * 0.2
                 );
 
-                // Gamma band (30-100 Hz)
+                // gamma band
                 const gamma = p.gamma * (
                     Math.sin(2 * Math.PI * 40 * t + Math.random() * 0.4) * 0.5 +
                     Math.sin(2 * Math.PI * 55 * t + Math.random() * 0.3) * 0.3 +
                     Math.sin(2 * Math.PI * 70 * t + Math.random() * 0.3) * 0.2
                 );
 
-                // White noise
+                // white noise
                 const noise = (Math.random() - 0.5) * 4;
 
-                // Combine
+                // combine
                 data[i] = delta + theta + alpha + beta + gamma + noise;
 
-                // Add occasional eye blink artifact in frontal channels
+                // occasional eye blink frontal
                 if ((label.startsWith('Fp') || label === 'F3' || label === 'F4') && Math.random() < 0.0003) {
                     const blinkLen = Math.min(80, numSamples - i);
                     for (let b = 0; b < blinkLen; b++) {

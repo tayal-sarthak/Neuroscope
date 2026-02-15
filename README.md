@@ -1,19 +1,26 @@
 # NeuroScope, EEG Data Analysis Platform
 
-A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately.
+A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately. There are HUNDREDS of adjustable parameters to efficiently creating beautifully generated maps and charts.
 
 ## Gallery
-
+These images were taken using patient CHB02_16.edf from the CHB-MIT database, found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel
 ![Digital Filtering](/images/DigitalFiltering.png)
 
 ![Signal Viewer](/images/SignalViewer.png)
-
-![Normal Dashboard](/images/normalDashboard.png)
 
 ![Topographic Mapping](/images/TopographicMapping.png)
 
 ![Spectral Analysis](/images/StatisticalAnalysis.png)
 
+![Band Power Analysis](/images/BandPowerAnalysis.png)
+
+![Spectrogram](/images/Spectrogram.png)
+
+![Power Spectrum](/images/PowerSpectrum.png)
+
+![Export Center](/images/ExportCenter.png)
+
+![Normal Dashboard](/images/normalDashboard.png)
 ## Getting Started
 
 1. Open dataPlatform.vercel.app in your browser (Chrome, Firefox, Safari, or Edge all work well)

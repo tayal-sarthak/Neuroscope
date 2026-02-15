@@ -1,8 +1,4 @@
-/**
- * NeuroScope - Main Application Controller
- * State management, UI event handling, and workflow orchestration
- */
-
+// neuroScope: state mgmt, ui events, workflow
 const App = {
     // Application state
     state: {
@@ -17,11 +13,9 @@ const App = {
         isLoaded: false
     },
 
-    /**
-     * Initialize the application
-     */
+    // init app
     init() {
-        // Hide loading screen after a brief delay
+        // hide loading after delay
         setTimeout(() => {
             document.getElementById('loading-screen').classList.add('hidden');
         }, 1200);
@@ -34,7 +28,7 @@ const App = {
         this.bindFilterControls();
     },
 
-    // ========== Event Binding ==========
+    // ===== events =====
 
     bindEvents() {
         const dropZone = document.getElementById('drop-zone');
@@ -43,17 +37,17 @@ const App = {
         const newFileBtn = document.getElementById('new-file-btn');
         const logoBtn = document.getElementById('logo-btn');
 
-        // File upload - click
+        // file upload click
         dropZone.addEventListener('click', () => fileInput.click());
 
-        // File input change
+        // file input change
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 this.loadFile(e.target.files[0]);
             }
         });
 
-        // Drag and drop
+        // drag drop
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('drag-over');
@@ -71,20 +65,20 @@ const App = {
             }
         });
 
-        // Sample data
+        // sample data
         sampleBtn.addEventListener('click', () => this.loadSampleData());
 
-        // New file
+        // new file
         newFileBtn.addEventListener('click', () => this.resetToUpload());
 
-        // Logo click
+        // logo click
         logoBtn.addEventListener('click', () => {
             if (this.state.isLoaded) {
                 this.switchTab('viewer');
             }
         });
 
-        // Window resize
+        // window resize
         window.addEventListener('resize', () => {
             if (this.state.isLoaded) {
                 this.debounce('resize', () => this.refreshCurrentView(), 250);
@@ -313,38 +307,38 @@ const App = {
         }, 600);
     },
 
-    // ========== Dashboard Initialization ==========
+    // ===== init dashboard =====
 
     initializeDashboard() {
         const data = this.state.eegData;
         this.state.isLoaded = true;
 
-        // Select all channels by default
+        // all channels default
         this.state.selectedChannels = Array.from({ length: data.channelLabels.length }, (_, i) => i);
 
-        // Update file display
+        // file display
         document.getElementById('file-name-display').textContent = data.filename;
         document.getElementById('file-badge').classList.add('visible');
         document.getElementById('new-file-btn').classList.add('visible');
         document.getElementById('main-nav').classList.add('visible');
 
-        // Update recording info
+        // recording info
         document.getElementById('info-channels').textContent = data.channelLabels.length;
         document.getElementById('info-srate').textContent = data.sampleRate + ' Hz';
         document.getElementById('info-duration').textContent = data.duration.toFixed(1) + 's';
         document.getElementById('info-samples').textContent = data.numSamples.toLocaleString();
         document.getElementById('info-format').textContent = data.format;
 
-        // Build channel list
+        // channel list
         this.buildChannelList();
 
-        // Populate time-frequency channel dropdown
+        // timefreq channel dropdown
         this.populateChannelDropdown('timefreq-channel', data.channelLabels);
 
-        // Populate filter channel dropdown
+        // filter channel dropdown
         this.populateChannelDropdown('filter-channel', data.channelLabels);
 
-        // Set time controls
+        // time controls
         const maxTime = Math.max(0, data.duration - 1);
         document.getElementById('time-offset').max = maxTime;
         this.state.timeWindow = Math.min(10, Math.ceil(data.duration));
@@ -354,18 +348,18 @@ const App = {
         document.getElementById('time-offset').value = 0;
         document.getElementById('time-offset-value').textContent = '0.0s';
 
-        // Hide upload, show dashboard
+        // hide upload show dashboard
         document.getElementById('upload-section').classList.add('hidden');
         document.getElementById('dashboard').classList.add('visible');
 
-        // Reset upload progress
+        // reset upload progress
         document.getElementById('upload-progress').classList.remove('active');
         document.getElementById('upload-progress-bar').classList.remove('indeterminate');
 
-        // Switch to viewer and render
+        // viewer render
         this.switchTab('viewer');
 
-        // Draw signals after a brief delay for DOM rendering
+        // draw signals after dom paint
         requestAnimationFrame(() => {
             this.refreshSignalViewer();
         });
@@ -429,28 +423,28 @@ const App = {
         });
     },
 
-    // ========== Tab Navigation ==========
+    // ===== tabs =====
 
     switchTab(tab) {
         this.state.activeTab = tab;
 
-        // Update nav buttons
+        // nav buttons
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
         });
 
-        // Update tab content
+        // tab content
         document.querySelectorAll('.tab-content').forEach(tc => {
             tc.classList.toggle('active', tc.id === `tab-${tab}`);
         });
 
-        // Refresh view if needed
+        // refresh view
         if (tab === 'viewer' && this.state.isLoaded) {
             requestAnimationFrame(() => this.refreshSignalViewer());
         }
     },
 
-    // ========== Signal Viewer ==========
+    // ===== signal viewer =====
 
     refreshSignalViewer() {
         if (!this.state.eegData) return;
@@ -499,7 +493,7 @@ const App = {
         }
     },
 
-    // ========== Spectrum Analysis ==========
+    // ===== spectrum =====
 
     computeSpectrum() {
         if (!this.state.eegData) return;
@@ -531,10 +525,10 @@ const App = {
             });
         }
 
-        // Store for export
+        // store export
         this.state.analysisResults.spectrumData = { freqs, datasets };
 
-        // Render chart
+        // render chart
         EEGVisualization.createSpectrumChart('spectrum-chart', freqs, datasets, {
             maxFreq,
             logScale: scale === 'log'
@@ -543,7 +537,7 @@ const App = {
         this.showToast('Spectrum analysis complete', 'success');
     },
 
-    // ========== Band Power ==========
+    // ===== band power =====
 
     computeBandPowers() {
         if (!this.state.eegData) return;
@@ -569,7 +563,7 @@ const App = {
             }
         }
 
-        // Average
+        // average
         if (avgBands) {
             for (const key of Object.keys(avgBands)) {
                 avgBands[key].power /= channels.length;
@@ -579,7 +573,7 @@ const App = {
         this.state.analysisResults.bandPowers = allBandPowers;
         this.state.analysisResults.avgBandPowers = avgBands;
 
-        // Update band cards
+        // band cards
         const bandKeys = ['delta', 'theta', 'alpha', 'beta', 'gamma'];
         for (const key of bandKeys) {
             const el = document.getElementById(`band-${key}`);
@@ -612,7 +606,7 @@ const App = {
         }
     },
 
-    // ========== Filtering ==========
+    // ===== filter =====
 
     previewFilter() {
         if (!this.state.eegData) return;
@@ -624,12 +618,12 @@ const App = {
         const params = this.getFilterParams(filterType);
         if (!this.validateFilterParams(params, filterType, sampleRate)) return;
 
-        // Only filter a short clip for preview (max 10 seconds from the start)
+        // preview clip max 10s
         const previewLen = Math.min(this.state.eegData.channelData[chIdx].length, Math.floor(sampleRate * 10));
         const originalClip = this.state.eegData.channelData[chIdx].slice(0, previewLen);
         const filteredClip = EEGAnalysis.butterworth(originalClip, sampleRate, params.low, params.high, params.order, filterType);
 
-        // Check for NaN in the result
+        // check nan
         let hasNaN = false;
         for (let i = 0; i < filteredClip.length; i++) {
             if (!isFinite(filteredClip[i])) { hasNaN = true; break; }
@@ -648,7 +642,7 @@ const App = {
             { height: 320 }
         );
 
-        // Draw frequency response
+        // freq response
         this.drawFilterResponse(filterType, params, sampleRate);
 
         this.showToast('Filter preview ready', 'info');
@@ -663,11 +657,11 @@ const App = {
 
         if (!this.validateFilterParams(params, filterType, sampleRate)) return;
 
-        // Show processing overlay
+        // processing overlay
         const overlay = document.getElementById('filter-processing');
         overlay.style.display = 'flex';
 
-        // Defer to let the overlay paint before the heavy filtering runs
+        // defer overlay paint
         setTimeout(() => {
             try {
                 const sourceData = this.state.eegData.channelData;
@@ -675,7 +669,7 @@ const App = {
                     EEGAnalysis.butterworth(ch, sampleRate, params.low, params.high, params.order, filterType)
                 );
 
-                // Check stability on the first channel
+                // check stability
                 let stable = true;
                 for (let i = 0; i < Math.min(filtered[0].length, 1000); i++) {
                     if (!isFinite(filtered[0][i])) { stable = false; break; }
@@ -689,17 +683,17 @@ const App = {
 
                 this.state.filteredData = filtered;
 
-                // Build a human-readable filter description
+                // filter description
                 let desc = '';
                 if (filterType === 'bandpass') desc = `Bandpass ${params.low} - ${params.high} Hz, order ${params.order}`;
                 else if (filterType === 'highpass') desc = `Highpass above ${params.low} Hz, order ${params.order}`;
                 else if (filterType === 'lowpass') desc = `Lowpass below ${params.high} Hz, order ${params.order}`;
                 else if (filterType === 'notch') desc = `Notch at ${params.low} Hz`;
 
-                // Update status bar
+                // status bar
                 this.updateFilterStatus(desc);
 
-                // Auto-render comparison for the selected channel
+                // render comparison selected
                 const chIdx = parseInt(document.getElementById('filter-channel').value) || 0;
                 const previewLen = Math.min(sourceData[chIdx].length, Math.floor(sampleRate * 10));
                 const originalClip = sourceData[chIdx].slice(0, previewLen);
@@ -730,7 +724,7 @@ const App = {
         this.updateFilterStatus(null);
         this.refreshSignalViewer();
 
-        // Clear the filter canvases
+        // clear canvases
         const canvas = document.getElementById('filter-canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = canvas.width; // clears
@@ -812,7 +806,7 @@ const App = {
         return { low, high, order };
     },
 
-    // ========== Spectrogram ==========
+    // ===== spectrogram =====
 
     computeSpectrogram() {
         if (!this.state.eegData) return;
@@ -833,7 +827,7 @@ const App = {
             { colormap }
         );
 
-        // Find min/max for colorbar
+        // min max colorbar
         let minVal = Infinity, maxVal = -Infinity;
         for (const frame of result.spectrogram) {
             for (const v of frame) {
@@ -852,7 +846,7 @@ const App = {
         this.showToast('Spectrogram generated', 'success');
     },
 
-    // ========== Statistics ==========
+    // ===== stats =====
 
     computeStatistics() {
         if (!this.state.eegData) return;
@@ -887,7 +881,7 @@ const App = {
 
         this.state.analysisResults.statistics = statsArray;
 
-        // RMS chart
+        // rms chart
         EEGVisualization.createStatsChart(
             'stats-rms-chart',
             labels,
@@ -896,7 +890,7 @@ const App = {
             '#4A90D9'
         );
 
-        // Variance chart
+        // variance chart
         EEGVisualization.createStatsChart(
             'stats-variance-chart',
             labels,
@@ -908,7 +902,7 @@ const App = {
         this.showToast('Statistical analysis complete', 'success');
     },
 
-    // ========== Topography ==========
+    // ===== topo =====
 
     computeTopography() {
         if (!this.state.eegData) return;
@@ -956,7 +950,7 @@ const App = {
         this.showToast('Topographic map generated', 'success');
     },
 
-    // ========== Navigation ==========
+    // ===== nav =====
 
     resetToUpload() {
         this.state.eegData = null;
@@ -971,10 +965,10 @@ const App = {
         document.getElementById('file-badge').classList.remove('visible');
         document.getElementById('new-file-btn').classList.remove('visible');
 
-        // Reset file input
+        // reset input
         document.getElementById('file-input').value = '';
 
-        // Destroy charts
+        // destroy charts
         const chartIds = ['spectrum-chart', 'bands-bar-chart', 'bands-pie-chart', 'stats-rms-chart', 'stats-variance-chart'];
         chartIds.forEach(id => EEGVisualization.destroyChart(id));
     },
@@ -985,7 +979,7 @@ const App = {
         }
     },
 
-    // ========== Utilities ==========
+    // ===== utils =====
 
     _debounceTimers: {},
     debounce(key, fn, delay) {
@@ -999,6 +993,7 @@ const App = {
         toast.className = `toast ${type}`;
 
         let icon = '';
+        // icon by type
         if (type === 'success') icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
         else if (type === 'error') icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
         else icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
@@ -1013,5 +1008,5 @@ const App = {
     }
 };
 
-// Initialize when DOM is ready
+// init when dom ready
 document.addEventListener('DOMContentLoaded', () => App.init());
