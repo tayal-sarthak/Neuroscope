@@ -1,9 +1,9 @@
-# NeuroScope, An EEG Data Analysis Platform
+# NeuroScope, EEG Data Analysis Platform
 
 A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately. There are HUNDREDS of adjustable parameters to efficiently creating beautifully generated maps and charts.
 
 ## Gallery
-These images were taken using Patient CHB02_16.edf from the CHB-MIT database into Neuroscope, found precisely here: _https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel_
+These images were taken using patient CHB02_16.edf from the CHB-MIT database, found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel
 ![Digital Filtering](/images/DigitalFiltering.png)
 
 ![Signal Viewer](/images/SignalViewer.png)
@@ -23,7 +23,7 @@ These images were taken using Patient CHB02_16.edf from the CHB-MIT database int
 ![Normal Dashboard](/images/normalDashboard.png)
 ## Getting Started
 
-1. Open dataPlatform.vercel.app in your browser (Chrome, Firefox, Safari, or Edge all work well)
+1. Open [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/) in your browser (Chrome, Firefox, Safari, or Edge all work well)
 2. Drag and drop your EEG file onto the upload area, or click to browse
 3. Alternatively, click the sample data button to explore with synthetic 19-channel EEG
 
