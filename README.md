@@ -4,13 +4,15 @@ A complete local workspace for exploring, analyzing, and understanding EEG data 
 
 ## Gallery
 
-![Dashboard Overview](./images/dashboard.png)
+![Digital Filtering](/images/DigitalFiltering.png)
 
-![Signal Analysis](./images/signal-analysis.png)
+![Signal Viewer](/images/SignalViewer.png)
 
-![Filtering Tools](./images/filtering.png)
+![Normal Dashboard](/images/normalDashboard.png)
 
-![Spectral Analysis](./images/spectrum.png)
+![Topographic Mapping](/images/TopographicMapping.png)
+
+![Spectral Analysis](/images/StatisticalAnalysis.png)
 
 ## Getting Started
 
