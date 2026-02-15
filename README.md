@@ -5,7 +5,7 @@ A complete local workspace for exploring, analyzing, and understanding EEG data 
 ## Gallery
 These images were taken using patient CHB02_16.edf from the CHB-MIT database used on the filtering site, [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/), where the data can be found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel. 
 
-To test this same data for yourself, here is the download: https://physionet.org/files/chbmit/1.0.0/chb02/chb02_16.edf?download
+To test the same data for yourself, here is the download: https://physionet.org/files/chbmit/1.0.0/chb02/chb02_16.edf?download
 
 ![Digital Filtering](/images/DigitalFiltering.png)
 
