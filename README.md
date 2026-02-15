@@ -3,7 +3,7 @@
 A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately. There are HUNDREDS of adjustable parameters to efficiently creating beautifully generated maps and charts. Version 1.2.1
 
 ## Gallery
-These images were taken using patient CHB02_16.edf from the CHB-MIT database, found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel
+These images were taken using patient CHB02_16.edf from the CHB-MIT database used on the filtering site, [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/), where the data can be found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel
 ![Digital Filtering](/images/DigitalFiltering.png)
 
 ![Signal Viewer](/images/SignalViewer.png)
