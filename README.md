@@ -1,4 +1,4 @@
-# NeuroScope, EEG Data Analysis Platform
+# NeuroScope, an EEG Data Analysis Platform
 
 A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately. There are HUNDREDS of adjustable parameters to efficiently creating beautifully generated maps and charts.
 
