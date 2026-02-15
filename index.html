@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroScope - EEG Data Analysis Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader-content">
+            <div class="brain-pulse">
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                    <circle cx="40" cy="40" r="36" stroke="#4A90D9" stroke-width="2" opacity="0.3"/>
+                    <circle cx="40" cy="40" r="28" stroke="#4A90D9" stroke-width="2" opacity="0.5"/>
+                    <circle cx="40" cy="40" r="20" stroke="#4A90D9" stroke-width="2.5" opacity="0.7"/>
+                    <path d="M10 40 Q20 25, 30 40 Q40 55, 50 40 Q60 25, 70 40" stroke="#4A90D9" stroke-width="3" fill="none" class="wave-path"/>
+                </svg>
+            </div>
+            <h2 class="loader-title">NeuroScope</h2>
+            <p class="loader-subtitle">Preparing your analysis workspace</p>
+            <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+        </div>
+    </div>
+
+    <!-- Main Header -->
+    <header class="main-header" id="main-header">
+        <div class="header-left">
+            <div class="logo" id="logo-btn">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <circle cx="16" cy="16" r="14" stroke="#4A90D9" stroke-width="2"/>
+                    <path d="M4 16 Q8 8, 12 16 Q16 24, 20 16 Q24 8, 28 16" stroke="#4A90D9" stroke-width="2.5" fill="none"/>
+                </svg>
+                <span class="logo-text">NeuroScope</span>
+            </div>
+        </div>
+        <nav class="header-nav" id="main-nav">
+            <button data-tab="viewer" class="nav-btn active" title="View raw EEG signals">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>Signals</span>
+            </button>
+            <button data-tab="spectrum" class="nav-btn" title="Frequency spectrum analysis">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="3" height="9"/><rect x="9" y="4" width="3" height="17"/><rect x="15" y="8" width="3" height="13"/><rect x="21" y="2" width="3" height="19"/></svg>
+                <span>Spectrum</span>
+            </button>
+            <button data-tab="bands" class="nav-btn" title="EEG frequency band power">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2 A10 10 0 0 1 22 12 L12 12 Z"/></svg>
+                <span>Band Power</span>
+            </button>
+            <button data-tab="filter" class="nav-btn" title="Apply digital filters">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <span>Filtering</span>
+            </button>
+            <button data-tab="timefreq" class="nav-btn" title="Time-frequency spectrogram">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                <span>Spectrogram</span>
+            </button>
+            <button data-tab="stats" class="nav-btn" title="Statistical summary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>Statistics</span>
+            </button>
+            <button data-tab="topo" class="nav-btn" title="Scalp topographic mapping">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2 C12 2 8 8 8 12 C8 16 12 22 12 22"/><path d="M12 2 C12 2 16 8 16 12 C16 16 12 22 12 22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                <span>Topography</span>
+            </button>
+            <button data-tab="export" class="nav-btn" title="Export and download results">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Export</span>
+            </button>
+        </nav>
+        <div class="header-right">
+            <button id="new-file-btn" class="btn-header" title="Load a different file">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                <span>New File</span>
+            </button>
+            <div class="file-badge" id="file-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                <span id="file-name-display">sample.edf</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Upload Section -->
+    <section id="upload-section" class="upload-section">
+        <div class="upload-hero">
+            <div class="hero-bg-pattern"></div>
+            <div class="hero-content">
+                <div class="hero-icon">
+                    <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                        <circle cx="32" cy="32" r="30" stroke="#4A90D9" stroke-width="2" opacity="0.2"/>
+                        <circle cx="32" cy="32" r="22" stroke="#4A90D9" stroke-width="2" opacity="0.4"/>
+                        <path d="M8 32 Q14 18, 22 32 Q30 46, 38 32 Q46 18, 56 32" stroke="#4A90D9" stroke-width="3" fill="none"/>
+                    </svg>
+                </div>
+                <h1 class="hero-title">Welcome to NeuroScope</h1>
+                <p class="hero-desc">A complete local workspace for exploring, analyzing, and understanding your EEG data</p>
+            </div>
+        </div>
+
+        <div class="upload-container">
+            <div class="upload-area" id="drop-zone">
+                <div class="upload-icon-area">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <h2 class="upload-title">Drop your EEG file here</h2>
+                <p class="upload-subtitle">or click anywhere in this area to browse</p>
+                <input type="file" id="file-input" accept=".edf,.bdf,.csv,.tsv,.json,.txt,.set,.gdf,.xdf,.eeg,.vhdr,.vmrk,.cnt" hidden>
+                <div class="format-badges">
+                    <span class="badge">EDF</span>
+                    <span class="badge">BDF</span>
+                    <span class="badge">CSV</span>
+                    <span class="badge">TSV</span>
+                    <span class="badge">JSON</span>
+                    <span class="badge">TXT</span>
+                    <span class="badge">GDF</span>
+                    <span class="badge">SET</span>
+                    <span class="badge">XDF</span>
+                    <span class="badge">VHDR</span>
+                    <span class="badge">CNT</span>
+                </div>
+                <div class="upload-progress" id="upload-progress">
+                    <div class="upload-progress-bar" id="upload-progress-bar"></div>
+                    <span id="upload-progress-text">Reading file</span>
+                </div>
+            </div>
+
+            <div class="upload-divider">
+                <span>or</span>
+            </div>
+
+            <button id="sample-data-btn" class="btn-sample">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Explore with sample EEG data</span>
+            </button>
+        </div>
+
+        <div class="features-section">
+            <h2 class="features-heading">Everything you need for EEG analysis</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <h3>Signal Viewer</h3>
+                    <p>Browse multi-channel EEG recordings with interactive zoom, scroll, and amplitude controls</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><rect x="3" y="12" width="3" height="9"/><rect x="9" y="4" width="3" height="17"/><rect x="15" y="8" width="3" height="13"/><rect x="21" y="2" width="3" height="19"/></svg>
+                    </div>
+                    <h3>Spectrum Analysis</h3>
+                    <p>Compute power spectral density using FFT and Welch methods to reveal frequency content</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2 A10 10 0 0 1 22 12 L12 12 Z"/></svg>
+                    </div>
+                    <h3>Band Power</h3>
+                    <p>Decompose signals into Delta, Theta, Alpha, Beta, and Gamma frequency bands</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    </div>
+                    <h3>Digital Filtering</h3>
+                    <p>Apply bandpass, highpass, lowpass, and notch filters with adjustable parameters</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                    </div>
+                    <h3>Time-Frequency</h3>
+                    <p>Generate spectrograms to observe how frequency content changes over time</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2 C12 2 8 8 8 12 C8 16 12 22 12 22"/><path d="M12 2 C12 2 16 8 16 12 C16 16 12 22 12 22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                    </div>
+                    <h3>Topographic Maps</h3>
+                    <p>Visualize spatial distribution of brain activity across the scalp with 10-20 system mapping</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dashboard" class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-section-header">
+                    <h3>Channels</h3>
+                    <div class="channel-actions">
+                        <button id="select-all-ch" class="btn-tiny" title="Select all channels">All</button>
+                        <button id="deselect-all-ch" class="btn-tiny" title="Clear selection">Clear</button>
+                    </div>
+                </div>
+                <div id="channel-list" class="channel-list"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Display</h3>
+                <div class="control-group">
+                    <label for="amplitude-scale">Amplitude Scale</label>
+                    <div class="range-row">
+                        <input type="range" id="amplitude-scale" min="0.1" max="10" step="0.1" value="1">
+                        <span id="amplitude-value" class="range-value">1.0x</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="time-window">Time Window (s)</label>
+                    <div class="range-row">
+                        <input type="range" id="time-window" min="1" max="30" step="1" value="10">
+                        <span id="time-window-value" class="range-value">10s</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="time-offset">Position</label>
+                    <div class="range-row">
+                        <input type="range" id="time-offset" min="0" max="100" step="0.01" value="0">
+                        <span id="time-offset-value" class="range-value">0.0s</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Recording Info</h3>
+                <div id="recording-info" class="info-list">
+                    <div class="info-row"><span class="info-label">Channels</span><span class="info-value" id="info-channels">-</span></div>
+                    <div class="info-row"><span class="info-label">Sample Rate</span><span class="info-value" id="info-srate">-</span></div>
+                    <div class="info-row"><span class="info-label">Duration</span><span class="info-value" id="info-duration">-</span></div>
+                    <div class="info-row"><span class="info-label">Samples</span><span class="info-value" id="info-samples">-</span></div>
+                    <div class="info-row"><span class="info-label">Format</span><span class="info-value" id="info-format">-</span></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="main-content">
+            <!-- Signal Viewer Tab -->
+            <div id="tab-viewer" class="tab-content active">
+                <div class="tab-header">
+                    <h2>Signal Viewer</h2>
+                    <p>Explore raw EEG waveforms across all channels</p>
+                </div>
+                <div class="viewer-toolbar">
+                    <button id="viewer-zoom-in" class="btn-tool" title="Zoom in time axis">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    </button>
+                    <button id="viewer-zoom-out" class="btn-tool" title="Zoom out time axis">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    </button>
+                    <button id="viewer-fit" class="btn-tool" title="Fit all data in view">Fit</button>
+                    <div class="toolbar-separator"></div>
+                    <label class="toolbar-label">Montage</label>
+                    <select id="montage-select" class="toolbar-select">
+                        <option value="monopolar">Monopolar</option>
+                        <option value="bipolar">Bipolar</option>
+                        <option value="average">Average Reference</option>
+                    </select>
+                </div>
+                <div class="canvas-container" id="viewer-canvas-container">
+                    <canvas id="viewer-canvas"></canvas>
+                    <div class="canvas-labels" id="viewer-labels"></div>
+                </div>
+            </div>
+
+            <!-- Spectrum Tab -->
+            <div id="tab-spectrum" class="tab-content">
+                <div class="tab-header">
+                    <h2>Power Spectrum</h2>
+                    <p>Frequency domain analysis using FFT and Welch method</p>
+                </div>
+                <div class="spectrum-controls">
+                    <div class="control-group inline">
+                        <label>Method</label>
+                        <select id="spectrum-method" class="toolbar-select">
+                            <option value="welch">Welch</option>
+                            <option value="fft">FFT</option>
+                        </select>
+                    </div>
+                    <div class="control-group inline">
+                        <label>Window</label>
+                        <select id="spectrum-window" class="toolbar-select">
+                            <option value="hanning">Hanning</option>
+                            <option value="hamming">Hamming</option>
+                            <option value="blackman">Blackman</option>
+                            <option value="rectangular">Rectangular</option>
+                        </select>
+                    </div>
+                    <div class="control-group inline">
+                        <label>Max Freq (Hz)</label>
+                        <input type="number" id="spectrum-max-freq" class="toolbar-input" value="60" min="1" max="500">
+                    </div>
+                    <div class="control-group inline">
+                        <label>Scale</label>
+                        <select id="spectrum-scale" class="toolbar-select">
+                            <option value="log">Logarithmic</option>
+                            <option value="linear">Linear</option>
+                        </select>
+                    </div>
+                    <button id="spectrum-compute" class="btn-primary">Compute Spectrum</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="spectrum-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Band Power Tab -->
+            <div id="tab-bands" class="tab-content">
+                <div class="tab-header">
+                    <h2>Band Power Analysis</h2>
+                    <p>Decompose EEG into standard frequency bands</p>
+                </div>
+                <div class="band-controls">
+                    <button id="bands-compute" class="btn-primary">Compute Band Powers</button>
+                    <div class="control-group inline">
+                        <label>Display</label>
+                        <select id="bands-display" class="toolbar-select">
+                            <option value="absolute">Absolute Power</option>
+                            <option value="relative">Relative Power (%)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="bands-grid">
+                    <div class="band-card delta">
+                        <div class="band-wave"><svg width="60" height="24" viewBox="0 0 60 24"><path d="M0 12 Q15 0, 30 12 Q45 24, 60 12" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>
+                        <h4>Delta</h4>
+                        <span class="band-range">0.5 - 4 Hz</span>
+                        <span class="band-value" id="band-delta">-</span>
+                    </div>
+                    <div class="band-card theta">
+                        <div class="band-wave"><svg width="60" height="24" viewBox="0 0 60 24"><path d="M0 12 Q7 0, 15 12 Q22 24, 30 12 Q37 0, 45 12 Q52 24, 60 12" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>
+                        <h4>Theta</h4>
+                        <span class="band-range">4 - 8 Hz</span>
+                        <span class="band-value" id="band-theta">-</span>
+                    </div>
+                    <div class="band-card alpha">
+                        <div class="band-wave"><svg width="60" height="24" viewBox="0 0 60 24"><path d="M0 12 Q5 0, 10 12 Q15 24, 20 12 Q25 0, 30 12 Q35 24, 40 12 Q45 0, 50 12 Q55 24, 60 12" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>
+                        <h4>Alpha</h4>
+                        <span class="band-range">8 - 13 Hz</span>
+                        <span class="band-value" id="band-alpha">-</span>
+                    </div>
+                    <div class="band-card beta">
+                        <div class="band-wave"><svg width="60" height="24" viewBox="0 0 60 24"><path d="M0 12 Q3 2, 6 12 Q9 22, 12 12 Q15 2, 18 12 Q21 22, 24 12 Q27 2, 30 12 Q33 22, 36 12 Q39 2, 42 12 Q45 22, 48 12 Q51 2, 54 12 Q57 22, 60 12" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>
+                        <h4>Beta</h4>
+                        <span class="band-range">13 - 30 Hz</span>
+                        <span class="band-value" id="band-beta">-</span>
+                    </div>
+                    <div class="band-card gamma">
+                        <div class="band-wave"><svg width="60" height="24" viewBox="0 0 60 24"><path d="M0 12 Q1.5 4, 3 12 Q4.5 20, 6 12 Q7.5 4, 9 12 Q10.5 20, 12 12 Q13.5 4, 15 12 Q16.5 20, 18 12 Q19.5 4, 21 12 Q22.5 20, 24 12 Q25.5 4, 27 12 Q28.5 20, 30 12 Q31.5 4, 33 12 Q34.5 20, 36 12 Q37.5 4, 39 12 Q40.5 20, 42 12 Q43.5 4, 45 12 Q46.5 20, 48 12 Q49.5 4, 51 12 Q52.5 20, 54 12 Q55.5 4, 57 12 Q58.5 20, 60 12" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>
+                        <h4>Gamma</h4>
+                        <span class="band-range">30 - 100 Hz</span>
+                        <span class="band-value" id="band-gamma">-</span>
+                    </div>
+                </div>
+                <div class="chart-container chart-half">
+                    <canvas id="bands-bar-chart"></canvas>
+                </div>
+                <div class="chart-container chart-half">
+                    <canvas id="bands-pie-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Filtering Tab -->
+            <div id="tab-filter" class="tab-content">
+                <div class="tab-header">
+                    <h2>Digital Filtering</h2>
+                    <p>Design and apply filters to clean your EEG signals</p>
+                </div>
+                <div class="filter-status" id="filter-status">
+                    <span class="filter-status-dot"></span>
+                    <span id="filter-status-text">Original signal, no filter applied</span>
+                </div>
+                <div class="filter-controls">
+                    <div class="filter-type-cards">
+                        <button class="filter-type-btn active" data-filter="bandpass">Bandpass</button>
+                        <button class="filter-type-btn" data-filter="highpass">Highpass</button>
+                        <button class="filter-type-btn" data-filter="lowpass">Lowpass</button>
+                        <button class="filter-type-btn" data-filter="notch">Notch</button>
+                    </div>
+                    <div class="filter-params">
+                        <div class="control-group inline">
+                            <label>Channel</label>
+                            <select id="filter-channel" class="toolbar-select"></select>
+                        </div>
+                        <div class="control-group inline" id="filter-low-group">
+                            <label>Low Cutoff (Hz)</label>
+                            <input type="number" id="filter-low" class="toolbar-input" value="1" min="0.1" max="500" step="0.1">
+                        </div>
+                        <div class="control-group inline" id="filter-high-group">
+                            <label>High Cutoff (Hz)</label>
+                            <input type="number" id="filter-high" class="toolbar-input" value="40" min="0.1" max="500" step="0.1">
+                        </div>
+                        <div class="control-group inline" id="filter-notch-group" style="display:none">
+                            <label>Notch Frequency (Hz)</label>
+                            <select id="filter-notch-freq" class="toolbar-select">
+                                <option value="50">50 Hz (EU)</option>
+                                <option value="60">60 Hz (US)</option>
+                            </select>
+                        </div>
+                        <div class="control-group inline">
+                            <label>Order</label>
+                            <select id="filter-order" class="toolbar-select">
+                                <option value="2">2nd order</option>
+                                <option value="4" selected>4th order</option>
+                                <option value="6">6th order</option>
+                                <option value="8">8th order</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button id="filter-preview" class="btn-secondary">Preview</button>
+                        <button id="filter-apply" class="btn-primary">Apply to All Channels</button>
+                        <button id="filter-reset" class="btn-ghost">Reset to Original</button>
+                    </div>
+                </div>
+                <div class="filter-canvas-row">
+                    <div class="canvas-container filter-compare-container" id="filter-canvas-container">
+                        <div class="filter-canvas-title">Signal Comparison</div>
+                        <canvas id="filter-canvas"></canvas>
+                        <div class="processing-overlay" id="filter-processing" style="display:none">
+                            <div class="processing-spinner"></div>
+                            <span class="processing-text">Applying filter to all channels</span>
+                        </div>
+                    </div>
+                    <div class="canvas-container filter-response-container">
+                        <div class="filter-canvas-title">Frequency Response</div>
+                        <canvas id="filter-response-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time-Frequency Tab -->
+            <div id="tab-timefreq" class="tab-content">
+                <div class="tab-header">
+                    <h2>Time-Frequency Analysis</h2>
+                    <p>Observe how the frequency content of your signal evolves over time</p>
+                </div>
+                <div class="timefreq-controls">
+                    <div class="control-group inline">
+                        <label>Channel</label>
+                        <select id="timefreq-channel" class="toolbar-select"></select>
+                    </div>
+                    <div class="control-group inline">
+                        <label>Window Size</label>
+                        <select id="timefreq-winsize" class="toolbar-select">
+                            <option value="128">128 samples</option>
+                            <option value="256" selected>256 samples</option>
+                            <option value="512">512 samples</option>
+                            <option value="1024">1024 samples</option>
+                        </select>
+                    </div>
+                    <div class="control-group inline">
+                        <label>Max Freq (Hz)</label>
+                        <input type="number" id="timefreq-max-freq" class="toolbar-input" value="50" min="1" max="500">
+                    </div>
+                    <div class="control-group inline">
+                        <label>Color Map</label>
+                        <select id="timefreq-colormap" class="toolbar-select">
+                            <option value="viridis">Viridis</option>
+                            <option value="plasma">Plasma</option>
+                            <option value="hot">Hot</option>
+                            <option value="cool">Cool</option>
+                        </select>
+                    </div>
+                    <button id="timefreq-compute" class="btn-primary">Generate Spectrogram</button>
+                </div>
+                <div class="canvas-container spectrogram-container">
+                    <canvas id="spectrogram-canvas"></canvas>
+                    <canvas id="spectrogram-colorbar" class="colorbar-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Statistics Tab -->
+            <div id="tab-stats" class="tab-content">
+                <div class="tab-header">
+                    <h2>Statistical Analysis</h2>
+                    <p>Comprehensive statistical measures for each channel</p>
+                </div>
+                <div class="stats-controls">
+                    <button id="stats-compute" class="btn-primary">Compute Statistics</button>
+                    <button id="stats-download-csv" class="btn-secondary">Download as CSV</button>
+                </div>
+                <div class="stats-table-wrap">
+                    <table class="stats-table" id="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Channel</th>
+                                <th>Mean (uV)</th>
+                                <th>Std Dev</th>
+                                <th>Variance</th>
+                                <th>RMS</th>
+                                <th>Min</th>
+                                <th>Max</th>
+                                <th>Peak-Peak</th>
+                                <th>Skewness</th>
+                                <th>Kurtosis</th>
+                                <th>Zero Crossings</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-tbody"></tbody>
+                    </table>
+                </div>
+                <div class="stats-charts">
+                    <div class="chart-container chart-half">
+                        <canvas id="stats-rms-chart"></canvas>
+                    </div>
+                    <div class="chart-container chart-half">
+                        <canvas id="stats-variance-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Topography Tab -->
+            <div id="tab-topo" class="tab-content">
+                <div class="tab-header">
+                    <h2>Topographic Mapping</h2>
+                    <p>Spatial distribution of brain activity across the scalp</p>
+                </div>
+                <div class="topo-controls">
+                    <div class="control-group inline">
+                        <label>Metric</label>
+                        <select id="topo-metric" class="toolbar-select">
+                            <option value="power">Total Power</option>
+                            <option value="alpha">Alpha Power</option>
+                            <option value="beta">Beta Power</option>
+                            <option value="theta">Theta Power</option>
+                            <option value="delta">Delta Power</option>
+                            <option value="gamma">Gamma Power</option>
+                            <option value="rms">RMS Amplitude</option>
+                        </select>
+                    </div>
+                    <button id="topo-compute" class="btn-primary">Generate Map</button>
+                </div>
+                <div class="topo-display">
+                    <canvas id="topo-canvas" width="500" height="500"></canvas>
+                    <canvas id="topo-colorbar" class="colorbar-canvas" width="40" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Export Tab -->
+            <div id="tab-export" class="tab-content">
+                <div class="tab-header">
+                    <h2>Export Center</h2>
+                    <p>Download your processed data and visualizations</p>
+                </div>
+                <div class="export-grid">
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="8 12 8 16 12 16"/><path d="M16 8 L8 16"/></svg>
+                        </div>
+                        <h3>Raw Data (CSV)</h3>
+                        <p>Export the current signal data as a comma-separated values file</p>
+                        <button class="btn-export" id="export-csv">Download CSV</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        </div>
+                        <h3>JSON Data</h3>
+                        <p>Export signal data, metadata, and analysis results in JSON format</p>
+                        <button class="btn-export" id="export-json">Download JSON</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        </div>
+                        <h3>Signal Image (PNG)</h3>
+                        <p>Save the current signal viewer display as a high-resolution PNG image</p>
+                        <button class="btn-export" id="export-png">Download PNG</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <h3>Analysis Report (PDF)</h3>
+                        <p>Generate a comprehensive PDF report with all computed analysis results</p>
+                        <button class="btn-export" id="export-pdf">Download PDF</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </div>
+                        <h3>Filtered Data (CSV)</h3>
+                        <p>Export filtered signal data, preserving any filter operations you applied</p>
+                        <button class="btn-export" id="export-filtered-csv">Download CSV</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        </div>
+                        <h3>Spectrum Data (CSV)</h3>
+                        <p>Export power spectral density values for further analysis</p>
+                        <button class="btn-export" id="export-spectrum-csv">Download CSV</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- Toast Notification -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/parsers.js"></script>
+    <script src="js/analysis.js"></script>
+    <script src="js/visualization.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
