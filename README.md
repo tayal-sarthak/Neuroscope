@@ -1,6 +1,6 @@
-# NeuroScope, an EEG Data Analysis Platform
+# NeuroScope, an EEG Data Visualization/Analysis Platform for Researchers
 
-A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately. There are HUNDREDS of adjustable parameters to efficiently creating beautifully generated maps and charts.
+A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately. There are HUNDREDS of adjustable parameters to efficiently creating beautifully generated maps and charts. Version 1.2.1
 
 ## Gallery
 These images were taken using patient CHB02_16.edf from the CHB-MIT database, found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel
@@ -152,6 +152,13 @@ README.md               This file
 ## Browser Compatibility
 
 NeuroScope works in all modern browsers that support ES6, Canvas 2D, and the File API. For the best experience, use a recent version of Chrome, Firefox, Safari, or Edge.
+
+## Citations
+**If the diagrams from the website or this github is used for the paper in any way, you must include a citation at the end of the paper AND star this repository:**__
+
+APA Style (7th Edition): Tayal, S. (2026). Neuroscope (Version 1.2.1) [Computer software]. GitHub. https://github.com/tayal-sarthak/Neuroscope
+MLA Style (9th Edition): Tayal, Sarthak. Neuroscope. GitHub, 2026, https://github.com/tayal-sarthak/Neuroscope
+Chicago Style (17th Edition): Tayal, Sarthak. Neuroscope. GitHub, 2026. https://github.com/tayal-sarthak/Neuroscope
 
 ## License
 
