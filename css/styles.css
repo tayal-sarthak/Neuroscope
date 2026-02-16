@@ -1169,6 +1169,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-radius: var(--radius-lg);
     padding: 28px 24px;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
 }
 .export-card:hover {
     border-color: var(--primary-bg);
@@ -1196,6 +1198,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     color: var(--text-secondary);
     margin-bottom: 16px;
     line-height: 1.5;
+    flex: 1;
 }
 .btn-export {
     padding: 8px 20px;
@@ -1209,10 +1212,40 @@ input[type="range"]::-webkit-slider-thumb:hover {
     cursor: pointer;
     transition: all var(--transition);
     width: 100%;
+    margin-top: auto;
 }
 .btn-export:hover {
     background: var(--primary);
     color: var(--white);
+}
+
+/* Export extras */
+.export-time-range {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.export-range-sep {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.export-range-unit {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Toolbar time display */
+.toolbar-time-display {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--primary);
+    background: var(--primary-bg);
+    padding: 4px 12px;
+    border-radius: 12px;
+    white-space: nowrap;
+    align-self: center;
 }
 
 /* Toast */

@@ -363,7 +363,7 @@ const EEGParsers = {
     // parse csv tsv
     parseCSV(text, filename, delimiter) {
         const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-        if (lines.length < 2) throw new Error('The file appears to have too few lines for analysis');
+        if (lines.length < 2) throw new Error('This file has too few lines for meaningful analysis');
 
         // auto detect delimiter
         if (!delimiter) {
@@ -468,7 +468,7 @@ const EEGParsers = {
         // Try tab-separated first, then space, then comma
         const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
 
-        if (lines.length < 2) throw new Error('The file needs more data lines for analysis');
+        if (lines.length < 2) throw new Error('This file needs more data lines for analysis');
 
         const sampleLine = lines[Math.min(1, lines.length - 1)];
 
@@ -493,7 +493,7 @@ const EEGParsers = {
         });
 
         if (numericLines.length < 2) {
-            throw new Error('Unable to find enough numeric data in this file');
+            throw new Error('This file needs more numeric data for analysis');
         }
 
         const numCols = numericLines[0].trim().split(/\s+/).length;
@@ -571,7 +571,7 @@ const EEGParsers = {
         }
 
         if (channelData.length === 0) {
-            throw new Error('Unable to find channel data in the JSON file');
+            throw new Error('The JSON file needs channel data to be processed');
         }
 
         const numSamples = channelData[0].length;
@@ -716,7 +716,7 @@ const EEGParsers = {
             return this.parseTXT(text, filename);
         } catch (e) { /* continue */ }
 
-        throw new Error('Unable to determine the format of this file, please try a supported format');
+        throw new Error('The format of this file was unrecognized, try a supported format listed on the upload page');
     },
 
     // basic result default data

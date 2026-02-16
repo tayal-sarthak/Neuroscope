@@ -51,9 +51,9 @@ const EEGVisualization = {
         ctx.fillRect(0, 0, width, height);
 
         const leftMargin = 70;
-        const rightMargin = 20;
+        const rightMargin = 50;
         const topMargin = 10;
-        const bottomMargin = 30;
+        const bottomMargin = 35;
 
         const plotWidth = width - leftMargin - rightMargin;
         const plotHeight = height - topMargin - bottomMargin;
@@ -84,20 +84,26 @@ const EEGVisualization = {
         // time grid
         const timeGridStep = this._niceTimeStep(timeWindow);
         const startTime = Math.ceil(timeOffset / timeGridStep) * timeGridStep;
+        const timePrecision = options.timePrecision !== undefined ? options.timePrecision : 1;
 
         ctx.strokeStyle = '#F1F5F9';
         ctx.fillStyle = '#94A3B8';
         ctx.font = '10px Inter, sans-serif';
         ctx.textAlign = 'center';
 
-        for (let t = startTime; t <= timeOffset + timeWindow; t += timeGridStep) {
+        for (let t = startTime; t <= timeOffset + timeWindow + timeGridStep * 0.01; t += timeGridStep) {
             const x = leftMargin + ((t - timeOffset) / timeWindow) * plotWidth;
+            if (x < leftMargin - 5 || x > width - rightMargin + 5) continue;
             ctx.beginPath();
             ctx.moveTo(x, topMargin);
             ctx.lineTo(x, height - bottomMargin);
             ctx.stroke();
 
-            ctx.fillText(t.toFixed(1) + 's', x, height - bottomMargin + 14);
+            const labelText = this._formatTime(t, timePrecision);
+            const textW = ctx.measureText(labelText).width;
+            if (x - textW / 2 >= leftMargin - 10 && x + textW / 2 <= width - 5) {
+                ctx.fillText(labelText, x, height - bottomMargin + 14);
+            }
         }
 
         // draw signals
@@ -165,6 +171,12 @@ const EEGVisualization = {
         // Labels are drawn on canvas, so container stays empty
     },
 
+    _formatTime(seconds, precision) {
+        if (precision === undefined) precision = 1;
+        if (precision === 0) return Math.round(seconds) + 's';
+        return seconds.toFixed(precision) + 's';
+    },
+
     _niceTimeStep(timeWindow) {
         const approxSteps = 8;
         const rough = timeWindow / approxSteps;
@@ -204,16 +216,25 @@ const EEGVisualization = {
         const plotH = height - margin.top - margin.bottom;
         const halfH = plotH / 2;
 
-        // show 5s or less
-        const showSamples = Math.min(originalData.length, sampleRate * 5);
+        // determine visible window from options
+        const totalDuration = originalData.length / sampleRate;
+        const timeWindow = Math.min(options.timeWindow || totalDuration, totalDuration);
+        const timeOffset = Math.min(options.timeOffset || 0, Math.max(0, totalDuration - timeWindow));
+        const ampScale = options.amplitudeScale || 1;
+
+        const startSample = Math.floor(timeOffset * sampleRate);
+        const endSample = Math.min(originalData.length, Math.floor((timeOffset + timeWindow) * sampleRate));
+        const showSamples = endSample - startSample;
         const decimation = Math.max(1, Math.floor(showSamples / (plotW * 2)));
 
         // amplitude range
         let maxAmp = 0;
-        for (let i = 0; i < showSamples; i++) {
+        for (let i = startSample; i < endSample; i++) {
             maxAmp = Math.max(maxAmp, Math.abs(originalData[i]), Math.abs(filteredData[i]));
         }
         maxAmp = maxAmp || 1;
+        // apply amplitude scale (higher scale = zoom in = smaller maxAmp)
+        maxAmp = maxAmp / ampScale;
 
         // title
         ctx.fillStyle = '#64748B';
@@ -236,10 +257,11 @@ const EEGVisualization = {
         ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        for (let s = 0; s < showSamples; s += decimation) {
-            const x = margin.left + (s / showSamples) * plotW;
+        let first = true;
+        for (let s = startSample; s < endSample; s += decimation) {
+            const x = margin.left + ((s - startSample) / showSamples) * plotW;
             const y = margin.top + halfH - (originalData[s] / maxAmp) * halfH * 0.8;
-            if (s === 0) ctx.moveTo(x, y);
+            if (first) { ctx.moveTo(x, y); first = false; }
             else ctx.lineTo(x, y);
         }
         ctx.stroke();
@@ -248,10 +270,11 @@ const EEGVisualization = {
         ctx.strokeStyle = '#4A90D9';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        for (let s = 0; s < showSamples; s += decimation) {
-            const x = margin.left + (s / showSamples) * plotW;
+        first = true;
+        for (let s = startSample; s < endSample; s += decimation) {
+            const x = margin.left + ((s - startSample) / showSamples) * plotW;
             const y = margin.top + halfH - (filteredData[s] / maxAmp) * halfH * 0.8;
-            if (s === 0) ctx.moveTo(x, y);
+            if (first) { ctx.moveTo(x, y); first = false; }
             else ctx.lineTo(x, y);
         }
         ctx.stroke();
@@ -274,12 +297,21 @@ const EEGVisualization = {
         // time labels
         ctx.fillStyle = '#94A3B8';
         ctx.font = '10px Inter, sans-serif';
-        ctx.textAlign = 'center';
         const timeLen = showSamples / sampleRate;
-        for (let i = 0; i <= 5; i++) {
-            const t = (i / 5) * timeLen;
-            const x = margin.left + (i / 5) * plotW;
-            ctx.fillText(t.toFixed(1) + 's', x, height - margin.bottom + 16);
+        const numTimeLabels = Math.min(8, Math.max(3, Math.ceil(timeLen)));
+        for (let i = 0; i <= numTimeLabels; i++) {
+            const t = timeOffset + (i / numTimeLabels) * timeLen;
+            const x = margin.left + (i / numTimeLabels) * plotW;
+            const labelText = this._formatTime(t, 1);
+            // left-align first label, right-align last, center the rest
+            if (i === 0) {
+                ctx.textAlign = 'left';
+            } else if (i === numTimeLabels) {
+                ctx.textAlign = 'right';
+            } else {
+                ctx.textAlign = 'center';
+            }
+            ctx.fillText(labelText, x, height - margin.bottom + 16);
         }
 
         // amp labels
@@ -513,11 +545,15 @@ const EEGVisualization = {
         ctx.fillStyle = '#64748B';
         ctx.font = '10px Inter, sans-serif';
         ctx.textAlign = 'center';
-        const numTimeLabels = 6;
-        for (let i = 0; i <= numTimeLabels; i++) {
-            const t = times[0] + (i / numTimeLabels) * (times[times.length - 1] - times[0]);
-            const x = margin.left + (i / numTimeLabels) * plotW;
-            ctx.fillText(t.toFixed(1) + 's', x, canvasH - margin.bottom + 16);
+        const numTLabels = 6;
+        for (let i = 0; i <= numTLabels; i++) {
+            const t = times[0] + (i / numTLabels) * (times[times.length - 1] - times[0]);
+            const x = margin.left + (i / numTLabels) * plotW;
+            const labelText = this._formatTime(t, 1);
+            const textW = ctx.measureText(labelText).width;
+            if (x - textW / 2 >= margin.left - 10 && x + textW / 2 <= canvasW - 5) {
+                ctx.fillText(labelText, x, canvasH - margin.bottom + 16);
+            }
         }
 
         // freq labels

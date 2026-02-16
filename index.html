@@ -100,7 +100,7 @@
                     </svg>
                 </div>
                 <h1 class="hero-title">Welcome to NeuroScope</h1>
-                <p class="hero-desc">A complete local workspace for exploring, analyzing, and understanding your EEG data</p>
+                <p class="hero-desc">A friendly workspace for exploring, analyzing, and understanding your EEG data right in your browser</p>
             </div>
         </div>
 
@@ -146,7 +146,7 @@
         </div>
 
         <div class="features-section">
-            <h2 class="features-heading">Everything you need for EEG analysis</h2>
+            <h2 class="features-heading">Everything you need for EEG analysis in one place</h2>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -219,9 +219,9 @@
                     </div>
                 </div>
                 <div class="control-group">
-                    <label for="time-window">Time Window (s)</label>
+                    <label for="time-window">Time Window</label>
                     <div class="range-row">
-                        <input type="range" id="time-window" min="1" max="30" step="1" value="10">
+                        <input type="range" id="time-window" min="0.5" max="120" step="0.5" value="10">
                         <span id="time-window-value" class="range-value">10s</span>
                     </div>
                 </div>
@@ -231,6 +231,22 @@
                         <input type="range" id="time-offset" min="0" max="100" step="0.01" value="0">
                         <span id="time-offset-value" class="range-value">0.0s</span>
                     </div>
+                </div>
+                <div class="control-group">
+                    <label for="jump-to-time">Jump to Second</label>
+                    <div class="range-row">
+                        <input type="number" id="jump-to-time" class="toolbar-input" value="0" min="0" step="0.1" style="width: 65px;">
+                        <button id="jump-to-time-btn" class="btn-tiny">Go</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="time-precision">Time Precision</label>
+                    <select id="time-precision" class="toolbar-select" style="width: 100%;">
+                        <option value="0">Whole seconds</option>
+                        <option value="1" selected>Tenths</option>
+                        <option value="2">Hundredths</option>
+                        <option value="3">Milliseconds</option>
+                    </select>
                 </div>
             </div>
 
@@ -269,6 +285,8 @@
                         <option value="bipolar">Bipolar</option>
                         <option value="average">Average Reference</option>
                     </select>
+                    <div class="toolbar-separator"></div>
+                    <span class="toolbar-time-display" id="viewer-time-range">0.0s to 10.0s</span>
                 </div>
                 <div class="canvas-container" id="viewer-canvas-container">
                     <canvas id="viewer-canvas"></canvas>
@@ -300,7 +318,7 @@
                         </select>
                     </div>
                     <div class="control-group inline">
-                        <label>Max Freq (Hz)</label>
+                        <label>Max Frequency Hz</label>
                         <input type="number" id="spectrum-max-freq" class="toolbar-input" value="60" min="1" max="500">
                     </div>
                     <div class="control-group inline">
@@ -329,7 +347,7 @@
                         <label>Display</label>
                         <select id="bands-display" class="toolbar-select">
                             <option value="absolute">Absolute Power</option>
-                            <option value="relative">Relative Power (%)</option>
+                            <option value="relative">Relative Power</option>
                         </select>
                     </div>
                 </div>
@@ -381,7 +399,7 @@
                 </div>
                 <div class="filter-status" id="filter-status">
                     <span class="filter-status-dot"></span>
-                    <span id="filter-status-text">Original signal, no filter applied</span>
+                    <span id="filter-status-text">Viewing the original signal</span>
                 </div>
                 <div class="filter-controls">
                     <div class="filter-type-cards">
@@ -396,18 +414,18 @@
                             <select id="filter-channel" class="toolbar-select"></select>
                         </div>
                         <div class="control-group inline" id="filter-low-group">
-                            <label>Low Cutoff (Hz)</label>
+                            <label>Low Cutoff Hz</label>
                             <input type="number" id="filter-low" class="toolbar-input" value="1" min="0.1" max="500" step="0.1">
                         </div>
                         <div class="control-group inline" id="filter-high-group">
-                            <label>High Cutoff (Hz)</label>
+                            <label>High Cutoff Hz</label>
                             <input type="number" id="filter-high" class="toolbar-input" value="40" min="0.1" max="500" step="0.1">
                         </div>
                         <div class="control-group inline" id="filter-notch-group" style="display:none">
-                            <label>Notch Frequency (Hz)</label>
+                            <label>Notch Frequency Hz</label>
                             <select id="filter-notch-freq" class="toolbar-select">
-                                <option value="50">50 Hz (EU)</option>
-                                <option value="60">60 Hz (US)</option>
+                                <option value="50">50 Hz, EU standard</option>
+                                <option value="60">60 Hz, US standard</option>
                             </select>
                         </div>
                         <div class="control-group inline">
@@ -463,7 +481,7 @@
                         </select>
                     </div>
                     <div class="control-group inline">
-                        <label>Max Freq (Hz)</label>
+                        <label>Max Frequency Hz</label>
                         <input type="number" id="timefreq-max-freq" class="toolbar-input" value="50" min="1" max="500">
                     </div>
                     <div class="control-group inline">
@@ -498,13 +516,13 @@
                         <thead>
                             <tr>
                                 <th>Channel</th>
-                                <th>Mean (uV)</th>
+                                <th>Mean uV</th>
                                 <th>Std Dev</th>
                                 <th>Variance</th>
                                 <th>RMS</th>
                                 <th>Min</th>
                                 <th>Max</th>
-                                <th>Peak-Peak</th>
+                                <th>Peak to Peak</th>
                                 <th>Skewness</th>
                                 <th>Kurtosis</th>
                                 <th>Zero Crossings</th>
@@ -561,7 +579,7 @@
                         <div class="export-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="8 12 8 16 12 16"/><path d="M16 8 L8 16"/></svg>
                         </div>
-                        <h3>Raw Data (CSV)</h3>
+                        <h3>Raw Data CSV</h3>
                         <p>Export the current signal data as a comma-separated values file</p>
                         <button class="btn-export" id="export-csv">Download CSV</button>
                     </div>
@@ -577,7 +595,7 @@
                         <div class="export-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                         </div>
-                        <h3>Signal Image (PNG)</h3>
+                        <h3>Signal Image PNG</h3>
                         <p>Save the current signal viewer display as a high-resolution PNG image</p>
                         <button class="btn-export" id="export-png">Download PNG</button>
                     </div>
@@ -585,7 +603,7 @@
                         <div class="export-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         </div>
-                        <h3>Analysis Report (PDF)</h3>
+                        <h3>Analysis Report PDF</h3>
                         <p>Generate a comprehensive PDF report with all computed analysis results</p>
                         <button class="btn-export" id="export-pdf">Download PDF</button>
                     </div>
@@ -593,7 +611,7 @@
                         <div class="export-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                         </div>
-                        <h3>Filtered Data (CSV)</h3>
+                        <h3>Filtered Data CSV</h3>
                         <p>Export filtered signal data, preserving any filter operations you applied</p>
                         <button class="btn-export" id="export-filtered-csv">Download CSV</button>
                     </div>
@@ -601,9 +619,60 @@
                         <div class="export-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                         </div>
-                        <h3>Spectrum Data (CSV)</h3>
+                        <h3>Spectrum Data CSV</h3>
                         <p>Export power spectral density values for further analysis</p>
                         <button class="btn-export" id="export-spectrum-csv">Download CSV</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+                        </div>
+                        <h3>SVG Vector Image</h3>
+                        <p>Export the current signal view as a scalable vector graphic, ideal for publications and presentations</p>
+                        <button class="btn-export" id="export-svg">Download SVG</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <h3>Time Range Data</h3>
+                        <p>Export signal data for a specific time window of your choosing</p>
+                        <div class="export-time-range">
+                            <input type="number" id="export-start-time" class="toolbar-input" value="0" min="0" step="0.1" placeholder="Start" style="width:65px">
+                            <span class="export-range-sep">to</span>
+                            <input type="number" id="export-end-time" class="toolbar-input" value="10" min="0" step="0.1" placeholder="End" style="width:65px">
+                            <span class="export-range-unit">seconds</span>
+                        </div>
+                        <button class="btn-export" id="export-time-range">Download CSV</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2 A10 10 0 0 1 22 12 L12 12 Z"/></svg>
+                        </div>
+                        <h3>Band Power Data</h3>
+                        <p>Export computed band power values for all channels as a CSV, ready for statistical analysis</p>
+                        <button class="btn-export" id="export-band-power-csv">Download CSV</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        </div>
+                        <h3>High Resolution PNG</h3>
+                        <p>Save all current visualizations as high resolution images at 300 DPI for print and research papers</p>
+                        <select id="export-dpi" class="toolbar-select" style="width:100%; margin-bottom:8px;">
+                            <option value="2">Standard, 2x resolution</option>
+                            <option value="3" selected>High, 3x resolution</option>
+                            <option value="4">Ultra, 4x resolution</option>
+                        </select>
+                        <button class="btn-export" id="export-hires-png">Download All PNGs</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </div>
+                        <h3>MATLAB Compatible JSON</h3>
+                        <p>Export data in a structured JSON format that can be easily imported into MATLAB or Python scripts</p>
+                        <button class="btn-export" id="export-matlab-json">Download JSON</button>
                     </div>
                 </div>
             </div>

@@ -10,6 +10,7 @@ const App = {
         timeWindow: 10,
         timeOffset: 0,
         analysisResults: {},
+        filterPreviewData: null,
         isLoaded: false
     },
 
@@ -92,14 +93,16 @@ const App = {
             this.state.amplitudeScale = parseFloat(e.target.value);
             document.getElementById('amplitude-value').textContent = this.state.amplitudeScale.toFixed(1) + 'x';
             this.refreshSignalViewer();
+            this.refreshFilterComparison();
         });
 
         // Time window
         document.getElementById('time-window').addEventListener('input', (e) => {
-            this.state.timeWindow = parseInt(e.target.value);
+            this.state.timeWindow = parseFloat(e.target.value);
             document.getElementById('time-window-value').textContent = this.state.timeWindow + 's';
             this.updateTimeOffsetRange();
             this.refreshSignalViewer();
+            this.refreshFilterComparison();
         });
 
         // Time offset
@@ -107,6 +110,7 @@ const App = {
             this.state.timeOffset = parseFloat(e.target.value);
             document.getElementById('time-offset-value').textContent = this.state.timeOffset.toFixed(1) + 's';
             this.refreshSignalViewer();
+            this.refreshFilterComparison();
         });
 
         // Select all / deselect all channels
@@ -119,6 +123,24 @@ const App = {
         document.getElementById('deselect-all-ch').addEventListener('click', () => {
             this.state.selectedChannels = [];
             this.updateChannelCheckboxes();
+            this.refreshSignalViewer();
+        });
+
+        // Jump to time
+        document.getElementById('jump-to-time-btn').addEventListener('click', () => {
+            const targetTime = parseFloat(document.getElementById('jump-to-time').value);
+            if (this.state.eegData && isFinite(targetTime)) {
+                const maxOffset = Math.max(0, this.state.eegData.duration - this.state.timeWindow);
+                const clamped = Math.max(0, Math.min(targetTime, maxOffset));
+                this.state.timeOffset = clamped;
+                document.getElementById('time-offset').value = clamped;
+                document.getElementById('time-offset-value').textContent = clamped.toFixed(1) + 's';
+                this.refreshSignalViewer();
+            }
+        });
+
+        // Time precision
+        document.getElementById('time-precision').addEventListener('change', () => {
             this.refreshSignalViewer();
         });
     },
@@ -163,20 +185,22 @@ const App = {
         // Viewer controls
         document.getElementById('viewer-zoom-in').addEventListener('click', () => {
             const tw = document.getElementById('time-window');
-            tw.value = Math.max(1, parseInt(tw.value) - 2);
+            tw.value = Math.max(0.5, parseFloat(tw.value) - 1);
             tw.dispatchEvent(new Event('input'));
         });
 
         document.getElementById('viewer-zoom-out').addEventListener('click', () => {
             const tw = document.getElementById('time-window');
-            tw.value = Math.min(30, parseInt(tw.value) + 2);
+            const max = parseFloat(tw.max) || 120;
+            tw.value = Math.min(max, parseFloat(tw.value) + 1);
             tw.dispatchEvent(new Event('input'));
         });
 
         document.getElementById('viewer-fit').addEventListener('click', () => {
             if (this.state.eegData) {
                 const tw = document.getElementById('time-window');
-                tw.value = Math.min(30, Math.ceil(this.state.eegData.duration));
+                const max = parseFloat(tw.max) || 120;
+                tw.value = Math.min(max, Math.ceil(this.state.eegData.duration));
                 tw.dispatchEvent(new Event('input'));
                 const to = document.getElementById('time-offset');
                 to.value = 0;
@@ -251,7 +275,64 @@ const App = {
                 EEGExport.exportSpectrumCSV(sd.freqs, sd.datasets, this.state.eegData.channelLabels);
                 this.showToast('Spectrum CSV downloaded', 'success');
             } else {
-                this.showToast('Please compute the spectrum first', 'info');
+                this.showToast('Compute the spectrum first to export this data', 'info');
+            }
+        });
+
+        // SVG export
+        document.getElementById('export-svg').addEventListener('click', () => {
+            if (this.state.eegData) {
+                EEGExport.exportSVG('viewer-canvas', 'eeg_signals.svg');
+                this.showToast('SVG image downloaded', 'success');
+            }
+        });
+
+        // Time range data export
+        document.getElementById('export-time-range').addEventListener('click', () => {
+            if (this.state.eegData) {
+                const startTime = parseFloat(document.getElementById('export-start-time').value) || 0;
+                const endTime = parseFloat(document.getElementById('export-end-time').value) || 10;
+                EEGExport.exportTimeRangeCSV(this.state.eegData, this.state.filteredData, startTime, endTime);
+                this.showToast('Time range CSV downloaded for ' + startTime.toFixed(1) + 's to ' + endTime.toFixed(1) + 's', 'success');
+            }
+        });
+
+        // Band power CSV
+        document.getElementById('export-band-power-csv').addEventListener('click', () => {
+            if (this.state.analysisResults.bandPowers && this.state.eegData) {
+                const channels = this.state.selectedChannels.length > 0 ? this.state.selectedChannels : [0];
+                const labels = channels.map(i => this.state.eegData.channelLabels[i]);
+                EEGExport.exportBandPowerCSV(labels, this.state.analysisResults.bandPowers);
+                this.showToast('Band power CSV downloaded', 'success');
+            } else {
+                this.showToast('Compute band powers first to export this data', 'info');
+            }
+        });
+
+        // High-res PNG export
+        document.getElementById('export-hires-png').addEventListener('click', () => {
+            const dpiMultiplier = parseInt(document.getElementById('export-dpi').value) || 3;
+            const canvasIds = ['viewer-canvas', 'spectrum-chart', 'bands-bar-chart', 'bands-pie-chart', 'stats-rms-chart', 'stats-variance-chart', 'topo-canvas', 'spectrogram-canvas', 'filter-canvas'];
+            let count = 0;
+            for (const id of canvasIds) {
+                const canvas = document.getElementById(id);
+                if (canvas && canvas.width > 0 && canvas.height > 0) {
+                    EEGExport.exportHighResPNG(canvas, id + '_highres.png', dpiMultiplier);
+                    count++;
+                }
+            }
+            if (count > 0) {
+                this.showToast(count + ' high resolution images downloaded', 'success');
+            } else {
+                this.showToast('Generate some visualizations first, then export them', 'info');
+            }
+        });
+
+        // MATLAB-compatible JSON
+        document.getElementById('export-matlab-json').addEventListener('click', () => {
+            if (this.state.eegData) {
+                EEGExport.exportMATLABJSON(this.state.eegData, this.state.filteredData, this.state.analysisResults);
+                this.showToast('MATLAB-compatible JSON downloaded', 'success');
             }
         });
     },
@@ -281,7 +362,7 @@ const App = {
 
             this.showToast(`Loaded ${eegData.channelLabels.length} channels from ${file.name}`, 'success');
         } catch (err) {
-            this.showToast(`Unable to read this file. ${err.message}`, 'error');
+            this.showToast(`There was an issue reading this file, ${err.message}`, 'error');
             progress.classList.remove('active');
             progressBar.classList.remove('indeterminate');
         }
@@ -339,14 +420,21 @@ const App = {
         this.populateChannelDropdown('filter-channel', data.channelLabels);
 
         // time controls
-        const maxTime = Math.max(0, data.duration - 1);
+        const maxTime = Math.max(0, data.duration - 0.5);
         document.getElementById('time-offset').max = maxTime;
         this.state.timeWindow = Math.min(10, Math.ceil(data.duration));
         document.getElementById('time-window').value = this.state.timeWindow;
         document.getElementById('time-window-value').textContent = this.state.timeWindow + 's';
+        document.getElementById('time-window').max = Math.min(120, Math.ceil(data.duration));
         this.state.timeOffset = 0;
         document.getElementById('time-offset').value = 0;
         document.getElementById('time-offset-value').textContent = '0.0s';
+        document.getElementById('jump-to-time').max = Math.max(0, data.duration);
+
+        // Update export time range max
+        document.getElementById('export-end-time').max = data.duration;
+        document.getElementById('export-end-time').value = Math.min(10, data.duration).toFixed(1);
+        document.getElementById('export-start-time').max = data.duration;
 
         // hide upload show dashboard
         document.getElementById('upload-section').classList.add('hidden');
@@ -444,6 +532,26 @@ const App = {
         }
     },
 
+    // ===== filter comparison refresh =====
+
+    refreshFilterComparison() {
+        if (!this.state.filterPreviewData) return;
+        const { originalClip, filteredClip, channelLabel, sampleRate } = this.state.filterPreviewData;
+        EEGVisualization.drawFilterComparison(
+            document.getElementById('filter-canvas'),
+            originalClip,
+            filteredClip,
+            channelLabel,
+            sampleRate,
+            {
+                height: 320,
+                timeWindow: this.state.timeWindow,
+                timeOffset: this.state.timeOffset,
+                amplitudeScale: this.state.amplitudeScale
+            }
+        );
+    },
+
     // ===== signal viewer =====
 
     refreshSignalViewer() {
@@ -477,8 +585,18 @@ const App = {
             amplitudeScale: this.state.amplitudeScale,
             timeWindow: this.state.timeWindow,
             timeOffset: this.state.timeOffset,
+            timePrecision: parseInt(document.getElementById('time-precision').value) || 1,
             height: 500
         });
+
+        // Update time display in toolbar
+        const precision = parseInt(document.getElementById('time-precision').value) || 1;
+        const startT = this.state.timeOffset.toFixed(precision);
+        const endT = (this.state.timeOffset + this.state.timeWindow).toFixed(precision);
+        const timeRangeEl = document.getElementById('viewer-time-range');
+        if (timeRangeEl) {
+            timeRangeEl.textContent = startT + 's to ' + endT + 's';
+        }
     },
 
     updateTimeOffsetRange() {
@@ -618,9 +736,8 @@ const App = {
         const params = this.getFilterParams(filterType);
         if (!this.validateFilterParams(params, filterType, sampleRate)) return;
 
-        // preview clip max 10s
-        const previewLen = Math.min(this.state.eegData.channelData[chIdx].length, Math.floor(sampleRate * 10));
-        const originalClip = this.state.eegData.channelData[chIdx].slice(0, previewLen);
+        // use full channel data so sidebar controls can navigate
+        const originalClip = this.state.eegData.channelData[chIdx];
         const filteredClip = EEGAnalysis.butterworth(originalClip, sampleRate, params.low, params.high, params.order, filterType);
 
         // check nan
@@ -633,13 +750,25 @@ const App = {
             return;
         }
 
+        this.state.filterPreviewData = {
+            originalClip,
+            filteredClip,
+            channelLabel: this.state.eegData.channelLabels[chIdx],
+            sampleRate
+        };
+
         EEGVisualization.drawFilterComparison(
             document.getElementById('filter-canvas'),
             originalClip,
             filteredClip,
             this.state.eegData.channelLabels[chIdx],
             sampleRate,
-            { height: 320 }
+            {
+                height: 320,
+                timeWindow: this.state.timeWindow,
+                timeOffset: this.state.timeOffset,
+                amplitudeScale: this.state.amplitudeScale
+            }
         );
 
         // freq response
@@ -695,9 +824,15 @@ const App = {
 
                 // render comparison selected
                 const chIdx = parseInt(document.getElementById('filter-channel').value) || 0;
-                const previewLen = Math.min(sourceData[chIdx].length, Math.floor(sampleRate * 10));
-                const originalClip = sourceData[chIdx].slice(0, previewLen);
-                const filteredClip = filtered[chIdx].slice(0, previewLen);
+                const originalClip = sourceData[chIdx];
+                const filteredClip = filtered[chIdx];
+
+                this.state.filterPreviewData = {
+                    originalClip,
+                    filteredClip,
+                    channelLabel: this.state.eegData.channelLabels[chIdx],
+                    sampleRate
+                };
 
                 EEGVisualization.drawFilterComparison(
                     document.getElementById('filter-canvas'),
@@ -705,7 +840,12 @@ const App = {
                     filteredClip,
                     this.state.eegData.channelLabels[chIdx],
                     sampleRate,
-                    { height: 320 }
+                    {
+                        height: 320,
+                        timeWindow: this.state.timeWindow,
+                        timeOffset: this.state.timeOffset,
+                        amplitudeScale: this.state.amplitudeScale
+                    }
                 );
 
                 this.drawFilterResponse(filterType, params, sampleRate);
@@ -721,6 +861,7 @@ const App = {
 
     resetFilter() {
         this.state.filteredData = null;
+        this.state.filterPreviewData = null;
         this.updateFilterStatus(null);
         this.refreshSignalViewer();
 
@@ -742,7 +883,7 @@ const App = {
             textEl.textContent = description;
         } else {
             statusEl.classList.remove('active-filter');
-            textEl.textContent = 'Original signal, no filter applied';
+            textEl.textContent = 'Viewing the original signal';
         }
     },
 
@@ -755,7 +896,7 @@ const App = {
                 return false;
             }
             if (params.high >= nyquist) {
-                this.showToast('High cutoff must be below Nyquist (' + nyquist.toFixed(0) + ' Hz)', 'error');
+                this.showToast('High cutoff must be below Nyquist at ' + nyquist.toFixed(0) + ' Hz', 'error');
                 return false;
             }
             if (params.low < 0.05) {
@@ -764,17 +905,17 @@ const App = {
             }
         } else if (filterType === 'highpass') {
             if (params.low >= nyquist) {
-                this.showToast('Cutoff must be below Nyquist (' + nyquist.toFixed(0) + ' Hz)', 'error');
+                this.showToast('Cutoff must be below Nyquist at ' + nyquist.toFixed(0) + ' Hz', 'error');
                 return false;
             }
         } else if (filterType === 'lowpass') {
             if (params.high >= nyquist) {
-                this.showToast('Cutoff must be below Nyquist (' + nyquist.toFixed(0) + ' Hz)', 'error');
+                this.showToast('Cutoff must be below Nyquist at ' + nyquist.toFixed(0) + ' Hz', 'error');
                 return false;
             }
         } else if (filterType === 'notch') {
             if (params.low >= nyquist) {
-                this.showToast('Notch frequency must be below Nyquist (' + nyquist.toFixed(0) + ' Hz)', 'error');
+                this.showToast('Notch frequency must be below Nyquist at ' + nyquist.toFixed(0) + ' Hz', 'error');
                 return false;
             }
         }
