@@ -1,6 +1,5 @@
 // neuroScope: state mgmt, ui events, workflow
 const App = {
-    // Application state
     state: {
         eegData: null,
         filteredData: null,
@@ -14,9 +13,7 @@ const App = {
         isLoaded: false
     },
 
-    // init app
     init() {
-        // hide loading after delay
         setTimeout(() => {
             document.getElementById('loading-screen').classList.add('hidden');
         }, 1200);
@@ -38,17 +35,15 @@ const App = {
         const newFileBtn = document.getElementById('new-file-btn');
         const logoBtn = document.getElementById('logo-btn');
 
-        // file upload click
         dropZone.addEventListener('click', () => fileInput.click());
 
-        // file input change
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 this.loadFile(e.target.files[0]);
             }
         });
 
-        // drag drop
+
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('drag-over');
@@ -66,20 +61,20 @@ const App = {
             }
         });
 
-        // sample data
+
         sampleBtn.addEventListener('click', () => this.loadSampleData());
 
-        // new file
+
         newFileBtn.addEventListener('click', () => this.resetToUpload());
 
-        // logo click
+
         logoBtn.addEventListener('click', () => {
             if (this.state.isLoaded) {
                 this.switchTab('viewer');
             }
         });
 
-        // window resize
+
         window.addEventListener('resize', () => {
             if (this.state.isLoaded) {
                 this.debounce('resize', () => this.refreshCurrentView(), 250);
@@ -88,7 +83,7 @@ const App = {
     },
 
     bindSidebarControls() {
-        // Amplitude scale
+        
         document.getElementById('amplitude-scale').addEventListener('input', (e) => {
             this.state.amplitudeScale = parseFloat(e.target.value);
             document.getElementById('amplitude-value').textContent = this.state.amplitudeScale.toFixed(1) + 'x';
@@ -96,7 +91,7 @@ const App = {
             this.refreshFilterComparison();
         });
 
-        // Time window
+
         document.getElementById('time-window').addEventListener('input', (e) => {
             this.state.timeWindow = parseFloat(e.target.value);
             document.getElementById('time-window-value').textContent = this.state.timeWindow + 's';
@@ -105,7 +100,7 @@ const App = {
             this.refreshFilterComparison();
         });
 
-        // Time offset
+
         document.getElementById('time-offset').addEventListener('input', (e) => {
             this.state.timeOffset = parseFloat(e.target.value);
             document.getElementById('time-offset-value').textContent = this.state.timeOffset.toFixed(1) + 's';
@@ -113,7 +108,7 @@ const App = {
             this.refreshFilterComparison();
         });
 
-        // Select all / deselect all channels
+
         document.getElementById('select-all-ch').addEventListener('click', () => {
             this.state.selectedChannels = Array.from({ length: this.state.eegData.channelLabels.length }, (_, i) => i);
             this.updateChannelCheckboxes();
@@ -126,7 +121,7 @@ const App = {
             this.refreshSignalViewer();
         });
 
-        // Jump to time
+
         document.getElementById('jump-to-time-btn').addEventListener('click', () => {
             const targetTime = parseFloat(document.getElementById('jump-to-time').value);
             if (this.state.eegData && isFinite(targetTime)) {
@@ -139,7 +134,7 @@ const App = {
             }
         });
 
-        // Time precision
+
         document.getElementById('time-precision').addEventListener('change', () => {
             this.refreshSignalViewer();
         });
@@ -156,10 +151,10 @@ const App = {
     },
 
     bindAnalysisControls() {
-        // Spectrum
+        
         document.getElementById('spectrum-compute').addEventListener('click', () => this.computeSpectrum());
 
-        // Band power
+
         document.getElementById('bands-compute').addEventListener('click', () => this.computeBandPowers());
         document.getElementById('bands-display').addEventListener('change', () => {
             if (this.state.analysisResults.bandPowers) {
@@ -167,10 +162,10 @@ const App = {
             }
         });
 
-        // Time-frequency
+
         document.getElementById('timefreq-compute').addEventListener('click', () => this.computeSpectrogram());
 
-        // Statistics
+
         document.getElementById('stats-compute').addEventListener('click', () => this.computeStatistics());
         document.getElementById('stats-download-csv').addEventListener('click', () => {
             if (this.state.analysisResults.statistics) {
@@ -179,10 +174,10 @@ const App = {
             }
         });
 
-        // Topography
+
         document.getElementById('topo-compute').addEventListener('click', () => this.computeTopography());
 
-        // Viewer controls
+
         document.getElementById('viewer-zoom-in').addEventListener('click', () => {
             const tw = document.getElementById('time-window');
             tw.value = Math.max(0.5, parseFloat(tw.value) - 1);
@@ -208,12 +203,12 @@ const App = {
             }
         });
 
-        // Montage
+
         document.getElementById('montage-select').addEventListener('change', () => this.refreshSignalViewer());
     },
 
     bindFilterControls() {
-        // Filter type buttons
+        
         document.querySelectorAll('.filter-type-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.filter-type-btn').forEach(b => b.classList.remove('active'));
@@ -279,7 +274,7 @@ const App = {
             }
         });
 
-        // SVG export
+
         document.getElementById('export-svg').addEventListener('click', () => {
             if (this.state.eegData) {
                 EEGExport.exportSVG('viewer-canvas', 'eeg_signals.svg');
@@ -287,7 +282,7 @@ const App = {
             }
         });
 
-        // Time range data export
+
         document.getElementById('export-time-range').addEventListener('click', () => {
             if (this.state.eegData) {
                 const startTime = parseFloat(document.getElementById('export-start-time').value) || 0;
@@ -297,7 +292,7 @@ const App = {
             }
         });
 
-        // Band power CSV
+
         document.getElementById('export-band-power-csv').addEventListener('click', () => {
             if (this.state.analysisResults.bandPowers && this.state.eegData) {
                 const channels = this.state.selectedChannels.length > 0 ? this.state.selectedChannels : [0];
@@ -309,7 +304,7 @@ const App = {
             }
         });
 
-        // High-res PNG export
+
         document.getElementById('export-hires-png').addEventListener('click', () => {
             const dpiMultiplier = parseInt(document.getElementById('export-dpi').value) || 3;
             const canvasIds = ['viewer-canvas', 'spectrum-chart', 'bands-bar-chart', 'bands-pie-chart', 'stats-rms-chart', 'stats-variance-chart', 'topo-canvas', 'spectrogram-canvas', 'filter-canvas'];
@@ -328,7 +323,7 @@ const App = {
             }
         });
 
-        // MATLAB-compatible JSON
+
         document.getElementById('export-matlab-json').addEventListener('click', () => {
             if (this.state.eegData) {
                 EEGExport.exportMATLABJSON(this.state.eegData, this.state.filteredData, this.state.analysisResults);
@@ -337,7 +332,7 @@ const App = {
         });
     },
 
-    // ========== File Loading ==========
+
 
     async loadFile(file) {
         const progress = document.getElementById('upload-progress');
@@ -388,7 +383,7 @@ const App = {
         }, 600);
     },
 
-    // ===== init dashboard =====
+
 
     initializeDashboard() {
         const data = this.state.eegData;
@@ -511,7 +506,7 @@ const App = {
         });
     },
 
-    // ===== tabs =====
+
 
     switchTab(tab) {
         this.state.activeTab = tab;
@@ -532,7 +527,7 @@ const App = {
         }
     },
 
-    // ===== filter comparison refresh =====
+
 
     refreshFilterComparison() {
         if (!this.state.filterPreviewData) return;
@@ -552,7 +547,7 @@ const App = {
         );
     },
 
-    // ===== signal viewer =====
+
 
     refreshSignalViewer() {
         if (!this.state.eegData) return;
@@ -611,7 +606,7 @@ const App = {
         }
     },
 
-    // ===== spectrum =====
+
 
     computeSpectrum() {
         if (!this.state.eegData) return;
@@ -655,7 +650,7 @@ const App = {
         this.showToast('Spectrum analysis complete', 'success');
     },
 
-    // ===== band power =====
+
 
     computeBandPowers() {
         if (!this.state.eegData) return;
@@ -724,7 +719,7 @@ const App = {
         }
     },
 
-    // ===== filter =====
+
 
     previewFilter() {
         if (!this.state.eegData) return;
@@ -947,7 +942,7 @@ const App = {
         return { low, high, order };
     },
 
-    // ===== spectrogram =====
+
 
     computeSpectrogram() {
         if (!this.state.eegData) return;
@@ -987,7 +982,7 @@ const App = {
         this.showToast('Spectrogram generated', 'success');
     },
 
-    // ===== stats =====
+
 
     computeStatistics() {
         if (!this.state.eegData) return;
@@ -1043,7 +1038,7 @@ const App = {
         this.showToast('Statistical analysis complete', 'success');
     },
 
-    // ===== topo =====
+
 
     computeTopography() {
         if (!this.state.eegData) return;
@@ -1091,7 +1086,7 @@ const App = {
         this.showToast('Topographic map generated', 'success');
     },
 
-    // ===== nav =====
+
 
     resetToUpload() {
         this.state.eegData = null;
@@ -1134,7 +1129,7 @@ const App = {
         toast.className = `toast ${type}`;
 
         let icon = '';
-        // icon by type
+        
         if (type === 'success') icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
         else if (type === 'error') icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
         else icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
