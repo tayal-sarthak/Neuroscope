@@ -1,7 +1,6 @@
-// neuroScope: export multiple formats
+// export multiple formats
 const EEGExport = {
 
-    // dl file content
     downloadFile(content, filename, mimeType) {
         const blob = new Blob([content], { type: mimeType });
         const url = URL.createObjectURL(blob);
@@ -14,7 +13,6 @@ const EEGExport = {
         URL.revokeObjectURL(url);
     },
 
-    // dl blob
     downloadBlob(blob, filename) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -26,7 +24,6 @@ const EEGExport = {
         URL.revokeObjectURL(url);
     },
 
-    // export eeg csv
     exportCSV(eegData) {
         const { channelLabels, channelData, sampleRate } = eegData;
         const numSamples = channelData[0].length;
@@ -43,7 +40,6 @@ const EEGExport = {
         this.downloadFile(csv, `${baseName}_data.csv`, 'text/csv');
     },
 
-    // export filtered csv
     exportFilteredCSV(eegData, filteredData) {
         const { channelLabels, sampleRate } = eegData;
         const data = filteredData || eegData.channelData;
@@ -168,12 +164,9 @@ const EEGExport = {
         doc.text(`Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, margin, y);
         y += 10;
 
-        // line
         doc.setDrawColor(226, 232, 240);
         doc.line(margin, y, pageWidth - margin, y);
         y += 10;
-
-        // Recording Info
         doc.setFontSize(14);
         doc.setTextColor(30, 41, 59);
         doc.text('Recording Information', margin, y);
@@ -224,7 +217,6 @@ const EEGExport = {
             doc.text('Statistical Summary', margin, y);
             y += 8;
 
-            // table header
             doc.setFontSize(8);
             doc.setFillColor(235, 243, 252);
             doc.rect(margin, y - 4, pageWidth - 2 * margin, 7, 'F');
@@ -265,7 +257,6 @@ const EEGExport = {
             }
         }
 
-        // add canvas imgs
         const canvasIds = ['viewer-canvas', 'spectrum-chart', 'topo-canvas'];
         for (const cId of canvasIds) {
             const canvas = document.getElementById(cId);
@@ -283,7 +274,6 @@ const EEGExport = {
             }
         }
 
-        // Footer
         const totalPages = doc.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
@@ -296,7 +286,6 @@ const EEGExport = {
         doc.save(`${baseName}_report.pdf`);
     },
 
-    // export SVG from canvas
     exportSVG(canvasId, filename) {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
@@ -316,7 +305,6 @@ const EEGExport = {
         this.downloadFile(svg, filename, 'image/svg+xml');
     },
 
-    // export time range CSV
     exportTimeRangeCSV(eegData, filteredData, startTime, endTime) {
         const { channelLabels, sampleRate } = eegData;
         const data = filteredData || eegData.channelData;
@@ -369,7 +357,6 @@ const EEGExport = {
             csv += '\n';
         }
 
-        // Add relative power rows
         csv += '\n';
         csv += 'Channel';
         for (const name of bandNames) {
@@ -391,7 +378,6 @@ const EEGExport = {
         this.downloadFile(csv, 'band_power_analysis.csv', 'text/csv');
     },
 
-    // export high resolution PNG
     exportHighResPNG(canvas, filename, multiplier) {
         const tempCanvas = document.createElement('canvas');
         const ctx = tempCanvas.getContext('2d');

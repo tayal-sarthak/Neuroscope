@@ -1,7 +1,5 @@
 // neuroScope: signals spectrum topo spectrogram
 const EEGVisualization = {
-
-    // channel colors multichannel
     channelColors: [
         '#4A90D9', '#E74C3C', '#2ECC71', '#F39C12', '#9B59B6',
         '#1ABC9C', '#E67E22', '#3498DB', '#E91E63', '#00BCD4',
@@ -41,12 +39,10 @@ const EEGVisualization = {
             montage = 'monopolar'
         } = { ...eegData, ...options };
 
-        // which channels draw
         const channels = selectedChannels || Array.from({ length: channelLabels.length }, (_, i) => i);
         const numChannels = channels.length;
         if (numChannels === 0) return;
 
-        // clear
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, width, height);
 
@@ -59,20 +55,16 @@ const EEGVisualization = {
         const plotHeight = height - topMargin - bottomMargin;
         const channelHeight = plotHeight / numChannels;
 
-        // time range
         const startSample = Math.floor(timeOffset * sampleRate);
         const samplesInView = Math.floor(timeWindow * sampleRate);
         const endSample = Math.min(startSample + samplesInView, channelData[0].length);
 
-        // downsample display
         const maxPoints = plotWidth * 2;
         const decimation = Math.max(1, Math.floor((endSample - startSample) / maxPoints));
 
-        // grid lines
         ctx.strokeStyle = '#F1F5F9';
         ctx.lineWidth = 1;
 
-        // horizontal grid channels
         for (let i = 0; i <= numChannels; i++) {
             const y = topMargin + i * channelHeight;
             ctx.beginPath();
@@ -81,7 +73,6 @@ const EEGVisualization = {
             ctx.stroke();
         }
 
-        // time grid
         const timeGridStep = this._niceTimeStep(timeWindow);
         const startTime = Math.ceil(timeOffset / timeGridStep) * timeGridStep;
         const timePrecision = options.timePrecision !== undefined ? options.timePrecision : 1;
@@ -106,20 +97,17 @@ const EEGVisualization = {
             }
         }
 
-        // draw signals
         for (let ch = 0; ch < numChannels; ch++) {
             const chIdx = channels[ch];
             const data = channelData[chIdx];
             const centerY = topMargin + (ch + 0.5) * channelHeight;
             const color = this.channelColors[chIdx % this.channelColors.length];
 
-            // channel label
             ctx.fillStyle = '#64748B';
             ctx.font = '11px Inter, sans-serif';
             ctx.textAlign = 'right';
             ctx.fillText(channelLabels[chIdx], leftMargin - 8, centerY + 4);
 
-            // trace
             ctx.strokeStyle = color;
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -140,12 +128,10 @@ const EEGVisualization = {
             ctx.stroke();
         }
 
-        // borders
         ctx.strokeStyle = '#E2E8F0';
         ctx.lineWidth = 1;
         ctx.strokeRect(leftMargin, topMargin, plotWidth, plotHeight);
 
-        // scale bar
         const scaleBarHeight = 50;
         const scaleBarAmplitude = (scaleBarHeight / (channelHeight * 0.003 * amplitudeScale));
         ctx.strokeStyle = '#94A3B8';
@@ -160,7 +146,6 @@ const EEGVisualization = {
         ctx.textAlign = 'left';
         ctx.fillText(scaleBarAmplitude.toFixed(0) + 'uV', width - rightMargin + 8, topMargin + 10 + scaleBarHeight / 2 + 3);
 
-        // update labels container
         this._updateChannelLabels(channels, channelLabels, channelHeight, topMargin);
     },
 
@@ -168,7 +153,6 @@ const EEGVisualization = {
         const container = document.getElementById('viewer-labels');
         if (!container) return;
         container.innerHTML = '';
-        // Labels are drawn on canvas, so container stays empty
     },
 
     _formatTime(seconds, precision) {
@@ -208,7 +192,6 @@ const EEGVisualization = {
         const height = options.height || 400;
         const margin = { left: 60, right: 20, top: 30, bottom: 40 };
 
-        // clear
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, width, height);
 
@@ -216,7 +199,6 @@ const EEGVisualization = {
         const plotH = height - margin.top - margin.bottom;
         const halfH = plotH / 2;
 
-        // determine visible window from options
         const totalDuration = originalData.length / sampleRate;
         const timeWindow = Math.min(options.timeWindow || totalDuration, totalDuration);
         const timeOffset = Math.min(options.timeOffset || 0, Math.max(0, totalDuration - timeWindow));
@@ -227,22 +209,18 @@ const EEGVisualization = {
         const showSamples = endSample - startSample;
         const decimation = Math.max(1, Math.floor(showSamples / (plotW * 2)));
 
-        // amplitude range
         let maxAmp = 0;
         for (let i = startSample; i < endSample; i++) {
             maxAmp = Math.max(maxAmp, Math.abs(originalData[i]), Math.abs(filteredData[i]));
         }
         maxAmp = maxAmp || 1;
-        // apply amplitude scale (higher scale = zoom in = smaller maxAmp)
         maxAmp = maxAmp / ampScale;
 
-        // title
         ctx.fillStyle = '#64748B';
         ctx.font = '11px Inter, sans-serif';
         ctx.textAlign = 'left';
         ctx.fillText(`Channel: ${channelLabel}`, margin.left, 18);
 
-        // legend
         ctx.fillStyle = '#94A3B8';
         ctx.fillRect(width - 180, 8, 10, 10);
         ctx.fillStyle = '#64748B';
@@ -253,7 +231,6 @@ const EEGVisualization = {
         ctx.fillStyle = '#64748B';
         ctx.fillText('Filtered', width - 75, 17);
 
-        // original gray
         ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -266,7 +243,6 @@ const EEGVisualization = {
         }
         ctx.stroke();
 
-        // filtered blue
         ctx.strokeStyle = '#4A90D9';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -279,7 +255,6 @@ const EEGVisualization = {
         }
         ctx.stroke();
 
-        // zero line
         ctx.strokeStyle = '#E2E8F0';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
@@ -289,12 +264,10 @@ const EEGVisualization = {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // axes
         ctx.strokeStyle = '#E2E8F0';
         ctx.lineWidth = 1;
         ctx.strokeRect(margin.left, margin.top, plotW, plotH);
 
-        // time labels
         ctx.fillStyle = '#94A3B8';
         ctx.font = '10px Inter, sans-serif';
         const timeLen = showSamples / sampleRate;
@@ -303,7 +276,6 @@ const EEGVisualization = {
             const t = timeOffset + (i / numTimeLabels) * timeLen;
             const x = margin.left + (i / numTimeLabels) * plotW;
             const labelText = this._formatTime(t, 1);
-            // left-align first label, right-align last, center the rest
             if (i === 0) {
                 ctx.textAlign = 'left';
             } else if (i === numTimeLabels) {
@@ -314,7 +286,6 @@ const EEGVisualization = {
             ctx.fillText(labelText, x, height - margin.bottom + 16);
         }
 
-        // amp labels
         ctx.textAlign = 'right';
         ctx.fillText('+' + maxAmp.toFixed(0), margin.left - 6, margin.top + 12);
         ctx.fillText('0', margin.left - 6, margin.top + halfH + 4);
@@ -340,25 +311,20 @@ const EEGVisualization = {
         const plotW = width - margin.left - margin.right;
         const plotH = height - margin.top - margin.bottom;
 
-        // Clear
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, width, height);
 
-        // freq range x log
         const fMin = freqs[0];
         const fMax = freqs[freqs.length - 1];
         const logMin = Math.log10(Math.max(fMin, 0.1));
         const logMax = Math.log10(fMax);
 
-        // y db range
         const dbMin = -80;
         const dbMax = 5;
 
-        // grid
         ctx.strokeStyle = '#F1F5F9';
         ctx.lineWidth = 1;
 
-        // horizontal grid db
         ctx.fillStyle = '#94A3B8';
         ctx.font = '9px Inter, sans-serif';
         ctx.textAlign = 'right';
@@ -371,7 +337,6 @@ const EEGVisualization = {
             ctx.fillText(db + ' dB', margin.left - 5, yy + 3);
         }
 
-        // vertical grid freq log
         ctx.textAlign = 'center';
         const freqTicks = [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500];
         for (const ft of freqTicks) {
@@ -384,20 +349,17 @@ const EEGVisualization = {
             ctx.fillText(ft >= 1 ? ft.toFixed(0) : ft.toFixed(1), xx, height - margin.bottom + 14);
         }
 
-        // x label
         ctx.fillStyle = '#64748B';
         ctx.font = '10px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('Frequency (Hz)', margin.left + plotW / 2, height - 5);
 
-        // y label
         ctx.save();
         ctx.translate(12, margin.top + plotH / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText('Magnitude (dB)', 0, 0);
         ctx.restore();
 
-        // reference -3db
         const y3db = margin.top + plotH - ((-3 - dbMin) / (dbMax - dbMin)) * plotH;
         ctx.strokeStyle = '#F59E0B';
         ctx.lineWidth = 1;
@@ -412,7 +374,6 @@ const EEGVisualization = {
         ctx.textAlign = 'left';
         ctx.fillText('-3 dB', margin.left + plotW + 2, y3db + 3);
 
-        // passband shading
         if (options.filterType && options.params) {
             ctx.fillStyle = 'rgba(74, 144, 217, 0.06)';
             const p = options.params;
@@ -431,7 +392,6 @@ const EEGVisualization = {
             ctx.fillRect(shadeLeft, margin.top, shadeRight - shadeLeft, plotH);
         }
 
-        // mag response curve
         ctx.strokeStyle = '#4A90D9';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -448,7 +408,6 @@ const EEGVisualization = {
         }
         ctx.stroke();
 
-        // 0db line
         const y0db = margin.top + plotH - ((0 - dbMin) / (dbMax - dbMin)) * plotH;
         ctx.strokeStyle = '#CBD5E1';
         ctx.lineWidth = 1;
@@ -457,7 +416,6 @@ const EEGVisualization = {
         ctx.lineTo(margin.left + plotW, y0db);
         ctx.stroke();
 
-        // axes border
         ctx.strokeStyle = '#E2E8F0';
         ctx.lineWidth = 1;
         ctx.strokeRect(margin.left, margin.top, plotW, plotH);
@@ -485,19 +443,16 @@ const EEGVisualization = {
         const plotW = canvasW - margin.left - margin.right;
         const plotH = canvasH - margin.top - margin.bottom;
 
-        // clear
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvasW, canvasH);
 
         if (!spectrogram || spectrogram.length === 0 || !spectrogram[0] || spectrogram[0].length === 0) {
-        // axes only
             ctx.strokeStyle = '#64748B';
             ctx.lineWidth = 1;
             ctx.strokeRect(margin.left, margin.top, plotW, plotH);
             return;
         }
 
-        // value range
         let minVal = Infinity, maxVal = -Infinity;
         for (const frame of spectrogram) {
             for (const val of frame) {
@@ -511,7 +466,6 @@ const EEGVisualization = {
         const numFrames = spectrogram.length;
         const numBins = spectrogram[0].length;
 
-        // spectrogram offscreen canvas putimage ignores transforms
         const off = document.createElement('canvas');
         off.width = Math.max(1, Math.ceil(plotW));
         off.height = Math.max(1, Math.ceil(plotH));
@@ -535,13 +489,10 @@ const EEGVisualization = {
 
         offCtx.putImageData(imgData, 0, 0);
         ctx.drawImage(off, margin.left, margin.top, plotW, plotH);
-
-        // axes
         ctx.strokeStyle = '#64748B';
         ctx.lineWidth = 1;
         ctx.strokeRect(margin.left, margin.top, plotW, plotH);
 
-        // time labels
         ctx.fillStyle = '#64748B';
         ctx.font = '10px Inter, sans-serif';
         ctx.textAlign = 'center';
@@ -556,7 +507,6 @@ const EEGVisualization = {
             }
         }
 
-        // freq labels
         ctx.textAlign = 'right';
         const numFreqLabels = 5;
         for (let i = 0; i <= numFreqLabels; i++) {
@@ -565,7 +515,6 @@ const EEGVisualization = {
             ctx.fillText(f.toFixed(0) + ' Hz', margin.left - 4, y + 3);
         }
 
-        // axis labels
         ctx.save();
         ctx.translate(12, margin.top + plotH / 2);
         ctx.rotate(-Math.PI / 2);
@@ -625,7 +574,6 @@ const EEGVisualization = {
         const cy = size / 2;
         const headRadius = size * 0.38;
 
-        // 10-20 electrode positions normalized -1 1
         const electrodePositions = {
             'FP1': [-0.31, -0.95], 'FPZ': [0, -0.95], 'FP2': [0.31, -0.95],
             'F7': [-0.81, -0.59], 'F3': [-0.39, -0.59], 'FZ': [0, -0.59],
@@ -644,7 +592,6 @@ const EEGVisualization = {
             'PO3': [-0.25, 0.77], 'PO4': [0.25, 0.77]
         };
 
-        // map channels positions
         const electrodes = [];
         for (let i = 0; i < channelLabels.length; i++) {
             const label = channelLabels[i].toUpperCase().replace(/[\s-]/g, '');
@@ -660,7 +607,6 @@ const EEGVisualization = {
         }
 
         if (electrodes.length === 0) {
-        // place circle
             for (let i = 0; i < channelLabels.length; i++) {
                 const angle = (i / channelLabels.length) * 2 * Math.PI - Math.PI / 2;
                 const r = headRadius * 0.7;
@@ -673,7 +619,6 @@ const EEGVisualization = {
             }
         }
 
-        // value range
         let minVal = Infinity, maxVal = -Infinity;
         for (const e of electrodes) {
             if (e.value < minVal) minVal = e.value;
@@ -681,11 +626,9 @@ const EEGVisualization = {
         }
         const range = maxVal - minVal || 1;
 
-        // clear white bg
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
 
-        // interpolated map
         const resolution = 2;
         for (let px = cx - headRadius; px <= cx + headRadius; px += resolution) {
             for (let py = cy - headRadius; py <= cy + headRadius; py += resolution) {
@@ -694,8 +637,7 @@ const EEGVisualization = {
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist <= headRadius) {
-                // inverse distance weighted
-                let weightSum = 0;
+                    let weightSum = 0;
                     let valueSum = 0;
 
                     for (const e of electrodes) {
@@ -715,21 +657,18 @@ const EEGVisualization = {
             }
         }
 
-        // head outline
         ctx.strokeStyle = '#2C3E50';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.arc(cx, cy, headRadius, 0, 2 * Math.PI);
         ctx.stroke();
 
-        // nose
         ctx.beginPath();
         ctx.moveTo(cx - 12, cy - headRadius);
         ctx.lineTo(cx, cy - headRadius - 16);
         ctx.lineTo(cx + 12, cy - headRadius);
         ctx.stroke();
 
-        // ears
         ctx.beginPath();
         ctx.ellipse(cx - headRadius - 6, cy, 6, 16, 0, 0, 2 * Math.PI);
         ctx.stroke();
@@ -737,7 +676,6 @@ const EEGVisualization = {
         ctx.ellipse(cx + headRadius + 6, cy, 6, 16, 0, 0, 2 * Math.PI);
         ctx.stroke();
 
-        // electrode positions
         for (const e of electrodes) {
             ctx.fillStyle = '#1E293B';
             ctx.beginPath();
@@ -809,7 +747,6 @@ const EEGVisualization = {
         const g = Math.round(Math.max(0, Math.min(255, 1 + t * 254 * (0.3 + 0.7 * Math.sin(t * Math.PI)))));
         const b = Math.round(Math.max(0, Math.min(255, 84 + (1 - t) * 171 * (1 - t * 0.5))));
 
-        // Better viridis approximation
         const r2 = Math.round(68 + t * t * 187);
         const g2 = Math.round(2 + t * 220 * Math.sin(t * 1.2 + 0.2));
         const b2 = Math.round(85 + (0.5 - Math.abs(t - 0.5)) * 170);
@@ -844,7 +781,6 @@ const EEGVisualization = {
     },
 
     _topoColormap(t) {
-        // Blue -> Cyan -> Green -> Yellow -> Red
         t = Math.max(0, Math.min(1, t));
         let r, g, b;
 
@@ -865,8 +801,7 @@ const EEGVisualization = {
         return [r, g, b];
     },
 
-    // ===== chart wrappers =====
-
+    // Chart wrappers
     _chartInstances: {},
 
     destroyChart(id) {
@@ -876,7 +811,6 @@ const EEGVisualization = {
         }
     },
 
-    // line chart psd
     createSpectrumChart(canvasId, freqs, psdDatasets, options = {}) {
         this.destroyChart(canvasId);
         const canvas = document.getElementById(canvasId);
@@ -930,7 +864,6 @@ const EEGVisualization = {
         });
     },
 
-    // band power bar chart
     createBandPowerChart(canvasId, channelLabels, bandData, displayType = 'absolute') {
         this.destroyChart(canvasId);
         const canvas = document.getElementById(canvasId);
@@ -987,7 +920,6 @@ const EEGVisualization = {
         });
     },
 
-    // band pie doughnut chart
     createBandPieChart(canvasId, bandPowers) {
         this.destroyChart(canvasId);
         const canvas = document.getElementById(canvasId);
@@ -1031,7 +963,6 @@ const EEGVisualization = {
         });
     },
 
-    // stats bar rms variance
     createStatsChart(canvasId, labels, values, title, color = '#4A90D9') {
         this.destroyChart(canvasId);
         const canvas = document.getElementById(canvasId);

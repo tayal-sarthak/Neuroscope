@@ -1,4 +1,4 @@
-// neuroScope: state mgmt, ui events, workflow
+// state mgmt, ui events, workflow
 const App = {
     state: {
         eegData: null,
@@ -24,9 +24,9 @@ const App = {
         this.bindAnalysisControls();
         this.bindExportControls();
         this.bindFilterControls();
+        this.bindMobileControls();
     },
 
-    // ===== events =====
 
     bindEvents() {
         const dropZone = document.getElementById('drop-zone');
@@ -230,6 +230,114 @@ const App = {
         document.getElementById('filter-reset').addEventListener('click', () => this.resetFilter());
     },
 
+    //  mobile Controls 
+
+    _mobileMoreOpen: false,
+
+    bindMobileControls() {
+        const sidebarToggle = document.getElementById('mobile-sidebar-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobile-sidebar-overlay');
+
+        // sidebar
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                this.toggleMobileSidebar();
+            });
+        }
+
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                this.closeMobileSidebar();
+            });
+        }
+        document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.getAttribute('data-tab');
+                if (tab === 'more') {
+                    this.toggleMobileMoreMenu();
+                    return;
+                }
+                this.closeMobileMoreMenu();
+                this.switchTab(tab);
+            });
+        });
+        document.querySelectorAll('.mobile-more-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.getAttribute('data-tab');
+                this.closeMobileMoreMenu();
+                this.switchTab(tab);
+            });
+        });
+        document.addEventListener('click', (e) => {
+            if (this._mobileMoreOpen) {
+                const moreMenu = document.getElementById('mobile-more-menu');
+                const moreBtn = document.getElementById('mobile-nav-more-btn');
+                if (!moreMenu.contains(e.target) && !moreBtn.contains(e.target)) {
+                    this.closeMobileMoreMenu();
+                }
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeMobileSidebar();
+                this.closeMobileMoreMenu();
+            }
+        });
+    },
+
+    toggleMobileSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobile-sidebar-overlay');
+        if (sidebar.classList.contains('mobile-open')) {
+            this.closeMobileSidebar();
+        } else {
+            sidebar.classList.add('mobile-open');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    },
+
+    closeMobileSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobile-sidebar-overlay');
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    },
+
+    toggleMobileMoreMenu() {
+        if (this._mobileMoreOpen) {
+            this.closeMobileMoreMenu();
+        } else {
+            document.getElementById('mobile-more-menu').classList.add('visible');
+            this._mobileMoreOpen = true;
+        }
+    },
+
+    closeMobileMoreMenu() {
+        document.getElementById('mobile-more-menu').classList.remove('visible');
+        this._mobileMoreOpen = false;
+    },
+
+    updateMobileNav(tab) {
+        const primaryTabs = ['viewer', 'spectrum', 'bands', 'filter'];
+        const moreTabs = ['timefreq', 'stats', 'topo', 'export'];
+
+        document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+            const btnTab = btn.getAttribute('data-tab');
+            if (btnTab === 'more') {
+                btn.classList.toggle('active', moreTabs.includes(tab));
+            } else {
+                btn.classList.toggle('active', btnTab === tab);
+            }
+        });
+
+        document.querySelectorAll('.mobile-more-item').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+        });
+    },
+
     bindExportControls() {
         document.getElementById('export-csv').addEventListener('click', () => {
             if (this.state.eegData) {
@@ -347,7 +455,6 @@ const App = {
             const eegData = await EEGParsers.parseFile(file);
             progressText.textContent = 'Processing signal data';
 
-            // Small delay for visual feedback
             await new Promise(r => setTimeout(r, 400));
 
             this.state.eegData = eegData;
@@ -392,26 +499,21 @@ const App = {
         // all channels default
         this.state.selectedChannels = Array.from({ length: data.channelLabels.length }, (_, i) => i);
 
-        // file display
         document.getElementById('file-name-display').textContent = data.filename;
         document.getElementById('file-badge').classList.add('visible');
         document.getElementById('new-file-btn').classList.add('visible');
         document.getElementById('main-nav').classList.add('visible');
 
-        // recording info
         document.getElementById('info-channels').textContent = data.channelLabels.length;
         document.getElementById('info-srate').textContent = data.sampleRate + ' Hz';
         document.getElementById('info-duration').textContent = data.duration.toFixed(1) + 's';
         document.getElementById('info-samples').textContent = data.numSamples.toLocaleString();
         document.getElementById('info-format').textContent = data.format;
 
-        // channel list
         this.buildChannelList();
 
-        // timefreq channel dropdown
         this.populateChannelDropdown('timefreq-channel', data.channelLabels);
 
-        // filter channel dropdown
         this.populateChannelDropdown('filter-channel', data.channelLabels);
 
         // time controls
@@ -426,23 +528,20 @@ const App = {
         document.getElementById('time-offset-value').textContent = '0.0s';
         document.getElementById('jump-to-time').max = Math.max(0, data.duration);
 
-        // Update export time range max
         document.getElementById('export-end-time').max = data.duration;
         document.getElementById('export-end-time').value = Math.min(10, data.duration).toFixed(1);
         document.getElementById('export-start-time').max = data.duration;
 
-        // hide upload show dashboard
         document.getElementById('upload-section').classList.add('hidden');
         document.getElementById('dashboard').classList.add('visible');
 
-        // reset upload progress
+        document.getElementById('mobile-bottom-nav').classList.add('visible');
+
         document.getElementById('upload-progress').classList.remove('active');
         document.getElementById('upload-progress-bar').classList.remove('indeterminate');
 
-        // viewer render
         this.switchTab('viewer');
 
-        // draw signals after dom paint
         requestAnimationFrame(() => {
             this.refreshSignalViewer();
         });
@@ -511,17 +610,17 @@ const App = {
     switchTab(tab) {
         this.state.activeTab = tab;
 
-        // nav buttons
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
         });
 
-        // tab content
         document.querySelectorAll('.tab-content').forEach(tc => {
             tc.classList.toggle('active', tc.id === `tab-${tab}`);
         });
 
-        // refresh view
+        this.updateMobileNav(tab);
+
+        this.closeMobileSidebar();
         if (tab === 'viewer' && this.state.isLoaded) {
             requestAnimationFrame(() => this.refreshSignalViewer());
         }
@@ -532,6 +631,7 @@ const App = {
     refreshFilterComparison() {
         if (!this.state.filterPreviewData) return;
         const { originalClip, filteredClip, channelLabel, sampleRate } = this.state.filterPreviewData;
+        const filterH = window.innerWidth <= 768 ? 220 : 320;
         EEGVisualization.drawFilterComparison(
             document.getElementById('filter-canvas'),
             originalClip,
@@ -539,7 +639,7 @@ const App = {
             channelLabel,
             sampleRate,
             {
-                height: 320,
+                height: filterH,
                 timeWindow: this.state.timeWindow,
                 timeOffset: this.state.timeOffset,
                 amplitudeScale: this.state.amplitudeScale
@@ -581,10 +681,10 @@ const App = {
             timeWindow: this.state.timeWindow,
             timeOffset: this.state.timeOffset,
             timePrecision: parseInt(document.getElementById('time-precision').value) || 1,
-            height: 500
+            height: window.innerWidth <= 768 ? 350 : 500
         });
 
-        // Update time display in toolbar
+        // upd time display
         const precision = parseInt(document.getElementById('time-precision').value) || 1;
         const startT = this.state.timeOffset.toFixed(precision);
         const endT = (this.state.timeOffset + this.state.timeWindow).toFixed(precision);
@@ -619,7 +719,7 @@ const App = {
         const scale = document.getElementById('spectrum-scale').value;
 
         const channels = this.state.selectedChannels.length > 0
-            ? this.state.selectedChannels.slice(0, 8) // Limit to 8 for readability
+            ? this.state.selectedChannels.slice(0, 8) 
             : [0];
 
         const datasets = [];
@@ -638,10 +738,8 @@ const App = {
             });
         }
 
-        // store export
         this.state.analysisResults.spectrumData = { freqs, datasets };
 
-        // render chart
         EEGVisualization.createSpectrumChart('spectrum-chart', freqs, datasets, {
             maxFreq,
             logScale: scale === 'log'
@@ -686,7 +784,6 @@ const App = {
         this.state.analysisResults.bandPowers = allBandPowers;
         this.state.analysisResults.avgBandPowers = avgBands;
 
-        // band cards
         const bandKeys = ['delta', 'theta', 'alpha', 'beta', 'gamma'];
         for (const key of bandKeys) {
             const el = document.getElementById(`band-${key}`);
@@ -731,11 +828,9 @@ const App = {
         const params = this.getFilterParams(filterType);
         if (!this.validateFilterParams(params, filterType, sampleRate)) return;
 
-        // use full channel data so sidebar controls can navigate
         const originalClip = this.state.eegData.channelData[chIdx];
         const filteredClip = EEGAnalysis.butterworth(originalClip, sampleRate, params.low, params.high, params.order, filterType);
 
-        // check nan
         let hasNaN = false;
         for (let i = 0; i < filteredClip.length; i++) {
             if (!isFinite(filteredClip[i])) { hasNaN = true; break; }
@@ -752,6 +847,7 @@ const App = {
             sampleRate
         };
 
+        const filterH = window.innerWidth <= 768 ? 220 : 320;
         EEGVisualization.drawFilterComparison(
             document.getElementById('filter-canvas'),
             originalClip,
@@ -759,14 +855,13 @@ const App = {
             this.state.eegData.channelLabels[chIdx],
             sampleRate,
             {
-                height: 320,
+                height: filterH,
                 timeWindow: this.state.timeWindow,
                 timeOffset: this.state.timeOffset,
                 amplitudeScale: this.state.amplitudeScale
             }
         );
 
-        // freq response
         this.drawFilterResponse(filterType, params, sampleRate);
 
         this.showToast('Filter preview ready', 'info');
@@ -781,19 +876,15 @@ const App = {
 
         if (!this.validateFilterParams(params, filterType, sampleRate)) return;
 
-        // processing overlay
         const overlay = document.getElementById('filter-processing');
         overlay.style.display = 'flex';
 
-        // defer overlay paint
         setTimeout(() => {
             try {
                 const sourceData = this.state.eegData.channelData;
                 const filtered = sourceData.map(ch =>
                     EEGAnalysis.butterworth(ch, sampleRate, params.low, params.high, params.order, filterType)
                 );
-
-                // check stability
                 let stable = true;
                 for (let i = 0; i < Math.min(filtered[0].length, 1000); i++) {
                     if (!isFinite(filtered[0][i])) { stable = false; break; }
@@ -807,17 +898,14 @@ const App = {
 
                 this.state.filteredData = filtered;
 
-                // filter description
                 let desc = '';
                 if (filterType === 'bandpass') desc = `Bandpass ${params.low} - ${params.high} Hz, order ${params.order}`;
                 else if (filterType === 'highpass') desc = `Highpass above ${params.low} Hz, order ${params.order}`;
                 else if (filterType === 'lowpass') desc = `Lowpass below ${params.high} Hz, order ${params.order}`;
                 else if (filterType === 'notch') desc = `Notch at ${params.low} Hz`;
 
-                // status bar
                 this.updateFilterStatus(desc);
 
-                // render comparison selected
                 const chIdx = parseInt(document.getElementById('filter-channel').value) || 0;
                 const originalClip = sourceData[chIdx];
                 const filteredClip = filtered[chIdx];
@@ -836,7 +924,7 @@ const App = {
                     this.state.eegData.channelLabels[chIdx],
                     sampleRate,
                     {
-                        height: 320,
+                        height: window.innerWidth <= 768 ? 220 : 320,
                         timeWindow: this.state.timeWindow,
                         timeOffset: this.state.timeOffset,
                         amplitudeScale: this.state.amplitudeScale
@@ -860,7 +948,6 @@ const App = {
         this.updateFilterStatus(null);
         this.refreshSignalViewer();
 
-        // clear canvases
         const canvas = document.getElementById('filter-canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = canvas.width; // clears
@@ -920,11 +1007,12 @@ const App = {
 
     drawFilterResponse(filterType, params, sampleRate) {
         const response = EEGAnalysis.computeFrequencyResponse(sampleRate, params.low, params.high, params.order, filterType);
+        const filterH = window.innerWidth <= 768 ? 220 : 320;
         EEGVisualization.drawFrequencyResponse(
             document.getElementById('filter-response-canvas'),
             response.freqs,
             response.magnitude,
-            { height: 320, filterType, params }
+            { height: filterH, filterType, params }
         );
     },
 
@@ -963,7 +1051,6 @@ const App = {
             { colormap }
         );
 
-        // min max colorbar
         let minVal = Infinity, maxVal = -Infinity;
         for (const frame of result.spectrogram) {
             for (const v of frame) {
@@ -1017,7 +1104,6 @@ const App = {
 
         this.state.analysisResults.statistics = statsArray;
 
-        // rms chart
         EEGVisualization.createStatsChart(
             'stats-rms-chart',
             labels,
@@ -1101,10 +1187,12 @@ const App = {
         document.getElementById('file-badge').classList.remove('visible');
         document.getElementById('new-file-btn').classList.remove('visible');
 
-        // reset input
-        document.getElementById('file-input').value = '';
+        // hide mobile elements
+        document.getElementById('mobile-bottom-nav').classList.remove('visible');
+        this.closeMobileSidebar();
+        this.closeMobileMoreMenu();
 
-        // destroy charts
+        document.getElementById('file-input').value = '';
         const chartIds = ['spectrum-chart', 'bands-bar-chart', 'bands-pie-chart', 'stats-rms-chart', 'stats-variance-chart'];
         chartIds.forEach(id => EEGVisualization.destroyChart(id));
     },
@@ -1115,7 +1203,6 @@ const App = {
         }
     },
 
-    // ===== utils =====
 
     _debounceTimers: {},
     debounce(key, fn, delay) {
@@ -1143,6 +1230,4 @@ const App = {
         }, 3500);
     }
 };
-
-// init when dom ready
 document.addEventListener('DOMContentLoaded', () => App.init());

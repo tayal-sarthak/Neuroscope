@@ -1,12 +1,10 @@
-// neuroScope: fft, filter, band power, stats, spectrogram
+// fft, filter, band power, stats, spectrogram
 const EEGAnalysis = {
 
-    // cooley-tukey fft returns [re, im, re, im, ...]
     fft(signal) {
         const n = signal.length;
         const N = this.nextPow2(n);
 
-        // zero pad next power 2
         const re = new Float64Array(N);
         const im = new Float64Array(N);
         for (let i = 0; i < n; i++) re[i] = signal[i];
@@ -15,9 +13,7 @@ const EEGAnalysis = {
         return { re, im, N };
     },
 
-    // in-place cooley-tukey fft
     _fftRecursive(re, im, N) {
-        // bit reversal
         let j = 0;
         for (let i = 0; i < N; i++) {
             if (j > i) {
@@ -32,7 +28,6 @@ const EEGAnalysis = {
             j += m;
         }
 
-        // butterfly ops
         for (let len = 2; len <= N; len *= 2) {
             const halfLen = len / 2;
             const angle = -2 * Math.PI / len;
@@ -74,7 +69,6 @@ const EEGAnalysis = {
         const N = this.nextPow2(windowSize);
         const window = this.getWindow(windowSize, windowType);
 
-        // normalize window power
         let windowPower = 0;
         for (let i = 0; i < windowSize; i++) windowPower += window[i] * window[i];
         windowPower /= windowSize;
@@ -97,7 +91,6 @@ const EEGAnalysis = {
             }
         }
 
-        // normalize
         const freqRes = sampleRate / N;
         for (let i = 0; i <= N / 2; i++) {
             psd[i] = (2 * psd[i]) / (numSegments * sampleRate * windowPower * windowSize);
@@ -105,7 +98,6 @@ const EEGAnalysis = {
         psd[0] /= 2;
         if (N / 2 < psd.length) psd[N / 2] /= 2;
 
-        // freq axis
         const freqs = new Float64Array(N / 2 + 1);
         for (let i = 0; i <= N / 2; i++) {
             freqs[i] = i * freqRes;
@@ -114,7 +106,6 @@ const EEGAnalysis = {
         return { freqs, psd };
     },
 
-    // direct psd short signals
     directPSD(signal, sampleRate, windowType = 'hanning') {
         const n = signal.length;
         const N = this.nextPow2(n);
@@ -241,7 +232,6 @@ const EEGAnalysis = {
         return filtered;
     },
 
-    // cascaded biquad sections
     _biquadCascade(signal, sampleRate, freq, type, order) {
         let data = new Float64Array(signal);
         const numSections = Math.ceil(order / 2);
@@ -250,10 +240,7 @@ const EEGAnalysis = {
             const Q = 1 / (2 * Math.cos(Math.PI * (2 * section + 1) / (2 * order)));
             const coeffs = this._biquadCoeffs(sampleRate, freq, type, Q);
 
-            // forward pass
             data = this._applyBiquad(data, coeffs);
-            // backward zero-phase
-            data = data.reverse();
             data = this._applyBiquad(data, coeffs);
             data = data.reverse();
         }
@@ -261,7 +248,6 @@ const EEGAnalysis = {
         return data;
     },
 
-    // biquad coeffs
     _biquadCoeffs(sampleRate, freq, type, Q) {
         const w0 = 2 * Math.PI * freq / sampleRate;
         const alpha = Math.sin(w0) / (2 * Q);
@@ -276,13 +262,7 @@ const EEGAnalysis = {
             a0 = 1 + alpha;
             a1 = -2 * cosW0;
             a2 = 1 - alpha;
-        } else { // highpass
-            b0 = (1 + cosW0) / 2;
-            b1 = -(1 + cosW0);
-            b2 = (1 + cosW0) / 2;
-            a0 = 1 + alpha;
-            a1 = -2 * cosW0;
-            a2 = 1 - alpha;
+
         }
 
         return {
@@ -291,7 +271,6 @@ const EEGAnalysis = {
         };
     },
 
-    // apply biquad filter
     _applyBiquad(signal, c) {
         const n = signal.length;
         const out = new Float64Array(n);
@@ -307,7 +286,6 @@ const EEGAnalysis = {
         return out;
     },
 
-    // notch filter
     _notchFilter(signal, sampleRate, freq, bandwidth) {
         const w0 = 2 * Math.PI * freq / sampleRate;
         const Q = freq / bandwidth;
@@ -323,7 +301,6 @@ const EEGAnalysis = {
             a2: (1 - alpha) / a0
         };
 
-        // forward-backward zero phase
         let data = this._applyBiquad(signal, coeffs);
         data = data.reverse();
         data = this._applyBiquad(data, coeffs);
@@ -331,8 +308,8 @@ const EEGAnalysis = {
 
         return data;
     },
-
-    // freq response magnitude db
+// freq response magnitude db
+    
     computeFrequencyResponse(sampleRate, lowCut, highCut, order, type) {
         const nyquist = sampleRate / 2;
         const numPoints = 512;
@@ -340,7 +317,6 @@ const EEGAnalysis = {
         const magnitude = new Float64Array(numPoints);
 
         for (let i = 0; i < numPoints; i++) {
-            // log-spaced 0.1hz nyquist
             const frac = i / (numPoints - 1);
             freqs[i] = 0.1 * Math.pow(nyquist / 0.1, frac);
 
@@ -358,14 +334,12 @@ const EEGAnalysis = {
                 totalMag *= this._notchResponse(w, sampleRate, lowCut, 2);
             }
 
-            // zero-phase doubles db
             magnitude[i] = 20 * Math.log10(Math.max(totalMag * totalMag, 1e-10));
         }
 
         return { freqs, magnitude };
     },
 
-    // cascade biquad mag response
     _cascadeResponse(w, sampleRate, freq, type, order) {
         const numSections = Math.ceil(order / 2);
         let totalMag = 1;
@@ -374,7 +348,6 @@ const EEGAnalysis = {
             const Q = 1 / (2 * Math.cos(Math.PI * (2 * section + 1) / (2 * order)));
             const coeffs = this._biquadCoeffs(sampleRate, freq, type, Q);
 
-            // h(e^jw) = (b0 + b1*e^-jw + b2*e^-2jw) / (1 + a1*e^-jw + a2*e^-2jw)
             const cosw = Math.cos(w);
             const sinw = Math.sin(w);
             const cos2w = Math.cos(2 * w);
@@ -394,7 +367,6 @@ const EEGAnalysis = {
         return totalMag;
     },
 
-    // notch filter mag response
     _notchResponse(w, sampleRate, freq, bandwidth) {
         const w0 = 2 * Math.PI * freq / sampleRate;
         const Q = freq / bandwidth;
@@ -448,7 +420,6 @@ const EEGAnalysis = {
         const std = Math.sqrt(Math.max(0, variance));
         const rms = Math.sqrt(sumSq / n);
 
-        // skewness kurtosis
         let m3 = 0, m4 = 0;
         for (let i = 0; i < n; i++) {
             const d = signal[i] - mean;
@@ -477,11 +448,9 @@ const EEGAnalysis = {
         const n = signal.length;
         if (n < 3) return { activity: 0, mobility: 0, complexity: 0 };
 
-        // first derivative
         const d1 = new Float64Array(n - 1);
         for (let i = 0; i < n - 1; i++) d1[i] = signal[i + 1] - signal[i];
 
-        // second derivative
         const d2 = new Float64Array(n - 2);
         for (let i = 0; i < n - 2; i++) d2[i] = d1[i + 1] - d1[i];
 
@@ -511,7 +480,6 @@ const EEGAnalysis = {
         const psd1 = this.welchPSD(signal1, sampleRate, windowSize);
         const psd2 = this.welchPSD(signal2, sampleRate, windowSize);
 
-        // cross spectral density
         const n = Math.min(signal1.length, signal2.length);
         const step = Math.floor(windowSize * 0.5);
         const numSegments = Math.floor((n - windowSize) / step) + 1;
@@ -536,13 +504,10 @@ const EEGAnalysis = {
             const fft2 = this.fft(seg2);
 
             for (let i = 0; i <= N / 2; i++) {
-                // cross spectrum = conj(fft1) * fft2
-                csdRe[i] += fft1.re[i] * fft2.re[i] + fft1.im[i] * fft2.im[i];
                 csdIm[i] += -fft1.im[i] * fft2.re[i] + fft1.re[i] * fft2.im[i];
             }
         }
 
-        // mag squared coherence
         const coh = new Float64Array(psd1.freqs.length);
         for (let i = 0; i < coh.length; i++) {
             const csdMag2 = csdRe[i] * csdRe[i] + csdIm[i] * csdIm[i];
@@ -553,7 +518,6 @@ const EEGAnalysis = {
         return { freqs: psd1.freqs, coherence: coh };
     },
 
-    // avg reference montage
     averageReference(channelData) {
         const numChannels = channelData.length;
         const numSamples = channelData[0].length;
@@ -573,13 +537,11 @@ const EEGAnalysis = {
         return result;
     },
 
-    // bipolar montage
     bipolarMontage(channelData, channelLabels) {
         const pairs = [];
         const newData = [];
         const newLabels = [];
 
-        // standard longitudinal pairs
         const bipolarChains = [
             ['Fp1', 'F3'], ['F3', 'C3'], ['C3', 'P3'], ['P3', 'O1'],
             ['Fp2', 'F4'], ['F4', 'C4'], ['C4', 'P4'], ['P4', 'O2'],
@@ -606,7 +568,6 @@ const EEGAnalysis = {
             }
         }
 
-        // fallback sequential pairs
         if (newData.length === 0) {
             for (let i = 0; i < channelData.length - 1; i++) {
                 const diff = new Float64Array(channelData[i].length);
@@ -621,7 +582,7 @@ const EEGAnalysis = {
         return { channelData: newData, channelLabels: newLabels };
     },
 
-    // ===== utils =====
+    // Utils
 
     nextPow2(n) {
         let p = 1;
@@ -651,7 +612,6 @@ const EEGAnalysis = {
         return w;
     },
 
-    // downsample display
     downsample(signal, factor) {
         if (factor <= 1) return signal;
         const n = Math.ceil(signal.length / factor);
@@ -664,7 +624,6 @@ const EEGAnalysis = {
                 if (signal[j] < min) min = signal[j];
                 if (signal[j] > max) max = signal[j];
             }
-            // min max alternation peak preservation
             out[i] = i % 2 === 0 ? max : min;
         }
         return out;
