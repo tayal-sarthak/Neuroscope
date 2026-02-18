@@ -19,3 +19,26 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+SAMPLE DATA LICENSE (chb02_16.edf)
+
+The file chb02_16.edf is from the CHB-MIT Scalp EEG Database, available at:
+https://physionet.org/content/chbmit/1.0.0/
+
+This data file is redistributed under the Open Data Commons Attribution
+License v1.0 (ODC-By 1.0):
+https://opendatacommons.org/licenses/by/1-0/
+
+Attribution:
+
+  Shoeb, A. H. (2009). Application of Machine Learning to Epileptic Seizure
+  Onset Detection and Treatment. PhD Thesis, Massachusetts Institute of
+  Technology.
+
+  Goldberger, A. L., Amaral, L. A. N., Glass, L., Hausdorff, J. M.,
+  Ivanov, P. Ch., Mark, R. G., Mietus, J. E., Moody, G. B., Peng, C.-K.,
+  & Stanley, H. E. (2000). "PhysioBank, PhysioToolkit, and PhysioNet:
+  Components of a New Research Resource for Complex Physiologic Signals."
+  Circulation, 101(23), e215-e220.

@@ -28,7 +28,7 @@ To test the same data for yourself, here is the download: https://physionet.org/
 
 1. Open [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/) in your browser (Chrome, Firefox, Safari, or Edge all work well)
 2. Drag and drop your EEG file onto the upload area, or click to browse
-3. Alternatively, click the sample data button to explore with synthetic 19-channel EEG
+3. Alternatively, click **"Explore with sample EEG data"** to load patient chb02_16.edf from the CHB-MIT Scalp EEG Database
 
 That is everything you need. There are zero dependencies to install, zero servers to run, and zero build steps required.
 
@@ -156,25 +156,41 @@ README.md               This file
 
 NeuroScope works in all modern browsers that support ES6, Canvas 2D, and the File API. For the best experience, use a recent version of Chrome, Firefox, Safari, or Edge.
 
-## Citations
-**If the diagrams from the website or this github is used for the paper in any way, you must include a citation at the end of the paper AND star this repository:**__
+## Sample Data Acknowledgement
 
-APA Style (7th Edition): Tayal, S. (2026). Neuroscope (Version 1.2.1) [Computer software]. GitHub. https://github.com/tayal-sarthak/Neuroscope
-MLA Style (9th Edition): Tayal, Sarthak. Neuroscope. GitHub, 2026, https://github.com/tayal-sarthak/Neuroscope
-Chicago Style (17th Edition): Tayal, Sarthak. Neuroscope. GitHub, 2026. https://github.com/tayal-sarthak/Neuroscope
+The sample file `chb02_16.edf` included in this repository is obtained from the **CHB-MIT Scalp EEG Database**, hosted on [PhysioNet](https://physionet.org/content/chbmit/1.0.0/).
+
+**Citations (required by the data license):**
+
+> Shoeb, A. H. (2009). *Application of Machine Learning to Epileptic Seizure Onset Detection and Treatment*. PhD Thesis, Massachusetts Institute of Technology.
+
+> Goldberger, A. L., Amaral, L. A. N., Glass, L., Hausdorff, J. M., Ivanov, P. Ch., Mark, R. G., Mietus, J. E., Moody, G. B., Peng, C.-K., & Stanley, H. E. (2000). "PhysioBank, PhysioToolkit, and PhysioNet: Components of a New Research Resource for Complex Physiologic Signals." *Circulation*, 101(23), e215–e220.
+
+**Data License:** The CHB-MIT Scalp EEG Database is made available under the [Open Data Commons Attribution License v1.0 (ODC-By 1.0)](https://opendatacommons.org/licenses/by/1-0/).
+
+## Citations
+**If the diagrams from the website or this GitHub are used for a paper in any way, you must include a citation at the end of the paper AND star this repository:**
+
+- **APA Style (7th Edition):** Tayal, S. (2026). *Neuroscope* (Version 1.2.1) [Computer software]. GitHub. https://github.com/tayal-sarthak/Neuroscope
+- **MLA Style (9th Edition):** Tayal, Sarthak. *Neuroscope*. GitHub, 2026, https://github.com/tayal-sarthak/Neuroscope
+- **Chicago Style (17th Edition):** Tayal, Sarthak. *Neuroscope*. GitHub, 2026. https://github.com/tayal-sarthak/Neuroscope
 
 ## License
 
-MIT License
+The NeuroScope application source code is licensed under the **MIT License**.
 
-Copyright (c) 2026
+The included sample data file (`chb02_16.edf`) is licensed separately under the **Open Data Commons Attribution License v1.0 (ODC-By 1.0)**.
+
+### MIT License (Application Code)
+
+Copyright (c) 2026 Sarthak Tayal
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and sell
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions
+furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
@@ -186,3 +202,11 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+### ODC-By 1.0 (Sample EEG Data)
+
+The sample data file `chb02_16.edf` is from the CHB-MIT Scalp EEG Database,
+available at https://physionet.org/content/chbmit/1.0.0/, and is redistributed
+under the [Open Data Commons Attribution License v1.0](https://opendatacommons.org/licenses/by/1-0/).
+Attribution is provided to the original authors and PhysioNet as specified in
+the "Sample Data Acknowledgement" section above.

@@ -470,24 +470,35 @@ const App = {
         }
     },
 
-    loadSampleData() {
+    async loadSampleData() {
         const progress = document.getElementById('upload-progress');
         const progressBar = document.getElementById('upload-progress-bar');
         const progressText = document.getElementById('upload-progress-text');
 
         progress.classList.add('active');
         progressBar.classList.add('indeterminate');
-        progressText.textContent = 'Generating sample EEG data';
+        progressText.textContent = 'Loading sample EEG data (chb02_16.edf)';
 
-        setTimeout(() => {
-            const eegData = EEGParsers.generateSampleData();
+        try {
+            const response = await fetch('chb02_16.edf');
+            if (!response.ok) throw new Error('Could not fetch sample file');
+            const buffer = await response.arrayBuffer();
+            progressText.textContent = 'Parsing EDF data';
+
+            await new Promise(r => setTimeout(r, 200));
+
+            const eegData = EEGParsers.parseEDF(buffer, 'chb02_16.edf');
             this.state.eegData = eegData;
             this.state.filteredData = null;
             this.state.analysisResults = {};
             this.initializeDashboard();
 
-            this.showToast('Sample EEG data loaded with 19 channels', 'success');
-        }, 600);
+            this.showToast(`Sample data loaded: ${eegData.channelLabels.length} channels from CHB-MIT database`, 'success');
+        } catch (err) {
+            this.showToast(`Could not load sample data: ${err.message}`, 'error');
+            progress.classList.remove('active');
+            progressBar.classList.remove('indeterminate');
+        }
     },
 
 
