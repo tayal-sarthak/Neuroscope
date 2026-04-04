@@ -239,11 +239,18 @@ const EEGAnalysis = {
         for (let section = 0; section < numSections; section++) {
             const Q = 1 / (2 * Math.cos(Math.PI * (2 * section + 1) / (2 * order)));
             const coeffs = this._biquadCoeffs(sampleRate, freq, type, Q);
-
             data = this._applyBiquad(data, coeffs);
-            data = this._applyBiquad(data, coeffs);
-            data = data.reverse();
         }
+
+        data = data.reverse();
+
+        for (let section = 0; section < numSections; section++) {
+            const Q = 1 / (2 * Math.cos(Math.PI * (2 * section + 1) / (2 * order)));
+            const coeffs = this._biquadCoeffs(sampleRate, freq, type, Q);
+            data = this._applyBiquad(data, coeffs);
+        }
+
+        data = data.reverse();
 
         return data;
     },
@@ -262,7 +269,13 @@ const EEGAnalysis = {
             a0 = 1 + alpha;
             a1 = -2 * cosW0;
             a2 = 1 - alpha;
-
+        } else if (type === 'highpass') {
+            b0 = (1 + cosW0) / 2;
+            b1 = -(1 + cosW0);
+            b2 = (1 + cosW0) / 2;
+            a0 = 1 + alpha;
+            a1 = -2 * cosW0;
+            a2 = 1 - alpha;
         }
 
         return {
