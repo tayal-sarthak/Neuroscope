@@ -2,6 +2,8 @@
 
 Neuroscope is aimed at those who lack expensive subscriptions to services or an institutonal license to develop EEG visualizations for their research work with no signup or payment. Simply import data and get visualizations.
 
+(EX: Matlab -> 2030$ for a full license, BrainVisison -> 2,000 - 10,000$, Emotiv PRO - $199 - $1,000+, NEUROSCOPE - FREE FOREVER
+
 A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately. There are HUNDREDS of adjustable parameters to efficiently creating beautifully generated maps and charts. Version 1.2.1
 
 ## Gallery
