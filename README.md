@@ -1,6 +1,7 @@
 # NeuroScope, an EEG Data Visualization/Analysis Platform for Researchers
 
-Neuroscope is aimed at those who lack expensive subscriptions to services or an institutonal license to develop EEG visualizations for their research work.
+Neuroscope is aimed at those who lack expensive subscriptions to services or an institutonal license to develop EEG visualizations for their research work with no signup or payment. Simply import data and get visualizations.
+
 A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately. There are HUNDREDS of adjustable parameters to efficiently creating beautifully generated maps and charts. Version 1.2.1
 
 ## Gallery
