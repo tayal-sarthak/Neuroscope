@@ -218,8 +218,7 @@ const App = {
         document.getElementById('viewer-fit').addEventListener('click', () => {
             if (this.state.eegData) {
                 const tw = document.getElementById('time-window');
-                const max = parseFloat(tw.max) || 120;
-                tw.value = Math.min(max, Math.ceil(this.state.eegData.duration));
+                tw.value = Math.max(0.5, this.state.eegData.duration);
                 tw.dispatchEvent(new Event('input'));
                 const to = document.getElementById('time-offset');
                 to.value = 0;
@@ -879,7 +878,7 @@ const App = {
         this.state.timeWindow = Math.min(10, Math.ceil(data.duration));
         document.getElementById('time-window').value = this.state.timeWindow;
         document.getElementById('time-window-value').textContent = this.state.timeWindow + 's';
-        document.getElementById('time-window').max = Math.min(120, Math.ceil(data.duration));
+        document.getElementById('time-window').max = Math.max(0.5, data.duration);
         this.state.timeOffset = 0;
         document.getElementById('time-offset').value = 0;
         document.getElementById('time-offset-value').textContent = '0.0s';
@@ -1180,7 +1179,7 @@ const App = {
         // upd time display
         const precision = parseInt(document.getElementById('time-precision').value) || 1;
         const startT = this.state.timeOffset.toFixed(precision);
-        const endT = (this.state.timeOffset + this.state.timeWindow).toFixed(precision);
+        const endT = Math.min(data.duration, this.state.timeOffset + this.state.timeWindow).toFixed(precision);
         const timeRangeEl = document.getElementById('viewer-time-range');
         if (timeRangeEl) {
             timeRangeEl.textContent = startT + 's to ' + endT + 's';
