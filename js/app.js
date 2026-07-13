@@ -632,7 +632,28 @@ const App = {
 
     bindViewerInteractions() {
         const overlay = document.getElementById('viewer-interaction-canvas');
+        const overview = document.getElementById('viewer-overview-canvas');
         const tooltip = document.getElementById('viewer-hover-tooltip');
+
+        const moveFromOverview = (event) => {
+            if (!this.state.eegData) return;
+            const rect = overview.getBoundingClientRect();
+            const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+            this.setTimeOffset(ratio * this.state.eegData.duration - this.state.timeWindow / 2);
+        };
+        overview.addEventListener('pointerdown', (event) => {
+            overview.setPointerCapture?.(event.pointerId);
+            moveFromOverview(event);
+        });
+        overview.addEventListener('pointermove', (event) => {
+            if (event.buttons === 1) moveFromOverview(event);
+        });
+        overview.addEventListener('keydown', (event) => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            const direction = event.key === 'ArrowLeft' ? -1 : 1;
+            this.setTimeOffset(this.state.timeOffset + direction * this.state.timeWindow);
+        });
 
         overlay.addEventListener('pointerdown', (event) => {
             if (event.button !== 0 || !this.state.eegData) return;
@@ -1390,6 +1411,19 @@ const App = {
             timePrecision: parseInt(document.getElementById('time-precision').value) || 1,
             height: window.innerWidth <= 768 ? 350 : 500
         });
+        const overviewChannel = displayChannels[0];
+        EEGVisualization.drawSignalOverview(document.getElementById('viewer-overview-canvas'), {
+            signal: overviewChannel === undefined ? null : displayData[overviewChannel],
+            duration: data.duration,
+            label: overviewChannel === undefined ? 'No channel selected' : displayLabels[overviewChannel]
+        }, {
+            timeOffset: this.state.timeOffset,
+            timeWindow: this.state.timeWindow,
+            annotations: this.state.annotations
+        });
+        document.getElementById('viewer-overview-channel').textContent = overviewChannel === undefined
+            ? 'No channel selected'
+            : displayLabels[overviewChannel];
 
         // upd time display
         const precision = parseInt(document.getElementById('time-precision').value) || 1;

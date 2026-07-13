@@ -168,6 +168,61 @@ const EEGVisualization = {
         this._updateChannelLabels(channels, channelLabels, channelHeight, topMargin);
     },
 
+    drawSignalOverview(canvas, overview, options = {}) {
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const width = Math.max(1, canvas.parentElement.clientWidth - 24);
+        const height = 54;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        ctx.scale(dpr, dpr);
+        ctx.fillStyle = '#F8FAFC';
+        ctx.fillRect(0, 0, width, height);
+
+        const signal = overview.signal;
+        if (signal?.length) {
+            let peak = 0;
+            const peakStep = Math.max(1, Math.floor(signal.length / 4000));
+            for (let i = 0; i < signal.length; i += peakStep) peak = Math.max(peak, Math.abs(signal[i]));
+            peak = peak || 1;
+            ctx.strokeStyle = '#6A7F9B';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let x = 0; x < width; x++) {
+                const start = Math.floor(x / width * signal.length);
+                const end = Math.max(start + 1, Math.floor((x + 1) / width * signal.length));
+                let min = Infinity;
+                let max = -Infinity;
+                for (let i = start; i < end; i++) {
+                    min = Math.min(min, signal[i]);
+                    max = Math.max(max, signal[i]);
+                }
+                const y1 = height / 2 - max / peak * (height * 0.34);
+                const y2 = height / 2 - min / peak * (height * 0.34);
+                ctx.moveTo(x + 0.5, y1);
+                ctx.lineTo(x + 0.5, y2);
+            }
+            ctx.stroke();
+        }
+
+        for (const annotation of options.annotations || []) {
+            const x = annotation.onset / overview.duration * width;
+            const annotationWidth = Math.max(2, annotation.duration / overview.duration * width);
+            ctx.fillStyle = annotation.type === 'bad_artifact' ? 'rgba(199, 62, 77, 0.48)' : 'rgba(14, 142, 157, 0.46)';
+            ctx.fillRect(x, 5, annotationWidth, height - 10);
+        }
+
+        const viewportX = options.timeOffset / overview.duration * width;
+        const viewportWidth = Math.max(3, Math.min(width, options.timeWindow / overview.duration * width));
+        ctx.fillStyle = 'rgba(49, 90, 239, 0.12)';
+        ctx.fillRect(viewportX, 0, viewportWidth, height);
+        ctx.strokeStyle = '#315AEF';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(viewportX + 0.75, 0.75, Math.max(1, viewportWidth - 1.5), height - 1.5);
+    },
+
     getSignalPlotGeometry(width, height) {
         const left = 70;
         const rightMargin = 50;
