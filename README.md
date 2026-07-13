@@ -1,6 +1,6 @@
 # NeuroScope, an EEG Data Visualization/Analysis Platform for Researchers
 
-A complete local workspace for exploring, analyzing, and understanding EEG data for all researchers. Open the HTML file in any modern browser and start working immediately. There are HUNDREDS of adjustable parameters to efficiently creating beautifully generated maps and charts. Version 1.2.1
+A local-first workspace for exploring, annotating, analyzing, and exporting EEG recordings. NeuroScope is designed first for EEG researchers and clinicians, while keeping the workflow approachable for students and general users. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
 
 ## Gallery
 These images were taken using patient CHB02_16.edf from the CHB-MIT database used on the filtering site, [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/), where the data can be found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel. 
@@ -30,22 +30,20 @@ To test the same data for yourself, here is the download: https://physionet.org/
 2. Drag and drop your EEG file onto the upload area, or click to browse
 3. Alternatively, click **"Explore with sample EEG data"** to load patient chb02_16.edf from the CHB-MIT Scalp EEG Database
 
-That is everything you need. There are zero dependencies to install, zero servers to run, and zero build steps required.
+There are zero dependencies to install and zero build steps. Uploaded files can be opened directly from `index.html`. The bundled sample-data button uses `fetch`, so run the folder through any small static file server when testing that button locally, or use the hosted site.
 
 
 ## Supported File Formats
 
-NeuroScope reads a wide range of EEG file formats directly in the browser.
+NeuroScope currently has verified browser import paths for these formats:
 
 - **EDF** (European Data Format), the most widely used clinical EEG format
 - **BDF** (BioSemi Data Format), 24-bit resolution variant of EDF
-- **GDF** (General Data Format), a more modern biosignal container
 - **CSV** and **TSV**, comma or tab separated data with automatic delimiter detection
 - **JSON**, flexible structure supporting multiple channel layouts
 - **TXT**, plain text with automatic separator detection
-- **VHDR**, BrainVision header format
-- **SET**, EEGLAB dataset format
-- **CNT**, Neuroscan continuous data
+
+GDF, BrainVision, EEGLAB SET, CNT, and XDF files are rejected with conversion guidance until their binary import paths are fully verified. NeuroScope never substitutes generated samples for an uploaded recording.
 
 ## Analysis Tabs
 
@@ -58,6 +56,11 @@ The Signal Viewer is the core of NeuroScope, offering a powerful canvas-based di
 - Real-time amplitude scaling (0.1x to 10x magnification)
 - Flexible time window control (1 to 30 seconds visible at once)
 - Scroll through the entire recording with the position slider
+- Pan horizontally with a trackpad or Shift + mouse wheel, or use the left and right arrow keys
+- Hover over the waveform for exact time, channel, and amplitude readouts
+- Click to pin a time cursor or drag across the waveform to select a precise time range
+- Create point or duration annotations directly from the active cursor or selected range
+- Export the current viewer range without re-entering start and end times
 - Channel selection and deselection with checkboxes in the sidebar
 - Color-coded traces for visual channel identification
 - Multiple montage views (monopolar, average reference, bipolar)
@@ -112,12 +115,21 @@ Visualize the spatial distribution of brain activity across the scalp using a to
 
 Download your processed data and visualizations in multiple formats.
 
-- **CSV**, raw or filtered channel data
-- **JSON**, full metadata and analysis results
-- **PNG**, screenshot of the current signal viewer
+- **Scoped signal CSV**, selected or all channels, raw or filtered signal, adjustable time range and precision
+- **Scoped data JSON**, recording metadata plus only the requested signal slice
+- **Current visualization PNG**, Retina-safe export of the visualization currently on screen
 - **PDF**, a multi-page report with recording info, statistics table, and embedded visualizations
 - **Spectrum CSV**, frequency and power columns
 - **Statistics CSV**, all computed measures
+- **Annotations CSV**, point and duration observations with channel associations
+- **BIDS events TSV**, onset, duration, trial type, channel, and description fields
+- **Session manifest JSON**, recording provenance, processing state, selected channels, view settings, annotations, and available analyses without duplicating raw samples
+
+The Export Center shows an estimated output size before a download begins and prevents multiple overlapping export jobs. The default scope is the visible ten-second window rather than the entire recording, which avoids unexpectedly generating files many times larger than the source EDF.
+
+### Recording Notes
+
+Add point or duration-linked observations directly below the signal viewer. Notes can describe artifacts, clinical events, signal-quality concerns, or general observations and can apply to all channels or the currently selected channels. Selecting a note jumps the viewer back to that point in the recording, and notes are included in session, annotation CSV, and BIDS events exports.
 
 ## Signal Processing Details
 

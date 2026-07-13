@@ -12,7 +12,7 @@ const EEGParsers = {
             case 'bdf':
                 return this.parseBDF(buffer, file.name);
             case 'gdf':
-                return this.parseGDF(buffer, file.name);
+                throw new Error('GDF import is not yet verified. Convert this recording to EDF, BDF, CSV, or JSON before loading it.');
             case 'csv':
                 return this.parseCSV(await file.text(), file.name, ',');
             case 'tsv':
@@ -22,11 +22,11 @@ const EEGParsers = {
             case 'json':
                 return this.parseJSON(await file.text(), file.name);
             case 'vhdr':
-                return this.parseVHDR(await file.text(), file.name);
+                throw new Error('BrainVision VHDR import requires its companion EEG and marker files and is not yet supported.');
             case 'set':
-                return this.parseSET(buffer, file.name);
+                throw new Error('EEGLAB SET import is not yet verified. Export the dataset as EDF, CSV, or JSON first.');
             case 'cnt':
-                return this.parseCNT(buffer, file.name);
+                throw new Error('CNT import is not yet verified. Convert the recording to EDF, CSV, or JSON first.');
             default:
                 return this.tryAutoDetect(buffer, await file.text(), file.name);
         }
@@ -296,49 +296,7 @@ const EEGParsers = {
 
     // parse gdf
     parseGDF(buffer, filename) {
-        const version = this.readStr(buffer, 0, 8);
-        const isGDF = version.startsWith('GDF');
-
-        if (isGDF) {
-            const patientId = this.readStr(buffer, 8, 66);
-            const dv = new DataView(buffer);
-            const headerBytes = 256;
-            const ns = dv.getUint16(252, true);
-
-            const signals = [];
-            let offset = 256;
-
-            for (let i = 0; i < ns; i++) {
-                signals.push({ label: this.readStr(buffer, offset + i * 16, 16) });
-            }
-            offset += ns * 16;
-            offset += ns * 80;
-            offset += ns * 8;  // physical dim
-
-            for (let i = 0; i < ns; i++) {
-                signals[i].physicalMin = dv.getFloat64(offset + i * 8, true);
-            }
-            offset += ns * 8;
-            for (let i = 0; i < ns; i++) {
-                signals[i].physicalMax = dv.getFloat64(offset + i * 8, true);
-            }
-            offset += ns * 8;
-            for (let i = 0; i < ns; i++) {
-                signals[i].digitalMin = dv.getFloat64(offset + i * 8, true);
-            }
-            offset += ns * 8;
-            for (let i = 0; i < ns; i++) {
-                signals[i].digitalMax = dv.getFloat64(offset + i * 8, true);
-            }
-            offset += ns * 8;
-            offset += ns * 80;
-            for (let i = 0; i < ns; i++) {
-                signals[i].samplesPerRecord = dv.getUint32(offset + i * 4, true);
-            }
-            return this._createBasicResult(filename, 'GDF', signals.map(s => s.label), 256, buffer);
-        }
-
-        return this.parseEDF(buffer, filename);
+        throw new Error('GDF import is not implemented. No generated replacement data will be shown.');
     },
 
     // parse csv tsv
@@ -560,92 +518,15 @@ const EEGParsers = {
 
     // parse vhdr braivision header
     parseVHDR(text, filename) {
-        const lines = text.split(/\r?\n/);
-        const channelLabels = [];
-        let sampleRate = 256;
-        let numChannels = 0;
-
-        let section = '';
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (trimmed.startsWith('[')) {
-                section = trimmed.toLowerCase();
-                continue;
-            }
-            if (trimmed.startsWith(';') || trimmed.length === 0) continue;
-
-            if (section.includes('common')) {
-                if (trimmed.toLowerCase().startsWith('numberofchannels')) {
-                    numChannels = parseInt(trimmed.split('=')[1]);
-                }
-                if (trimmed.toLowerCase().startsWith('samplinginterval')) {
-                    const interval = parseFloat(trimmed.split('=')[1]); // in microseconds
-                    sampleRate = Math.round(1000000 / interval);
-                }
-            }
-            if (section.includes('channel')) {
-                const match = trimmed.match(/^Ch\d+=(.+)/i);
-                if (match) {
-                    const parts = match[1].split(',');
-                    channelLabels.push(parts[0].trim());
-                }
-            }
-        }
-
-        const numSamples = sampleRate * 10;
-        const channelData = channelLabels.map(() => {
-            const data = new Float64Array(numSamples);
-            for (let i = 0; i < numSamples; i++) {
-                data[i] = Math.random() * 20 - 10;
-            }
-            return data;
-        });
-
-        return {
-            filename,
-            format: 'VHDR',
-            sampleRate,
-            channelLabels,
-            channelData,
-            duration: numSamples / sampleRate,
-            numSamples,
-            metadata: {
-                patient: '',
-                recording: 'BrainVision recording',
-                date: '',
-                time: ''
-            }
-        };
+        throw new Error('BrainVision import is not implemented. No generated replacement data will be shown.');
     },
 
     parseSET(buffer, filename) {
-        return this._createBasicResult(filename, 'SET', ['Ch1'], 256, buffer);
+        throw new Error('EEGLAB SET import is not implemented. No generated replacement data will be shown.');
     },
 
     parseCNT(buffer, filename) {
-        try {
-            const dv = new DataView(buffer);
-            const numChannels = dv.getUint16(370, true);
-            const sampleRate = dv.getUint16(376, true) || 256;
-
-            const channelLabels = [];
-            let offset = 900;
-            for (let i = 0; i < Math.min(numChannels, 128); i++) {
-                const label = this.readStr(buffer, offset, 10);
-                if (label.length > 0) {
-                    channelLabels.push(label);
-                }
-                offset += 75;
-            }
-
-            if (channelLabels.length === 0) {
-                return this._createBasicResult(filename, 'CNT', ['Ch1'], sampleRate, buffer);
-            }
-
-            return this._createBasicResult(filename, 'CNT', channelLabels, sampleRate, buffer);
-        } catch (e) {
-            return this._createBasicResult(filename, 'CNT', ['Ch1'], 256, buffer);
-        }
+        throw new Error('CNT import is not implemented. No generated replacement data will be shown.');
     },
 
     // auto detect
@@ -671,25 +552,7 @@ const EEGParsers = {
         throw new Error('The format of this file was unrecognized, try a supported format listed on the upload page');
     },
     _createBasicResult(filename, format, labels, sampleRate, buffer) {
-        const numSamples = sampleRate * 10;
-        const channelData = labels.map(() => {
-            const data = new Float64Array(numSamples);
-            for (let i = 0; i < numSamples; i++) {
-                data[i] = (Math.random() - 0.5) * 50;
-            }
-            return data;
-        });
-
-        return {
-            filename,
-            format,
-            sampleRate,
-            channelLabels: labels,
-            channelData,
-            duration: numSamples / sampleRate,
-            numSamples,
-            metadata: { patient: '', recording: '', date: '', time: '' }
-        };
+        throw new Error(`${format} import is not implemented. No generated replacement data will be shown.`);
     },
 
     // generate synthetic eeg test

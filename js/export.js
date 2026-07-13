@@ -2,7 +2,81 @@
 const EEGExport = {
 
     downloadFile(content, filename, mimeType) {
-        const blob = new Blob([content], { type: mimeType });
+        try {
+            const blob = new Blob(Array.isArray(content) ? content : [content], { type: mimeType });
+            return this.downloadBlob(blob, filename);
+        } catch (error) {
+            console.error('Download preparation failed', error);
+            return false;
+        }
+    },
+
+    _csvCell(value) {
+        let text = String(value ?? '');
+        if (/^[=+\-@]/.test(text)) text = "'" + text;
+        if (/[",\r\n]/.test(text)) text = '"' + text.replace(/"/g, '""') + '"';
+        return text;
+    },
+
+    _tsvCell(value) {
+        return String(value ?? 'n/a').replace(/[\t\r\n]+/g, ' ').trim() || 'n/a';
+    },
+
+    _buildSignalCSV(channelLabels, data, sampleRate, startSample = 0, endSample = data[0].length, decimals = 4) {
+        const chunks = ['Time_seconds,' + channelLabels.map(label => this._csvCell(label)).join(',') + '\n'];
+        const rowsPerChunk = 2000;
+        for (let chunkStart = startSample; chunkStart < endSample; chunkStart += rowsPerChunk) {
+            const chunkEnd = Math.min(endSample, chunkStart + rowsPerChunk);
+            const rows = [];
+            for (let i = chunkStart; i < chunkEnd; i++) {
+                const values = data.map(ch => Number.isFinite(ch[i]) ? ch[i].toFixed(decimals) : '');
+                rows.push((i / sampleRate).toFixed(6) + ',' + values.join(','));
+            }
+            chunks.push(rows.join('\n') + '\n');
+        }
+        return chunks;
+    },
+
+    _resolveSignalScope(eegData, options = {}) {
+        const allIndices = Array.from({ length: eegData.channelLabels.length }, (_, index) => index);
+        const requestedIndices = Array.isArray(options.channelIndices) && options.channelIndices.length
+            ? options.channelIndices
+            : allIndices;
+        const channelIndices = requestedIndices.filter(index => Number.isInteger(index) && index >= 0 && index < eegData.channelLabels.length);
+        const sourceData = options.data || eegData.channelData;
+        const startTime = Math.max(0, Number(options.startTime) || 0);
+        const requestedEnd = Number(options.endTime);
+        const endTime = Number.isFinite(requestedEnd) ? Math.min(eegData.duration, requestedEnd) : eegData.duration;
+        const startSample = Math.max(0, Math.floor(startTime * eegData.sampleRate));
+        const endSample = Math.min(eegData.numSamples, Math.ceil(endTime * eegData.sampleRate));
+        const decimals = Math.min(8, Math.max(0, parseInt(options.decimals, 10) || 4));
+        return {
+            channelIndices,
+            channelLabels: channelIndices.map(index => eegData.channelLabels[index]),
+            data: channelIndices.map(index => sourceData[index]),
+            startTime,
+            endTime,
+            startSample,
+            endSample,
+            decimals,
+            sourceLabel: options.sourceLabel || 'raw'
+        };
+    },
+
+    estimateSignalExport(eegData, options = {}, format = 'csv') {
+        const scope = this._resolveSignalScope(eegData, options);
+        const rows = Math.max(0, scope.endSample - scope.startSample);
+        const values = rows * scope.channelIndices.length;
+        const bytesPerValue = format === 'json' ? scope.decimals + 10 : scope.decimals + 7;
+        const timeBytes = rows * 11;
+        return Math.max(0, values * bytesPerValue + timeBytes + scope.channelLabels.join(',').length + 128);
+    },
+
+    _safeBaseName(filename) {
+        return String(filename || 'neuroscope').replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_');
+    },
+
+    _triggerDownload(blob, filename) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -10,73 +84,58 @@ const EEGExport = {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return true;
     },
 
     downloadBlob(blob, filename) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        if (!(blob instanceof Blob) || blob.size === 0) return false;
+        try {
+            return this._triggerDownload(blob, filename);
+        } catch (error) {
+            console.error('Download failed', error);
+            return false;
+        }
     },
 
-    exportCSV(eegData) {
-        const { channelLabels, channelData, sampleRate } = eegData;
-        const numSamples = channelData[0].length;
-
-        let csv = 'Time,' + channelLabels.join(',') + '\n';
-
-        for (let i = 0; i < numSamples; i++) {
-            const time = (i / sampleRate).toFixed(6);
-            const values = channelData.map(ch => ch[i].toFixed(4));
-            csv += time + ',' + values.join(',') + '\n';
-        }
-
-        const baseName = eegData.filename.replace(/\.[^.]+$/, '');
-        this.downloadFile(csv, `${baseName}_data.csv`, 'text/csv');
+    exportCSV(eegData, options = {}) {
+        const scope = this._resolveSignalScope(eegData, options);
+        if (scope.endSample <= scope.startSample || scope.channelIndices.length === 0) return false;
+        const csv = this._buildSignalCSV(scope.channelLabels, scope.data, eegData.sampleRate, scope.startSample, scope.endSample, scope.decimals);
+        return this.downloadFile(csv, `${this._safeBaseName(eegData.filename)}_${scope.startTime.toFixed(2)}s-${scope.endTime.toFixed(2)}s.csv`, 'text/csv;charset=utf-8');
     },
 
-    exportFilteredCSV(eegData, filteredData) {
-        const { channelLabels, sampleRate } = eegData;
-        const data = filteredData || eegData.channelData;
-        const numSamples = data[0].length;
-
-        let csv = 'Time,' + channelLabels.join(',') + '\n';
-
-        for (let i = 0; i < numSamples; i++) {
-            const time = (i / sampleRate).toFixed(6);
-            const values = data.map(ch => ch[i].toFixed(4));
-            csv += time + ',' + values.join(',') + '\n';
-        }
-
-        const baseName = eegData.filename.replace(/\.[^.]+$/, '');
-        this.downloadFile(csv, `${baseName}_filtered.csv`, 'text/csv');
+    exportFilteredCSV(eegData, filteredData, options = {}) {
+        if (!filteredData) return false;
+        return this.exportCSV(eegData, { ...options, data: filteredData, sourceLabel: 'filtered' });
     },
 
     // export json
-    exportJSON(eegData, analysisResults = {}) {
+    exportJSON(eegData, analysisResults = {}, options = {}) {
+        const scope = this._resolveSignalScope(eegData, options);
+        if (scope.endSample <= scope.startSample || scope.channelIndices.length === 0) return false;
         const output = {
             metadata: {
                 filename: eegData.filename,
                 format: eegData.format,
                 sampleRate: eegData.sampleRate,
-                duration: eegData.duration,
-                numSamples: eegData.numSamples,
-                numChannels: eegData.channelLabels.length,
-                channelLabels: eegData.channelLabels,
+                recordingDuration: eegData.duration,
+                duration: scope.endTime - scope.startTime,
+                numSamples: scope.endSample - scope.startSample,
+                numChannels: scope.channelLabels.length,
+                channelLabels: scope.channelLabels,
+                startTime: scope.startTime,
+                endTime: scope.endTime,
+                signalSource: scope.sourceLabel,
                 patient: eegData.metadata.patient,
                 recording: eegData.metadata.recording,
                 date: eegData.metadata.date,
                 time: eegData.metadata.time,
                 exportedAt: new Date().toISOString()
             },
-            channels: eegData.channelLabels.map((label, i) => ({
+            channels: scope.channelLabels.map((label, i) => ({
                 label,
-                data: Array.from(eegData.channelData[i])
+                data: Array.from(scope.data[i].slice(scope.startSample, scope.endSample))
             }))
         };
 
@@ -88,18 +147,16 @@ const EEGExport = {
         }
 
         const jsonStr = JSON.stringify(output, null, 2);
-        const baseName = eegData.filename.replace(/\.[^.]+$/, '');
-        this.downloadFile(jsonStr, `${baseName}_export.json`, 'application/json');
+        return this.downloadFile(jsonStr, `${this._safeBaseName(eegData.filename)}_export.json`, 'application/json');
     },
 
     // export canvas png
     exportPNG(canvasId, filename) {
         const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-
-        canvas.toBlob(blob => {
-            this.downloadBlob(blob, filename);
-        }, 'image/png');
+        if (!canvas || canvas.width === 0 || canvas.height === 0) return Promise.resolve(false);
+        return new Promise(resolve => {
+            canvas.toBlob(blob => resolve(blob ? this.downloadBlob(blob, filename) : false), 'image/png');
+        });
     },
 
     // export spectrum csv
@@ -141,10 +198,10 @@ const EEGExport = {
 
     // export pdf
     exportPDF(eegData, analysisResults = {}) {
-        const { jsPDF } = window.jspdf;
+        const jsPDF = window.jspdf && window.jspdf.jsPDF;
         if (!jsPDF) {
             console.error('jspdf load failed');
-            return;
+            return false;
         }
 
         const doc = new jsPDF('p', 'mm', 'a4');
@@ -284,6 +341,7 @@ const EEGExport = {
 
         const baseName = eegData.filename.replace(/\.[^.]+$/, '');
         doc.save(`${baseName}_report.pdf`);
+        return true;
     },
 
     exportSVG(canvasId, filename) {
@@ -312,18 +370,13 @@ const EEGExport = {
         const startSample = Math.max(0, Math.floor(startTime * sampleRate));
         const endSample = Math.min(data[0].length, Math.ceil(endTime * sampleRate));
 
-        let csv = 'Time_seconds,' + channelLabels.join(',') + '\n';
+        if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endSample <= startSample) return false;
+        const csv = this._buildSignalCSV(channelLabels, data, sampleRate, startSample, endSample);
 
-        for (let i = startSample; i < endSample; i++) {
-            const time = (i / sampleRate).toFixed(6);
-            const values = data.map(ch => ch[i].toFixed(4));
-            csv += time + ',' + values.join(',') + '\n';
-        }
-
-        const baseName = eegData.filename.replace(/\.[^.]+$/, '');
+        const baseName = this._safeBaseName(eegData.filename);
         const startStr = startTime.toFixed(1).replace('.', '_');
         const endStr = endTime.toFixed(1).replace('.', '_');
-        this.downloadFile(csv, `${baseName}_${startStr}s_to_${endStr}s.csv`, 'text/csv');
+        return this.downloadFile(csv, `${baseName}_${startStr}s_to_${endStr}s.csv`, 'text/csv;charset=utf-8');
     },
 
     // export band power CSV
@@ -379,20 +432,25 @@ const EEGExport = {
     },
 
     exportHighResPNG(canvas, filename, multiplier) {
+        if (!canvas || canvas.width === 0 || canvas.height === 0) return Promise.resolve(false);
+        const rect = canvas.getBoundingClientRect();
+        const targetWidth = Math.max(1, Math.round(rect.width * multiplier));
+        const targetHeight = Math.max(1, Math.round(rect.height * multiplier));
         const tempCanvas = document.createElement('canvas');
         const ctx = tempCanvas.getContext('2d');
-        tempCanvas.width = canvas.width * multiplier;
-        tempCanvas.height = canvas.height * multiplier;
-        ctx.scale(multiplier, multiplier);
-        ctx.drawImage(canvas, 0, 0);
+        tempCanvas.width = targetWidth;
+        tempCanvas.height = targetHeight;
+        ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
 
-        tempCanvas.toBlob(blob => {
-            if (blob) this.downloadBlob(blob, filename);
-        }, 'image/png');
+        return new Promise(resolve => {
+            tempCanvas.toBlob(blob => resolve(blob ? this.downloadBlob(blob, filename) : false), 'image/png');
+        });
     },
 
     // export MATLAB-compatible JSON
-    exportMATLABJSON(eegData, filteredData, analysisResults) {
+    exportMATLABJSON(eegData, filteredData, analysisResults, options = {}) {
+        const scope = this._resolveSignalScope(eegData, options);
+        if (scope.endSample <= scope.startSample || scope.channelIndices.length === 0) return false;
         const output = {
             version: '1.0',
             generator: 'NeuroScope EEG Analysis Platform',
@@ -402,28 +460,24 @@ const EEGExport = {
                 format: eegData.format,
                 sampleRate: eegData.sampleRate,
                 duration: eegData.duration,
-                numSamples: eegData.numSamples,
-                numChannels: eegData.channelLabels.length,
-                channelLabels: eegData.channelLabels,
+                numSamples: scope.endSample - scope.startSample,
+                numChannels: scope.channelLabels.length,
+                channelLabels: scope.channelLabels,
+                startTime: scope.startTime,
+                endTime: scope.endTime,
+                signalSource: scope.sourceLabel,
                 patient: eegData.metadata.patient,
                 recording: eegData.metadata.recording,
                 date: eegData.metadata.date,
                 time: eegData.metadata.time
             },
             data: {
-                raw: eegData.channelLabels.map((label, i) => ({
+                signal: scope.channelLabels.map((label, i) => ({
                     channel: label,
-                    samples: Array.from(eegData.channelData[i])
+                    samples: Array.from(scope.data[i].slice(scope.startSample, scope.endSample))
                 }))
             }
         };
-
-        if (filteredData) {
-            output.data.filtered = eegData.channelLabels.map((label, i) => ({
-                channel: label,
-                samples: Array.from(filteredData[i])
-            }));
-        }
 
         if (analysisResults.statistics) {
             output.analysis = output.analysis || {};
@@ -452,7 +506,65 @@ const EEGExport = {
         }
 
         const jsonStr = JSON.stringify(output, null, 2);
-        const baseName = eegData.filename.replace(/\.[^.]+$/, '');
-        this.downloadFile(jsonStr, `${baseName}_matlab.json`, 'application/json');
+        const baseName = this._safeBaseName(eegData.filename);
+        return this.downloadFile(jsonStr, `${baseName}_matlab.json`, 'application/json');
+    },
+
+    exportSessionManifest(eegData, state) {
+        const manifest = {
+            schemaVersion: 1,
+            exportedAt: new Date().toISOString(),
+            application: 'NeuroScope',
+            recording: {
+                filename: eegData.filename,
+                format: eegData.format,
+                sampleRate: eegData.sampleRate,
+                duration: eegData.duration,
+                numSamples: eegData.numSamples,
+                channelLabels: eegData.channelLabels,
+                metadata: eegData.metadata
+            },
+            workspace: {
+                processingState: state.filteredData ? 'filtered' : 'raw',
+                selectedChannels: state.selectedChannels.map(index => ({ index, label: eegData.channelLabels[index] })),
+                amplitudeScale: state.amplitudeScale,
+                timeWindow: state.timeWindow,
+                timeOffset: state.timeOffset,
+                montage: document.getElementById('montage-select')?.value || 'monopolar'
+            },
+            annotations: state.annotations || [],
+            analysesAvailable: Object.keys(state.analysisResults || {})
+        };
+        return this.downloadFile(JSON.stringify(manifest, null, 2), `${this._safeBaseName(eegData.filename)}_session.json`, 'application/json');
+    },
+
+    exportAnnotationsCSV(eegData, annotations) {
+        const rows = ['Onset_seconds,Duration_seconds,Type,Channels,Description,Created_at'];
+        for (const annotation of annotations) {
+            rows.push([
+                Number(annotation.onset ?? annotation.time ?? 0).toFixed(3),
+                Number(annotation.duration || 0).toFixed(3),
+                this._csvCell(annotation.type),
+                this._csvCell(annotation.channels?.join('|') || ''),
+                this._csvCell(annotation.note),
+                this._csvCell(annotation.createdAt)
+            ].join(','));
+        }
+        return this.downloadFile(rows.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_annotations.csv`, 'text/csv;charset=utf-8');
+    },
+
+    exportBIDSEventsTSV(eegData, annotations) {
+        const rows = ['onset\tduration\ttrial_type\tchannel\tdescription'];
+        const sorted = annotations.slice().sort((a, b) => (a.onset ?? a.time ?? 0) - (b.onset ?? b.time ?? 0));
+        for (const annotation of sorted) {
+            rows.push([
+                Number(annotation.onset ?? annotation.time ?? 0).toFixed(3),
+                Number(annotation.duration || 0).toFixed(3),
+                this._tsvCell(annotation.type),
+                this._tsvCell(annotation.channels?.join('|') || 'n/a'),
+                this._tsvCell(annotation.note)
+            ].join('\t'));
+        }
+        return this.downloadFile(rows.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_events.tsv`, 'text/tab-separated-values;charset=utf-8');
     }
 };

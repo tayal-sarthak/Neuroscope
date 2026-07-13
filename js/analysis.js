@@ -490,17 +490,20 @@ const EEGAnalysis = {
 
     // coherence two channels
     coherence(signal1, signal2, sampleRate, windowSize = 256) {
-        const psd1 = this.welchPSD(signal1, sampleRate, windowSize);
-        const psd2 = this.welchPSD(signal2, sampleRate, windowSize);
-
         const n = Math.min(signal1.length, signal2.length);
         const step = Math.floor(windowSize * 0.5);
         const numSegments = Math.floor((n - windowSize) / step) + 1;
         const N = this.nextPow2(windowSize);
         const window = this.getWindow(windowSize, 'hanning');
 
+        if (numSegments < 1) {
+            return { freqs: new Float64Array(0), coherence: new Float64Array(0) };
+        }
+
         const csdRe = new Float64Array(N / 2 + 1);
         const csdIm = new Float64Array(N / 2 + 1);
+        const auto1 = new Float64Array(N / 2 + 1);
+        const auto2 = new Float64Array(N / 2 + 1);
 
         for (let seg = 0; seg < numSegments; seg++) {
             const start = seg * step;
@@ -517,18 +520,23 @@ const EEGAnalysis = {
             const fft2 = this.fft(seg2);
 
             for (let i = 0; i <= N / 2; i++) {
+                csdRe[i] += fft1.re[i] * fft2.re[i] + fft1.im[i] * fft2.im[i];
                 csdIm[i] += -fft1.im[i] * fft2.re[i] + fft1.re[i] * fft2.im[i];
+                auto1[i] += fft1.re[i] * fft1.re[i] + fft1.im[i] * fft1.im[i];
+                auto2[i] += fft2.re[i] * fft2.re[i] + fft2.im[i] * fft2.im[i];
             }
         }
 
-        const coh = new Float64Array(psd1.freqs.length);
+        const coh = new Float64Array(N / 2 + 1);
+        const freqs = new Float64Array(N / 2 + 1);
         for (let i = 0; i < coh.length; i++) {
             const csdMag2 = csdRe[i] * csdRe[i] + csdIm[i] * csdIm[i];
-            const denom = psd1.psd[i] * psd2.psd[i];
-            coh[i] = denom > 0 ? csdMag2 / (denom * numSegments * numSegments) : 0;
+            const denom = auto1[i] * auto2[i];
+            coh[i] = denom > 0 ? Math.min(1, csdMag2 / denom) : 0;
+            freqs[i] = i * sampleRate / N;
         }
 
-        return { freqs: psd1.freqs, coherence: coh };
+        return { freqs, coherence: coh };
     },
 
     averageReference(channelData) {

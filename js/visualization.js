@@ -19,15 +19,18 @@ const EEGVisualization = {
     drawSignals(canvas, eegData, options = {}) {
         const ctx = canvas.getContext('2d');
         const dpr = window.devicePixelRatio || 1;
-        const rect = canvas.parentElement.getBoundingClientRect();
+        const container = canvas.parentElement;
+        const containerStyle = window.getComputedStyle(container);
+        const width = Math.max(1, container.clientWidth
+            - parseFloat(containerStyle.paddingLeft || 0)
+            - parseFloat(containerStyle.paddingRight || 0));
 
-        canvas.width = rect.width * dpr;
+        canvas.width = width * dpr;
         canvas.height = (options.height || 500) * dpr;
-        canvas.style.width = rect.width + 'px';
+        canvas.style.width = width + 'px';
         canvas.style.height = (options.height || 500) + 'px';
         ctx.scale(dpr, dpr);
 
-        const width = rect.width;
         const height = options.height || 500;
 
         const {
@@ -147,6 +150,122 @@ const EEGVisualization = {
         ctx.fillText(scaleBarAmplitude.toFixed(0) + 'uV', width - rightMargin + 8, topMargin + 10 + scaleBarHeight / 2 + 3);
 
         this._updateChannelLabels(channels, channelLabels, channelHeight, topMargin);
+    },
+
+    getSignalPlotGeometry(width, height) {
+        const left = 70;
+        const rightMargin = 50;
+        const top = 10;
+        const bottomMargin = 35;
+        return {
+            left,
+            right: width - rightMargin,
+            top,
+            bottom: height - bottomMargin,
+            width: Math.max(1, width - left - rightMargin),
+            height: Math.max(1, height - top - bottomMargin)
+        };
+    },
+
+    drawSignalOverlay(canvas, options = {}) {
+        if (!canvas?.parentElement) return;
+        const baseCanvas = document.getElementById('viewer-canvas');
+        const rect = baseCanvas.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(1, Math.round(width * dpr));
+        canvas.height = Math.max(1, Math.round(height * dpr));
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+        canvas.style.left = baseCanvas.offsetLeft + 'px';
+        canvas.style.top = baseCanvas.offsetTop + 'px';
+
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, width, height);
+
+        const geometry = this.getSignalPlotGeometry(width, height);
+        const { timeOffset = 0, timeWindow = 10, hover, cursorTime, selection, annotations = [] } = options;
+        const toX = time => geometry.left + ((time - timeOffset) / timeWindow) * geometry.width;
+        const visibleEnd = timeOffset + timeWindow;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(geometry.left, geometry.top, geometry.width, geometry.height);
+        ctx.clip();
+
+        for (const annotation of annotations) {
+            const onset = Number(annotation.onset ?? annotation.time ?? 0);
+            const duration = Math.max(0, Number(annotation.duration || 0));
+            const end = onset + duration;
+            if (end < timeOffset || onset > visibleEnd) continue;
+            const color = annotation.type === 'bad_artifact' ? '#C73E4D'
+                : annotation.type === 'clinical_event' ? '#7C3AED'
+                : annotation.type === 'signal_quality' ? '#B36A00'
+                : '#2563EB';
+            const x1 = toX(Math.max(timeOffset, onset));
+            const x2 = duration > 0 ? toX(Math.min(visibleEnd, end)) : x1;
+            ctx.fillStyle = color + '20';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            if (duration > 0) {
+                ctx.fillRect(x1, geometry.top, Math.max(2, x2 - x1), geometry.height);
+                ctx.strokeRect(x1, geometry.top, Math.max(2, x2 - x1), geometry.height);
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(x1, geometry.top);
+                ctx.lineTo(x1, geometry.bottom);
+                ctx.stroke();
+            }
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x1 - 5, geometry.top);
+            ctx.lineTo(x1 + 5, geometry.top);
+            ctx.lineTo(x1, geometry.top + 7);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        if (selection) {
+            const x1 = toX(selection.start);
+            const x2 = toX(selection.end);
+            ctx.fillStyle = 'rgba(37, 99, 235, 0.12)';
+            ctx.fillRect(x1, geometry.top, Math.max(1, x2 - x1), geometry.height);
+            ctx.strokeStyle = '#2563EB';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x1, geometry.top, Math.max(1, x2 - x1), geometry.height);
+        }
+
+        if (cursorTime !== null && cursorTime >= timeOffset && cursorTime <= visibleEnd) {
+            const x = toX(cursorTime);
+            ctx.strokeStyle = '#10243E';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x, geometry.top);
+            ctx.lineTo(x, geometry.bottom);
+            ctx.stroke();
+        }
+
+        if (hover && hover.time >= timeOffset && hover.time <= visibleEnd) {
+            const x = toX(hover.time);
+            ctx.strokeStyle = 'rgba(37, 99, 235, 0.7)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(x, geometry.top);
+            ctx.lineTo(x, geometry.bottom);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.strokeStyle = '#2563EB';
+            ctx.beginPath();
+            ctx.arc(hover.x, hover.y, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        ctx.restore();
     },
 
     _updateChannelLabels(channels, labels, channelHeight, topMargin) {

@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuroScope - EEG Data Analysis Platform</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%2310243E'/%3E%3Cpath d='M4 16Q8 8 12 16T20 16T28 16' fill='none' stroke='%2376A7FF' stroke-width='2.5'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v=20260713-3">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 
@@ -27,7 +27,7 @@
             </div>
             <h2 class="loader-title">NeuroScope</h2>
             <p class="loader-subtitle">Preparing your analysis workspace</p>
-            <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+            <div class="loader-bar" role="progressbar" aria-label="Preparing NeuroScope"><div class="loader-bar-inner"></div></div>
         </div>
     </div>
 
@@ -42,7 +42,10 @@
                     <circle cx="16" cy="16" r="14" stroke="#4A90D9" stroke-width="2"/>
                     <path d="M4 16 Q8 8, 12 16 Q16 24, 20 16 Q24 8, 28 16" stroke="#4A90D9" stroke-width="2.5" fill="none"/>
                 </svg>
-                <span class="logo-text">NeuroScope</span>
+                <span class="logo-lockup">
+                    <span class="logo-text">NeuroScope</span>
+                    <span class="logo-subtitle">EEG workstation</span>
+                </span>
             </div>
         </div>
         <nav class="header-nav" id="main-nav">
@@ -91,6 +94,14 @@
         </div>
     </header>
 
+    <div class="workspace-status" id="workspace-status" role="status" aria-live="polite">
+        <span class="workspace-status-item"><span class="status-label">Source</span><strong id="status-source">No file</strong></span>
+        <span class="workspace-status-item"><span class="status-label">Signal</span><strong id="status-processing">Raw</strong></span>
+        <span class="workspace-status-item"><span class="status-label">Channels</span><strong id="status-channels">0 selected</strong></span>
+        <span class="workspace-status-item"><span class="status-label">Montage</span><strong id="status-montage">Monopolar</strong></span>
+        <span class="workspace-status-item"><span class="status-label">View</span><strong id="status-time">0.0–10.0 s</strong></span>
+    </div>
+
     <!-- Upload Section -->
     <section id="upload-section" class="upload-section">
         <div class="upload-hero">
@@ -104,7 +115,7 @@
                     </svg>
                 </div>
                 <h1 class="hero-title">Welcome to NeuroScope</h1>
-                <p class="hero-desc">A friendly workspace for exploring, analyzing, and understanding your EEG data right in your browser</p>
+                <p class="hero-desc">Explore, annotate, analyze, and export EEG recordings in a focused workspace that runs locally in your browser.</p>
             </div>
         </div>
 
@@ -119,7 +130,7 @@
                 </div>
                 <h2 class="upload-title">Drop your EEG file here</h2>
                 <p class="upload-subtitle">or click anywhere in this area to browse</p>
-                <input type="file" id="file-input" accept=".edf,.bdf,.csv,.tsv,.json,.txt,.set,.gdf,.xdf,.eeg,.vhdr,.vmrk,.cnt" hidden>
+                <input type="file" id="file-input" accept=".edf,.bdf,.csv,.tsv,.json,.txt" aria-label="Choose EEG file" hidden>
                 <div class="format-badges">
                     <span class="badge">EDF</span>
                     <span class="badge">BDF</span>
@@ -127,14 +138,10 @@
                     <span class="badge">TSV</span>
                     <span class="badge">JSON</span>
                     <span class="badge">TXT</span>
-                    <span class="badge">GDF</span>
-                    <span class="badge">SET</span>
-                    <span class="badge">XDF</span>
-                    <span class="badge">VHDR</span>
-                    <span class="badge">CNT</span>
                 </div>
+                <p class="format-note">Verified import paths only. Unsupported formats are rejected rather than replaced with generated data.</p>
                 <div class="upload-progress" id="upload-progress">
-                    <div class="upload-progress-bar" id="upload-progress-bar"></div>
+                    <div class="upload-progress-bar" id="upload-progress-bar" role="progressbar" aria-label="File import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
                     <span id="upload-progress-text">Reading file</span>
                 </div>
             </div>
@@ -147,12 +154,16 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 <span>Explore with sample EEG data (CHB-MIT)</span>
             </button>
-            <p class="sample-data-attribution" style="margin-top: 10px; font-size: 0.75rem; color: #888; max-width: 480px; text-align: center; line-height: 1.5;">
-                Sample file <strong>chb02_16.edf</strong> from the <a href="https://physionet.org/content/chbmit/1.0.0/" target="_blank" rel="noopener" style="color: #4A90D9;">CHB-MIT Scalp EEG Database</a> on PhysioNet.
-                Licensed under <a href="https://opendatacommons.org/licenses/by/1-0/" target="_blank" rel="noopener" style="color: #4A90D9;">ODC-By v1.0</a>.
+            <p class="sample-data-attribution">
+                Sample file <strong>chb02_16.edf</strong> from the <a href="https://physionet.org/content/chbmit/1.0.0/" target="_blank" rel="noopener">CHB-MIT Scalp EEG Database</a> on PhysioNet.
+                Licensed under <a href="https://opendatacommons.org/licenses/by/1-0/" target="_blank" rel="noopener">ODC-By v1.0</a>.
                 Shoeb, A.H. (2009). <em>Application of Machine Learning to Epileptic Seizure Onset Detection and Treatment</em>. PhD Thesis, MIT.
                 Goldberger, A.L., et al. (2000). Circulation 101(23):e215–e220.
             </p>
+            <div class="privacy-note" role="note">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                <span><strong>Local-first:</strong> uploaded recordings are processed in this browser and are not sent to NeuroScope servers.</span>
+            </div>
         </div>
 
         <div class="features-section">
@@ -216,6 +227,11 @@
                         <button id="deselect-all-ch" class="btn-tiny" title="Clear selection">Clear</button>
                     </div>
                 </div>
+                <label class="channel-search-wrap" for="channel-search">
+                    <span class="sr-only">Search channels</span>
+                    <input type="search" id="channel-search" class="channel-search" placeholder="Find channel…" autocomplete="off">
+                    <span id="channel-selection-count" class="channel-selection-count">0 / 0</span>
+                </label>
                 <div id="channel-list" class="channel-list"></div>
             </div>
 
@@ -289,7 +305,7 @@
                     </button>
                     <button id="viewer-fit" class="btn-tool" title="Fit all data in view">Fit</button>
                     <div class="toolbar-separator"></div>
-                    <label class="toolbar-label">Montage</label>
+                    <label class="toolbar-label" for="montage-select">Montage</label>
                     <select id="montage-select" class="toolbar-select">
                         <option value="monopolar">Monopolar</option>
                         <option value="bipolar">Bipolar</option>
@@ -297,11 +313,60 @@
                     </select>
                     <div class="toolbar-separator"></div>
                     <span class="toolbar-time-display" id="viewer-time-range">0.0s to 10.0s</span>
+                    <button id="add-annotation-btn" class="btn-tool btn-tool-accent" title="Add a note at the current time">Add note</button>
                 </div>
                 <div class="canvas-container" id="viewer-canvas-container">
                     <canvas id="viewer-canvas"></canvas>
+                    <canvas id="viewer-interaction-canvas" tabindex="0" aria-label="Interactive EEG timeline. Drag to select a time range, click to pin a cursor, and use Shift plus the mouse wheel or horizontal trackpad motion to move through time."></canvas>
+                    <div id="viewer-hover-tooltip" class="viewer-hover-tooltip" hidden></div>
                     <div class="canvas-labels" id="viewer-labels"></div>
                 </div>
+                <div id="viewer-selection-bar" class="viewer-selection-bar" hidden>
+                    <div>
+                        <strong id="viewer-selection-time">No range selected</strong>
+                        <span id="viewer-selection-detail">Drag across the signal to select time.</span>
+                    </div>
+                    <div class="viewer-selection-actions">
+                        <button type="button" id="selection-annotate" class="btn-secondary">Annotate range</button>
+                        <button type="button" id="selection-export" class="btn-primary">Export range CSV</button>
+                        <button type="button" id="selection-clear" class="btn-ghost">Clear</button>
+                    </div>
+                </div>
+                <section class="annotation-workbench" aria-labelledby="annotation-heading">
+                    <div class="annotation-header">
+                        <div>
+                            <h3 id="annotation-heading">Recording notes</h3>
+                            <p>Time-linked observations travel with session and annotation exports.</p>
+                        </div>
+                        <span id="annotation-count" class="annotation-count">0 notes</span>
+                    </div>
+                    <form id="annotation-form" class="annotation-form" hidden>
+                        <label>Onset (s)<input type="number" id="annotation-onset" min="0" step="0.001" required></label>
+                        <label>Duration (s)<input type="number" id="annotation-duration" min="0" step="0.001" value="0" required></label>
+                        <label>Type
+                            <select id="annotation-type">
+                                <option value="observation">Observation</option>
+                                <option value="bad_artifact">Artifact / bad segment</option>
+                                <option value="clinical_event">Clinical event</option>
+                                <option value="signal_quality">Signal quality</option>
+                            </select>
+                        </label>
+                        <label>Channels
+                            <select id="annotation-channels">
+                                <option value="">All channels</option>
+                                <option value="selected">Currently selected channels</option>
+                            </select>
+                        </label>
+                        <label class="annotation-note-field">Note<input type="text" id="annotation-note" maxlength="240" placeholder="Describe what you observed" required></label>
+                        <div class="annotation-actions">
+                            <button type="button" id="annotation-cancel" class="btn-ghost">Cancel</button>
+                            <button type="submit" class="btn-primary">Save note</button>
+                        </div>
+                    </form>
+                    <div id="annotation-list" class="annotation-list">
+                        <p class="annotation-empty">No notes yet. Add one from the signal toolbar.</p>
+                    </div>
+                </section>
             </div>
 
             <!-- Spectrum Tab -->
@@ -310,16 +375,16 @@
                     <h2>Power Spectrum</h2>
                     <p>Frequency domain analysis using FFT and Welch method</p>
                 </div>
-                <div class="spectrum-controls">
+                <div class="spectrum-controls analysis-controls compact-controls">
                     <div class="control-group inline">
-                        <label>Method</label>
+                        <label for="spectrum-method">Method</label>
                         <select id="spectrum-method" class="toolbar-select">
                             <option value="welch">Welch</option>
                             <option value="fft">FFT</option>
                         </select>
                     </div>
                     <div class="control-group inline">
-                        <label>Window</label>
+                        <label for="spectrum-window">Window</label>
                         <select id="spectrum-window" class="toolbar-select">
                             <option value="hanning">Hanning</option>
                             <option value="hamming">Hamming</option>
@@ -328,11 +393,11 @@
                         </select>
                     </div>
                     <div class="control-group inline">
-                        <label>Max Frequency Hz</label>
+                        <label for="spectrum-max-freq">Max Frequency Hz</label>
                         <input type="number" id="spectrum-max-freq" class="toolbar-input" value="60" min="1" max="500">
                     </div>
                     <div class="control-group inline">
-                        <label>Scale</label>
+                        <label for="spectrum-scale">Scale</label>
                         <select id="spectrum-scale" class="toolbar-select">
                             <option value="log">Logarithmic</option>
                             <option value="linear">Linear</option>
@@ -351,15 +416,15 @@
                     <h2>Band Power Analysis</h2>
                     <p>Decompose EEG into standard frequency bands</p>
                 </div>
-                <div class="band-controls">
-                    <button id="bands-compute" class="btn-primary">Compute Band Powers</button>
+                <div class="band-controls analysis-controls compact-controls">
                     <div class="control-group inline">
-                        <label>Display</label>
+                        <label for="bands-display">Display</label>
                         <select id="bands-display" class="toolbar-select">
                             <option value="absolute">Absolute Power</option>
                             <option value="relative">Relative Power</option>
                         </select>
                     </div>
+                    <button id="bands-compute" class="btn-primary">Compute Band Powers</button>
                 </div>
                 <div class="bands-grid">
                     <div class="band-card delta">
@@ -411,7 +476,7 @@
                     <span class="filter-status-dot"></span>
                     <span id="filter-status-text">Viewing the original signal</span>
                 </div>
-                <div class="filter-controls">
+                <div class="filter-controls analysis-controls filter-layout">
                     <div class="filter-type-cards">
                         <button class="filter-type-btn active" data-filter="bandpass">Bandpass</button>
                         <button class="filter-type-btn" data-filter="highpass">Highpass</button>
@@ -420,26 +485,26 @@
                     </div>
                     <div class="filter-params">
                         <div class="control-group inline">
-                            <label>Channel</label>
+                            <label for="filter-channel">Channel</label>
                             <select id="filter-channel" class="toolbar-select"></select>
                         </div>
                         <div class="control-group inline" id="filter-low-group">
-                            <label>Low Cutoff Hz</label>
+                            <label for="filter-low">Low Cutoff Hz</label>
                             <input type="number" id="filter-low" class="toolbar-input" value="1" min="0.1" max="500" step="0.1">
                         </div>
                         <div class="control-group inline" id="filter-high-group">
-                            <label>High Cutoff Hz</label>
+                            <label for="filter-high">High Cutoff Hz</label>
                             <input type="number" id="filter-high" class="toolbar-input" value="40" min="0.1" max="500" step="0.1">
                         </div>
                         <div class="control-group inline" id="filter-notch-group" style="display:none">
-                            <label>Notch Frequency Hz</label>
+                            <label for="filter-notch-freq">Notch Frequency Hz</label>
                             <select id="filter-notch-freq" class="toolbar-select">
                                 <option value="50">50 Hz, EU standard</option>
                                 <option value="60">60 Hz, US standard</option>
                             </select>
                         </div>
                         <div class="control-group inline">
-                            <label>Order</label>
+                            <label for="filter-order">Order</label>
                             <select id="filter-order" class="toolbar-select">
                                 <option value="2">2nd order</option>
                                 <option value="4" selected>4th order</option>
@@ -476,13 +541,13 @@
                     <h2>Time-Frequency Analysis</h2>
                     <p>Observe how the frequency content of your signal evolves over time</p>
                 </div>
-                <div class="timefreq-controls">
+                <div class="timefreq-controls analysis-controls compact-controls">
                     <div class="control-group inline">
-                        <label>Channel</label>
+                        <label for="timefreq-channel">Channel</label>
                         <select id="timefreq-channel" class="toolbar-select"></select>
                     </div>
                     <div class="control-group inline">
-                        <label>Window Size</label>
+                        <label for="timefreq-winsize">Window Size</label>
                         <select id="timefreq-winsize" class="toolbar-select">
                             <option value="128">128 samples</option>
                             <option value="256" selected>256 samples</option>
@@ -491,11 +556,11 @@
                         </select>
                     </div>
                     <div class="control-group inline">
-                        <label>Max Frequency Hz</label>
+                        <label for="timefreq-max-freq">Max Frequency Hz</label>
                         <input type="number" id="timefreq-max-freq" class="toolbar-input" value="50" min="1" max="500">
                     </div>
                     <div class="control-group inline">
-                        <label>Color Map</label>
+                        <label for="timefreq-colormap">Color Map</label>
                         <select id="timefreq-colormap" class="toolbar-select">
                             <option value="viridis">Viridis</option>
                             <option value="plasma">Plasma</option>
@@ -517,7 +582,7 @@
                     <h2>Statistical Analysis</h2>
                     <p>Comprehensive statistical measures for each channel</p>
                 </div>
-                <div class="stats-controls">
+                <div class="stats-controls analysis-controls compact-controls">
                     <button id="stats-compute" class="btn-primary">Compute Statistics</button>
                     <button id="stats-download-csv" class="btn-secondary">Download as CSV</button>
                 </div>
@@ -557,9 +622,9 @@
                     <h2>Topographic Mapping</h2>
                     <p>Spatial distribution of brain activity across the scalp</p>
                 </div>
-                <div class="topo-controls">
+                <div class="topo-controls analysis-controls compact-controls">
                     <div class="control-group inline">
-                        <label>Metric</label>
+                        <label for="topo-metric">Metric</label>
                         <select id="topo-metric" class="toolbar-select">
                             <option value="power">Total Power</option>
                             <option value="alpha">Alpha Power</option>
@@ -582,23 +647,61 @@
             <div id="tab-export" class="tab-content">
                 <div class="tab-header">
                     <h2>Export Center</h2>
-                    <p>Download your processed data and visualizations</p>
+                    <p>Choose a precise scope before generating data files</p>
                 </div>
+                <section class="export-setup" aria-labelledby="export-setup-heading">
+                    <div class="export-setup-copy">
+                        <h3 id="export-setup-heading">Data export scope</h3>
+                        <p>Scope applies to CSV, processed CSV, full data JSON, and MATLAB JSON.</p>
+                    </div>
+                    <div class="control-group inline">
+                        <label for="export-channel-scope">Channels</label>
+                        <select id="export-channel-scope" class="toolbar-select">
+                            <option value="selected">Selected channels</option>
+                            <option value="all">All channels</option>
+                        </select>
+                    </div>
+                    <div class="control-group inline">
+                        <label for="export-signal-source">Signal</label>
+                        <select id="export-signal-source" class="toolbar-select">
+                            <option value="current">Current processing state</option>
+                            <option value="raw">Original signal</option>
+                            <option value="filtered">Filtered signal</option>
+                        </select>
+                    </div>
+                    <div class="control-group inline">
+                        <label for="export-start-time">Start (s)</label>
+                        <input type="number" id="export-start-time" class="toolbar-input" value="0" min="0" step="0.1">
+                    </div>
+                    <div class="control-group inline">
+                        <label for="export-end-time">End (s)</label>
+                        <input type="number" id="export-end-time" class="toolbar-input" value="10" min="0" step="0.1">
+                    </div>
+                    <div class="control-group inline">
+                        <label for="export-precision">Precision</label>
+                        <select id="export-precision" class="toolbar-select">
+                            <option value="2">2 decimals</option>
+                            <option value="4" selected>4 decimals</option>
+                            <option value="6">6 decimals</option>
+                        </select>
+                    </div>
+                    <output id="export-size-estimate" class="export-size-estimate" aria-live="polite">Estimate unavailable</output>
+                </section>
                 <div class="export-grid">
                     <div class="export-card">
                         <div class="export-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="8 12 8 16 12 16"/><path d="M16 8 L8 16"/></svg>
                         </div>
-                        <h3>Raw Data CSV</h3>
-                        <p>Export the current signal data as a comma-separated values file</p>
+                        <h3>Scoped Signal CSV</h3>
+                        <p>Export the selected channels, time range, signal source, and precision configured above.</p>
                         <button class="btn-export" id="export-csv">Download CSV</button>
                     </div>
                     <div class="export-card">
                         <div class="export-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         </div>
-                        <h3>JSON Data</h3>
-                        <p>Export signal data, metadata, and analysis results in JSON format</p>
+                        <h3>Scoped Data JSON</h3>
+                        <p>Export scoped samples with recording metadata and analysis provenance.</p>
                         <button class="btn-export" id="export-json">Download JSON</button>
                     </div>
                     <div class="export-card">
@@ -621,8 +724,8 @@
                         <div class="export-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                         </div>
-                        <h3>Filtered Data CSV</h3>
-                        <p>Export filtered signal data, preserving any filter operations you applied</p>
+                        <h3>Processed Signal CSV</h3>
+                        <p>Export the configured scope from the filtered signal. Disabled until a filter is applied.</p>
                         <button class="btn-export" id="export-filtered-csv">Download CSV</button>
                     </div>
                     <div class="export-card">
@@ -646,14 +749,8 @@
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         </div>
                         <h3>Time Range Data</h3>
-                        <p>Export signal data for a specific time window of your choosing</p>
-                        <div class="export-time-range">
-                            <input type="number" id="export-start-time" class="toolbar-input" value="0" min="0" step="0.1" placeholder="Start" style="width:65px">
-                            <span class="export-range-sep">to</span>
-                            <input type="number" id="export-end-time" class="toolbar-input" value="10" min="0" step="0.1" placeholder="End" style="width:65px">
-                            <span class="export-range-unit">seconds</span>
-                        </div>
-                        <button class="btn-export" id="export-time-range">Download CSV</button>
+                        <p>Copy the current viewer window or drag-selected range into the export scope above.</p>
+                        <button class="btn-export" id="export-use-viewer-range">Use Viewer Range</button>
                     </div>
                     <div class="export-card">
                         <div class="export-icon">
@@ -667,14 +764,14 @@
                         <div class="export-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                         </div>
-                        <h3>High Resolution PNG</h3>
-                        <p>Save all current visualizations as high resolution images at 300 DPI for print and research papers</p>
-                        <select id="export-dpi" class="toolbar-select" style="width:100%; margin-bottom:8px;">
+                        <h3>Current Visualization PNG</h3>
+                        <p>Export the visualization for the active analysis tab at a predictable CSS-pixel scale.</p>
+                        <select id="export-dpi" class="toolbar-select" aria-label="High resolution export scale" style="width:100%; margin-bottom:8px;">
                             <option value="2">Standard, 2x resolution</option>
                             <option value="3" selected>High, 3x resolution</option>
                             <option value="4">Ultra, 4x resolution</option>
                         </select>
-                        <button class="btn-export" id="export-hires-png">Download All PNGs</button>
+                        <button class="btn-export" id="export-hires-png">Download Current PNG</button>
                     </div>
                     <div class="export-card">
                         <div class="export-icon">
@@ -683,6 +780,25 @@
                         <h3>MATLAB Compatible JSON</h3>
                         <p>Export data in a structured JSON format that can be easily imported into MATLAB or Python scripts</p>
                         <button class="btn-export" id="export-matlab-json">Download JSON</button>
+                    </div>
+                    <div class="export-card export-card-featured">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5M8 17h3"/></svg>
+                        </div>
+                        <h3>Session Manifest</h3>
+                        <p>Export provenance, view settings, processing state, notes, and analysis availability without duplicating raw samples.</p>
+                        <button class="btn-export" id="export-session-json">Download JSON</button>
+                    </div>
+                    <div class="export-card">
+                        <div class="export-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8M8 12h5"/></svg>
+                        </div>
+                        <h3>Annotations CSV</h3>
+                        <p>Download time-linked observations for review, collaboration, or downstream event analysis.</p>
+                        <div class="export-card-actions">
+                            <button class="btn-export" id="export-annotations-csv">Download CSV</button>
+                            <button class="btn-export btn-export-secondary" id="export-bids-events">BIDS Events TSV</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -728,10 +844,10 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Scripts -->
-    <script src="js/parsers.js"></script>
-    <script src="js/analysis.js"></script>
-    <script src="js/visualization.js"></script>
-    <script src="js/export.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/parsers.js?v=20260713-3"></script>
+    <script src="js/analysis.js?v=20260713-3"></script>
+    <script src="js/visualization.js?v=20260713-3"></script>
+    <script src="js/export.js?v=20260713-3"></script>
+    <script src="js/app.js?v=20260713-3"></script>
 </body>
 </html>

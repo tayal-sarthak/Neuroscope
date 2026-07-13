@@ -10,10 +10,18 @@ const App = {
         timeOffset: 0,
         analysisResults: {},
         filterPreviewData: null,
+        annotations: [],
+        viewerCursorTime: null,
+        viewerSelection: null,
+        viewerHover: null,
+        viewerDisplay: null,
+        viewerDragStart: null,
+        exportBusy: false,
         isLoaded: false
     },
 
     init() {
+        this.loadHostedTelemetry();
         setTimeout(() => {
             document.getElementById('loading-screen').classList.add('hidden');
         }, 1200);
@@ -25,6 +33,16 @@ const App = {
         this.bindExportControls();
         this.bindFilterControls();
         this.bindMobileControls();
+        this.bindAnnotationControls();
+        this.bindViewerInteractions();
+    },
+
+    loadHostedTelemetry() {
+        if (!window.location.hostname.endsWith('.vercel.app')) return;
+        const script = document.createElement('script');
+        script.defer = true;
+        script.src = '/_vercel/insights/script.js';
+        document.head.appendChild(script);
     },
 
 
@@ -83,6 +101,12 @@ const App = {
     },
 
     bindSidebarControls() {
+        document.getElementById('channel-search').addEventListener('input', (event) => {
+            const query = event.target.value.trim().toLowerCase();
+            document.querySelectorAll('#channel-list .channel-item').forEach(item => {
+                item.hidden = query.length > 0 && !item.dataset.channelLabel.includes(query);
+            });
+        });
         
         document.getElementById('amplitude-scale').addEventListener('input', (e) => {
             this.state.amplitudeScale = parseFloat(e.target.value);
@@ -338,38 +362,329 @@ const App = {
         });
     },
 
+    bindAnnotationControls() {
+        const form = document.getElementById('annotation-form');
+        document.getElementById('add-annotation-btn').addEventListener('click', () => this.openAnnotationForm());
+        document.getElementById('annotation-cancel').addEventListener('click', () => {
+            form.hidden = true;
+            form.reset();
+        });
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            if (!this.state.eegData) return;
+
+            const onset = parseFloat(document.getElementById('annotation-onset').value);
+            const duration = parseFloat(document.getElementById('annotation-duration').value);
+            const note = document.getElementById('annotation-note').value.trim();
+            if (!Number.isFinite(onset) || !Number.isFinite(duration) || onset < 0 || duration < 0 || onset + duration > this.state.eegData.duration || !note) {
+                this.showToast('Enter a valid onset, duration, and note before saving', 'error');
+                return;
+            }
+
+            const channelMode = document.getElementById('annotation-channels').value;
+            const channels = channelMode === 'selected'
+                ? this.state.selectedChannels.map(index => this.state.eegData.channelLabels[index])
+                : [];
+
+            this.state.annotations.push({
+                id: window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                onset,
+                duration,
+                type: document.getElementById('annotation-type').value,
+                channels,
+                note,
+                createdAt: new Date().toISOString()
+            });
+            this.state.annotations.sort((a, b) => a.onset - b.onset);
+            form.hidden = true;
+            form.reset();
+            document.getElementById('annotation-duration').value = '0';
+            this.renderAnnotations();
+            this.showToast('Recording note saved', 'success');
+        });
+    },
+
+    openAnnotationForm(range = null) {
+        if (!this.state.eegData) return;
+        const form = document.getElementById('annotation-form');
+        const selectedRange = range || this.state.viewerSelection;
+        const onset = selectedRange?.start ?? this.state.viewerCursorTime ?? this.state.timeOffset;
+        const duration = selectedRange ? Math.max(0, selectedRange.end - selectedRange.start) : 0;
+        document.getElementById('annotation-onset').value = onset.toFixed(3);
+        document.getElementById('annotation-duration').value = duration.toFixed(3);
+        form.hidden = false;
+        document.getElementById('annotation-note').focus();
+    },
+
+    renderAnnotations() {
+        const list = document.getElementById('annotation-list');
+        const count = this.state.annotations.length;
+        document.getElementById('annotation-count').textContent = `${count} ${count === 1 ? 'note' : 'notes'}`;
+        list.replaceChildren();
+
+        if (count === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'annotation-empty';
+            empty.textContent = 'No notes yet. Add one from the signal toolbar.';
+            list.appendChild(empty);
+            this.refreshSignalOverlay();
+            return;
+        }
+
+        for (const annotation of this.state.annotations) {
+            const row = document.createElement('article');
+            row.className = 'annotation-row';
+
+            const jump = document.createElement('button');
+            jump.type = 'button';
+            jump.className = 'annotation-time';
+            const end = annotation.onset + annotation.duration;
+            jump.textContent = annotation.duration > 0
+                ? `${annotation.onset.toFixed(2)}–${end.toFixed(2)} s`
+                : `${annotation.onset.toFixed(2)} s`;
+            jump.title = 'Jump signal viewer to this time';
+            jump.addEventListener('click', () => {
+                this.setTimeOffset(annotation.onset);
+            });
+
+            const content = document.createElement('div');
+            content.className = 'annotation-content';
+            const meta = document.createElement('strong');
+            const channelText = annotation.channels?.length ? ` · ${annotation.channels.join(', ')}` : '';
+            meta.textContent = annotation.type.replace(/_/g, ' ') + channelText;
+            const note = document.createElement('p');
+            note.textContent = annotation.note;
+            content.append(meta, note);
+
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'annotation-remove';
+            remove.textContent = 'Remove';
+            remove.addEventListener('click', () => {
+                this.state.annotations = this.state.annotations.filter(item => item.id !== annotation.id);
+                this.renderAnnotations();
+            });
+
+            row.append(jump, content, remove);
+            list.appendChild(row);
+        }
+        this.refreshSignalOverlay();
+    },
+
+    bindViewerInteractions() {
+        const overlay = document.getElementById('viewer-interaction-canvas');
+        const tooltip = document.getElementById('viewer-hover-tooltip');
+
+        overlay.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0 || !this.state.eegData) return;
+            const point = this.getViewerPoint(event);
+            if (!point) return;
+            overlay.setPointerCapture?.(event.pointerId);
+            this.state.viewerDragStart = point.time;
+            this.state.viewerSelection = null;
+            this.state.viewerCursorTime = null;
+            this.updateViewerSelectionBar();
+            this.refreshSignalOverlay();
+        });
+
+        overlay.addEventListener('pointermove', (event) => {
+            if (!this.state.eegData) return;
+            const point = this.getViewerPoint(event);
+            if (!point) {
+                tooltip.hidden = true;
+                return;
+            }
+            this.state.viewerHover = point;
+            this.updateViewerTooltip(point, event);
+            if (this.state.viewerDragStart !== null) {
+                this.state.viewerSelection = {
+                    start: Math.min(this.state.viewerDragStart, point.time),
+                    end: Math.max(this.state.viewerDragStart, point.time)
+                };
+                this.updateViewerSelectionBar();
+            }
+            this.refreshSignalOverlay();
+        });
+
+        overlay.addEventListener('pointerup', (event) => {
+            if (this.state.viewerDragStart === null) return;
+            const point = this.getViewerPoint(event);
+            if (point) {
+                const distance = Math.abs(point.time - this.state.viewerDragStart);
+                if (distance < Math.max(0.005, this.state.timeWindow / 500)) {
+                    this.state.viewerCursorTime = point.time;
+                    this.state.viewerSelection = null;
+                }
+            }
+            this.state.viewerDragStart = null;
+            this.updateViewerSelectionBar();
+            this.refreshSignalOverlay();
+        });
+
+        overlay.addEventListener('pointerleave', () => {
+            if (this.state.viewerDragStart === null) {
+                this.state.viewerHover = null;
+                tooltip.hidden = true;
+                this.refreshSignalOverlay();
+            }
+        });
+
+        overlay.addEventListener('wheel', (event) => {
+            const horizontalIntent = event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY);
+            if (!horizontalIntent || !this.state.eegData) return;
+            event.preventDefault();
+            const delta = Math.abs(event.deltaX) > 0 ? event.deltaX : event.deltaY;
+            this.setTimeOffset(this.state.timeOffset + (delta / 500) * this.state.timeWindow);
+        }, { passive: false });
+
+        overlay.addEventListener('keydown', (event) => {
+            if (!this.state.eegData) return;
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                event.preventDefault();
+                const direction = event.key === 'ArrowLeft' ? -1 : 1;
+                this.setTimeOffset(this.state.timeOffset + direction * this.state.timeWindow * 0.1);
+            } else if (event.key.toLowerCase() === 'a') {
+                event.preventDefault();
+                this.openAnnotationForm();
+            }
+        });
+
+        document.getElementById('selection-annotate').addEventListener('click', () => this.openAnnotationForm(this.state.viewerSelection));
+        document.getElementById('selection-export').addEventListener('click', () => this.exportViewerSelection());
+        document.getElementById('selection-clear').addEventListener('click', () => {
+            this.state.viewerSelection = null;
+            this.state.viewerCursorTime = null;
+            this.updateViewerSelectionBar();
+            this.refreshSignalOverlay();
+        });
+    },
+
+    getViewerPoint(event) {
+        const overlay = document.getElementById('viewer-interaction-canvas');
+        const display = this.state.viewerDisplay;
+        if (!display || display.channels.length === 0) return null;
+        const rect = overlay.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const geometry = EEGVisualization.getSignalPlotGeometry(rect.width, rect.height);
+        if (x < geometry.left || x > geometry.right || y < geometry.top || y > geometry.bottom) return null;
+
+        const ratio = (x - geometry.left) / geometry.width;
+        const time = Math.min(this.state.eegData.duration, this.state.timeOffset + ratio * this.state.timeWindow);
+        const channelPosition = Math.min(display.channels.length - 1, Math.max(0, Math.floor((y - geometry.top) / geometry.height * display.channels.length)));
+        const channelIndex = display.channels[channelPosition];
+        const sample = Math.min(display.data[channelIndex].length - 1, Math.max(0, Math.round(time * this.state.eegData.sampleRate)));
+        return {
+            x,
+            y,
+            time,
+            channel: display.labels[channelIndex],
+            amplitude: display.data[channelIndex][sample]
+        };
+    },
+
+    updateViewerTooltip(point, event) {
+        const tooltip = document.getElementById('viewer-hover-tooltip');
+        const container = document.getElementById('viewer-canvas-container').getBoundingClientRect();
+        tooltip.textContent = `${point.time.toFixed(3)} s · ${point.channel} · ${point.amplitude.toFixed(2)} µV`;
+        tooltip.style.left = `${Math.min(container.width - 210, Math.max(8, event.clientX - container.left + 12))}px`;
+        tooltip.style.top = `${Math.max(8, event.clientY - container.top - 34)}px`;
+        tooltip.hidden = false;
+    },
+
+    updateViewerSelectionBar() {
+        const bar = document.getElementById('viewer-selection-bar');
+        const selection = this.state.viewerSelection;
+        const cursor = this.state.viewerCursorTime;
+        bar.hidden = !selection && cursor === null;
+        if (bar.hidden) return;
+        const exportButton = document.getElementById('selection-export');
+        const annotateButton = document.getElementById('selection-annotate');
+        if (selection) {
+            const duration = selection.end - selection.start;
+            document.getElementById('viewer-selection-time').textContent = `${selection.start.toFixed(3)}–${selection.end.toFixed(3)} s`;
+            document.getElementById('viewer-selection-detail').textContent = `${duration.toFixed(3)} s selected · ${this.state.selectedChannels.length} channels`;
+            exportButton.disabled = false;
+            annotateButton.textContent = 'Annotate range';
+        } else {
+            document.getElementById('viewer-selection-time').textContent = `Cursor at ${cursor.toFixed(3)} s`;
+            document.getElementById('viewer-selection-detail').textContent = 'Pinned point · press A or choose Add note';
+            exportButton.disabled = true;
+            annotateButton.textContent = 'Add note';
+        }
+    },
+
+    setTimeOffset(value) {
+        if (!this.state.eegData) return;
+        const maxOffset = Math.max(0, this.state.eegData.duration - this.state.timeWindow);
+        this.state.timeOffset = Math.max(0, Math.min(value, maxOffset));
+        document.getElementById('time-offset').value = this.state.timeOffset;
+        document.getElementById('time-offset-value').textContent = this.state.timeOffset.toFixed(1) + 's';
+        this.refreshSignalViewer();
+        this.refreshFilterComparison();
+    },
+
+    refreshSignalOverlay() {
+        if (!this.state.eegData) return;
+        EEGVisualization.drawSignalOverlay(document.getElementById('viewer-interaction-canvas'), {
+            timeOffset: this.state.timeOffset,
+            timeWindow: this.state.timeWindow,
+            hover: this.state.viewerHover,
+            cursorTime: this.state.viewerCursorTime,
+            selection: this.state.viewerSelection,
+            annotations: this.state.annotations
+        });
+    },
+
+    exportViewerSelection() {
+        if (!this.state.viewerSelection) return;
+        const options = this.getExportOptions({
+            startTime: this.state.viewerSelection.start,
+            endTime: this.state.viewerSelection.end,
+            channelScope: 'selected'
+        });
+        this.runExport(document.getElementById('selection-export'), () => EEGExport.exportCSV(this.state.eegData, options), 'Selected range CSV download started');
+    },
+
     bindExportControls() {
-        document.getElementById('export-csv').addEventListener('click', () => {
-            if (this.state.eegData) {
-                EEGExport.exportCSV(this.state.eegData);
-                this.showToast('CSV file downloaded', 'success');
-            }
+        ['export-channel-scope', 'export-signal-source', 'export-start-time', 'export-end-time', 'export-precision'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => this.updateExportEstimate());
         });
 
-        document.getElementById('export-json').addEventListener('click', () => {
-            if (this.state.eegData) {
-                EEGExport.exportJSON(this.state.eegData, this.state.analysisResults);
-                this.showToast('JSON file downloaded', 'success');
-            }
+        document.getElementById('export-csv').addEventListener('click', event => {
+            if (!this.state.eegData) return;
+            const options = this.getExportOptions();
+            this.runExport(event.currentTarget, () => EEGExport.exportCSV(this.state.eegData, options), 'Scoped CSV download started');
         });
 
-        document.getElementById('export-png').addEventListener('click', () => {
-            EEGExport.exportPNG('viewer-canvas', 'eeg_signals.png');
-            this.showToast('PNG image downloaded', 'success');
+        document.getElementById('export-json').addEventListener('click', event => {
+            if (!this.state.eegData) return;
+            const options = this.getExportOptions();
+            this.runExport(event.currentTarget, () => EEGExport.exportJSON(this.state.eegData, this.state.analysisResults, options), 'Scoped JSON download started');
         });
 
-        document.getElementById('export-pdf').addEventListener('click', () => {
-            if (this.state.eegData) {
-                EEGExport.exportPDF(this.state.eegData, this.state.analysisResults);
-                this.showToast('PDF report downloaded', 'success');
-            }
+        document.getElementById('export-png').addEventListener('click', event => {
+            this.runExport(event.currentTarget, () => EEGExport.exportPNG('viewer-canvas', 'eeg_signals.png'), 'PNG download started');
         });
 
-        document.getElementById('export-filtered-csv').addEventListener('click', () => {
-            if (this.state.eegData) {
-                EEGExport.exportFilteredCSV(this.state.eegData, this.state.filteredData);
-                this.showToast('Filtered CSV downloaded', 'success');
+        document.getElementById('export-pdf').addEventListener('click', event => {
+            if (!this.state.eegData) return;
+            this.runExport(
+                event.currentTarget,
+                () => EEGExport.exportPDF(this.state.eegData, this.state.analysisResults),
+                'PDF report download started',
+                'PDF export is unavailable because the PDF library did not load'
+            );
+        });
+
+        document.getElementById('export-filtered-csv').addEventListener('click', event => {
+            if (!this.state.eegData) return;
+            if (!this.state.filteredData) {
+                this.showToast('Apply a filter before exporting processed signal data', 'info');
+                return;
             }
+            const options = this.getExportOptions({ data: this.state.filteredData, sourceLabel: 'filtered' });
+            this.runExport(event.currentTarget, () => EEGExport.exportFilteredCSV(this.state.eegData, this.state.filteredData, options), 'Processed CSV download started');
         });
 
         document.getElementById('export-spectrum-csv').addEventListener('click', () => {
@@ -391,13 +706,15 @@ const App = {
         });
 
 
-        document.getElementById('export-time-range').addEventListener('click', () => {
-            if (this.state.eegData) {
-                const startTime = parseFloat(document.getElementById('export-start-time').value) || 0;
-                const endTime = parseFloat(document.getElementById('export-end-time').value) || 10;
-                EEGExport.exportTimeRangeCSV(this.state.eegData, this.state.filteredData, startTime, endTime);
-                this.showToast('Time range CSV downloaded for ' + startTime.toFixed(1) + 's to ' + endTime.toFixed(1) + 's', 'success');
-            }
+        document.getElementById('export-use-viewer-range').addEventListener('click', () => {
+            if (!this.state.eegData) return;
+            const selection = this.state.viewerSelection;
+            const start = selection?.start ?? this.state.timeOffset;
+            const end = selection?.end ?? Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow);
+            document.getElementById('export-start-time').value = start.toFixed(3);
+            document.getElementById('export-end-time').value = end.toFixed(3);
+            this.updateExportEstimate();
+            this.showToast(selection ? 'Viewer selection copied to export scope' : 'Visible viewer window copied to export scope', 'success');
         });
 
 
@@ -413,91 +730,113 @@ const App = {
         });
 
 
-        document.getElementById('export-hires-png').addEventListener('click', () => {
+        document.getElementById('export-hires-png').addEventListener('click', event => {
             const dpiMultiplier = parseInt(document.getElementById('export-dpi').value) || 3;
-            const canvasIds = ['viewer-canvas', 'spectrum-chart', 'bands-bar-chart', 'bands-pie-chart', 'stats-rms-chart', 'stats-variance-chart', 'topo-canvas', 'spectrogram-canvas', 'filter-canvas'];
-            let count = 0;
-            for (const id of canvasIds) {
-                const canvas = document.getElementById(id);
-                if (canvas && canvas.width > 0 && canvas.height > 0) {
-                    EEGExport.exportHighResPNG(canvas, id + '_highres.png', dpiMultiplier);
-                    count++;
-                }
-            }
-            if (count > 0) {
-                this.showToast(count + ' high resolution images downloaded', 'success');
-            } else {
+            const canvas = this.getCurrentVisualizationCanvas();
+            if (!canvas) {
                 this.showToast('Generate some visualizations first, then export them', 'info');
+                return;
             }
+            this.runExport(event.currentTarget, () => EEGExport.exportHighResPNG(canvas, `${canvas.id}_highres.png`, dpiMultiplier), 'High-resolution PNG download started');
         });
 
 
-        document.getElementById('export-matlab-json').addEventListener('click', () => {
-            if (this.state.eegData) {
-                EEGExport.exportMATLABJSON(this.state.eegData, this.state.filteredData, this.state.analysisResults);
-                this.showToast('MATLAB-compatible JSON downloaded', 'success');
+        document.getElementById('export-matlab-json').addEventListener('click', event => {
+            if (!this.state.eegData) return;
+            const options = this.getExportOptions();
+            this.runExport(event.currentTarget, () => EEGExport.exportMATLABJSON(this.state.eegData, this.state.filteredData, this.state.analysisResults, options), 'MATLAB-compatible JSON download started');
+        });
+
+        document.getElementById('export-session-json').addEventListener('click', event => {
+            if (!this.state.eegData) return;
+            this.runExport(event.currentTarget, () => EEGExport.exportSessionManifest(this.state.eegData, this.state), 'Session manifest download started');
+        });
+
+        document.getElementById('export-annotations-csv').addEventListener('click', event => {
+            if (!this.state.eegData) return;
+            if (this.state.annotations.length === 0) {
+                this.showToast('Add at least one recording note before exporting annotations', 'info');
+                return;
             }
+            this.runExport(event.currentTarget, () => EEGExport.exportAnnotationsCSV(this.state.eegData, this.state.annotations), 'Annotations CSV download started');
+        });
+
+        document.getElementById('export-bids-events').addEventListener('click', event => {
+            if (!this.state.eegData || this.state.annotations.length === 0) {
+                this.showToast('Add at least one point or range annotation before exporting BIDS events', 'info');
+                return;
+            }
+            this.runExport(event.currentTarget, () => EEGExport.exportBIDSEventsTSV(this.state.eegData, this.state.annotations), 'BIDS events TSV download started');
         });
     },
 
 
 
-    async loadFile(file) {
+    setImportProgress(value, label) {
         const progress = document.getElementById('upload-progress');
         const progressBar = document.getElementById('upload-progress-bar');
-        const progressText = document.getElementById('upload-progress-text');
-
         progress.classList.add('active');
-        progressBar.classList.add('indeterminate');
-        progressText.textContent = 'Reading your file';
+        progressBar.classList.remove('indeterminate');
+        progressBar.style.setProperty('--progress', `${Math.max(0, Math.min(100, value))}%`);
+        progressBar.setAttribute('aria-valuenow', String(Math.round(value)));
+        document.getElementById('upload-progress-text').textContent = label;
+    },
+
+    resetImportProgress() {
+        const progress = document.getElementById('upload-progress');
+        const progressBar = document.getElementById('upload-progress-bar');
+        progress.classList.remove('active');
+        progressBar.classList.remove('indeterminate');
+        progressBar.style.setProperty('--progress', '0%');
+        progressBar.setAttribute('aria-valuenow', '0');
+    },
+
+    async loadFile(file) {
+        this.setImportProgress(12, 'Reading your file');
+        await new Promise(requestAnimationFrame);
 
         try {
             const eegData = await EEGParsers.parseFile(file);
-            progressText.textContent = 'Processing signal data';
-
-            await new Promise(r => setTimeout(r, 400));
+            this.setImportProgress(78, 'Validating channels and metadata');
+            await new Promise(requestAnimationFrame);
 
             this.state.eegData = eegData;
             this.state.filteredData = null;
             this.state.analysisResults = {};
+            this.state.annotations = [];
+            this.setImportProgress(100, 'Recording ready');
             this.initializeDashboard();
 
             this.showToast(`Loaded ${eegData.channelLabels.length} channels from ${file.name}`, 'success');
         } catch (err) {
             this.showToast(`There was an issue reading this file, ${err.message}`, 'error');
-            progress.classList.remove('active');
-            progressBar.classList.remove('indeterminate');
+            this.resetImportProgress();
         }
     },
 
     async loadSampleData() {
-        const progress = document.getElementById('upload-progress');
-        const progressBar = document.getElementById('upload-progress-bar');
-        const progressText = document.getElementById('upload-progress-text');
-
-        progress.classList.add('active');
-        progressBar.classList.add('indeterminate');
-        progressText.textContent = 'Loading sample EEG data (chb02_16.edf)';
+        this.setImportProgress(10, 'Loading sample EEG data (chb02_16.edf)');
+        await new Promise(requestAnimationFrame);
 
         try {
             const response = await fetch('chb02_16.edf');
             if (!response.ok) throw new Error('Could not fetch sample file');
             const buffer = await response.arrayBuffer();
-            progressText.textContent = 'Parsing EDF data';
-
-            await new Promise(r => setTimeout(r, 200));
+            this.setImportProgress(62, 'Parsing EDF records');
+            await new Promise(requestAnimationFrame);
 
             const eegData = EEGParsers.parseEDF(buffer, 'chb02_16.edf');
             this.state.eegData = eegData;
             this.state.filteredData = null;
             this.state.analysisResults = {};
+            this.state.annotations = [];
+            this.setImportProgress(100, 'Recording ready');
             this.initializeDashboard();
 
             this.showToast(`Sample data loaded: ${eegData.channelLabels.length} channels from CHB-MIT database`, 'success');
         } catch (err) {
             this.showToast(`Could not load sample data: ${err.message}`, 'error');
-            progress.classList.remove('active');
-            progressBar.classList.remove('indeterminate');
+            this.resetImportProgress();
         }
     },
 
@@ -506,6 +845,11 @@ const App = {
     initializeDashboard() {
         const data = this.state.eegData;
         this.state.isLoaded = true;
+        this.state.viewerCursorTime = null;
+        this.state.viewerSelection = null;
+        this.state.viewerHover = null;
+        this.state.viewerDragStart = null;
+        window.scrollTo(0, 0);
 
         // all channels default
         this.state.selectedChannels = Array.from({ length: data.channelLabels.length }, (_, i) => i);
@@ -514,6 +858,7 @@ const App = {
         document.getElementById('file-badge').classList.add('visible');
         document.getElementById('new-file-btn').classList.add('visible');
         document.getElementById('main-nav').classList.add('visible');
+        document.getElementById('workspace-status').classList.add('visible');
 
         document.getElementById('info-channels').textContent = data.channelLabels.length;
         document.getElementById('info-srate').textContent = data.sampleRate + ' Hz';
@@ -522,6 +867,7 @@ const App = {
         document.getElementById('info-format').textContent = data.format;
 
         this.buildChannelList();
+        this.renderAnnotations();
 
         this.populateChannelDropdown('timefreq-channel', data.channelLabels);
 
@@ -542,14 +888,17 @@ const App = {
         document.getElementById('export-end-time').max = data.duration;
         document.getElementById('export-end-time').value = Math.min(10, data.duration).toFixed(1);
         document.getElementById('export-start-time').max = data.duration;
+        document.getElementById('export-start-time').value = '0';
+        document.getElementById('export-channel-scope').value = 'selected';
+        document.getElementById('export-signal-source').value = 'current';
+        this.updateExportEstimate();
 
         document.getElementById('upload-section').classList.add('hidden');
         document.getElementById('dashboard').classList.add('visible');
 
         document.getElementById('mobile-bottom-nav').classList.add('visible');
 
-        document.getElementById('upload-progress').classList.remove('active');
-        document.getElementById('upload-progress-bar').classList.remove('indeterminate');
+        this.resetImportProgress();
 
         this.switchTab('viewer');
 
@@ -565,6 +914,7 @@ const App = {
         this.state.eegData.channelLabels.forEach((label, idx) => {
             const item = document.createElement('label');
             item.className = 'channel-item';
+            item.dataset.channelLabel = label.toLowerCase();
 
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
@@ -579,6 +929,7 @@ const App = {
                 } else {
                     this.state.selectedChannels = this.state.selectedChannels.filter(i => i !== idx);
                 }
+                this.updateChannelSelectionCount();
                 this.refreshSignalViewer();
             });
 
@@ -595,6 +946,8 @@ const App = {
             item.appendChild(nameSpan);
             container.appendChild(item);
         });
+        document.getElementById('channel-search').value = '';
+        this.updateChannelSelectionCount();
     },
 
     updateChannelCheckboxes() {
@@ -603,6 +956,126 @@ const App = {
             const idx = parseInt(cb.dataset.channelIdx);
             cb.checked = this.state.selectedChannels.includes(idx);
         });
+        this.updateChannelSelectionCount();
+    },
+
+    updateChannelSelectionCount() {
+        const total = this.state.eegData?.channelLabels.length || 0;
+        const selected = this.state.selectedChannels.length;
+        const count = document.getElementById('channel-selection-count');
+        if (count) count.textContent = `${selected} / ${total}`;
+        const status = document.getElementById('status-channels');
+        if (status) status.textContent = `${selected} selected`;
+    },
+
+    updateWorkspaceStatus() {
+        if (!this.state.eegData) return;
+        const montage = document.getElementById('montage-select').value;
+        document.getElementById('status-source').textContent = this.state.eegData.filename;
+        document.getElementById('status-processing').textContent = this.state.filteredData ? 'Filtered' : 'Raw';
+        document.getElementById('status-montage').textContent = montage === 'average' ? 'Average reference' : montage[0].toUpperCase() + montage.slice(1);
+        document.getElementById('status-time').textContent = `${this.state.timeOffset.toFixed(1)}–${Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow).toFixed(1)} s`;
+        this.updateChannelSelectionCount();
+    },
+
+    reportExport(success, successMessage, errorMessage = 'The download could not be prepared') {
+        if (success) this.showToast(successMessage, 'success');
+        else this.showToast(errorMessage, 'error');
+    },
+
+    getExportOptions(overrides = {}) {
+        if (!this.state.eegData) return overrides;
+        const channelScope = overrides.channelScope || document.getElementById('export-channel-scope').value;
+        const source = document.getElementById('export-signal-source').value;
+        const channelIndices = channelScope === 'all'
+            ? Array.from({ length: this.state.eegData.channelLabels.length }, (_, index) => index)
+            : this.state.selectedChannels.slice();
+        let data = this.state.eegData.channelData;
+        let sourceLabel = 'raw';
+        if ((source === 'current' || source === 'filtered') && this.state.filteredData) {
+            data = this.state.filteredData;
+            sourceLabel = 'filtered';
+        }
+        return {
+            channelIndices,
+            data,
+            sourceLabel,
+            startTime: parseFloat(document.getElementById('export-start-time').value),
+            endTime: parseFloat(document.getElementById('export-end-time').value),
+            decimals: parseInt(document.getElementById('export-precision').value, 10),
+            ...overrides
+        };
+    },
+
+    updateExportEstimate() {
+        if (!this.state.eegData) return;
+        const options = this.getExportOptions();
+        const output = document.getElementById('export-size-estimate');
+        const duration = options.endTime - options.startTime;
+        const filteredOption = document.querySelector('#export-signal-source option[value="filtered"]');
+        filteredOption.disabled = !this.state.filteredData;
+        document.getElementById('export-filtered-csv').disabled = !this.state.filteredData;
+
+        if (!Number.isFinite(duration) || duration <= 0 || options.channelIndices.length === 0) {
+            output.textContent = 'Choose at least one channel and a valid time range';
+            output.classList.add('error');
+            return;
+        }
+
+        output.classList.remove('error');
+        const csvBytes = EEGExport.estimateSignalExport(this.state.eegData, options, 'csv');
+        const jsonBytes = EEGExport.estimateSignalExport(this.state.eegData, options, 'json');
+        output.textContent = `Estimated CSV ${this.formatBytes(csvBytes)} · JSON ${this.formatBytes(jsonBytes)} · ${options.channelIndices.length} channels · ${duration.toFixed(2)} s`;
+    },
+
+    formatBytes(bytes) {
+        if (bytes < 1024) return `${Math.round(bytes)} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    },
+
+    async runExport(button, producer, successMessage, errorMessage = 'The download could not be prepared') {
+        if (this.state.exportBusy) {
+            this.showToast('Another export is still being prepared', 'info');
+            return;
+        }
+        this.state.exportBusy = true;
+        const originalText = button?.textContent || '';
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Preparing…';
+            button.setAttribute('aria-busy', 'true');
+        }
+        await new Promise(requestAnimationFrame);
+        try {
+            const success = await producer();
+            this.reportExport(success, successMessage, errorMessage);
+        } catch (error) {
+            console.error('Export failed', error);
+            this.showToast(errorMessage, 'error');
+        } finally {
+            this.state.exportBusy = false;
+            if (button) {
+                button.disabled = false;
+                button.textContent = originalText;
+                button.removeAttribute('aria-busy');
+            }
+            this.updateExportEstimate();
+        }
+    },
+
+    getCurrentVisualizationCanvas() {
+        const canvasByTab = {
+            viewer: 'viewer-canvas',
+            spectrum: 'spectrum-chart',
+            bands: 'bands-bar-chart',
+            filter: 'filter-canvas',
+            timefreq: 'spectrogram-canvas',
+            stats: 'stats-rms-chart',
+            topo: 'topo-canvas'
+        };
+        const canvas = document.getElementById(canvasByTab[this.state.activeTab]);
+        return canvas && canvas.width > 0 && canvas.height > 0 ? canvas : null;
     },
 
     populateChannelDropdown(selectId, labels) {
@@ -682,12 +1155,21 @@ const App = {
             displayLabels = bipolar.channelLabels;
         }
 
+        const displayChannels = montage === 'bipolar'
+            ? Array.from({ length: displayData.length }, (_, i) => i)
+            : this.state.selectedChannels;
+        this.state.viewerDisplay = {
+            data: displayData,
+            labels: displayLabels,
+            channels: displayChannels
+        };
+
         EEGVisualization.drawSignals(canvas, {
             channelData: displayData,
             channelLabels: displayLabels,
             sampleRate: data.sampleRate
         }, {
-            selectedChannels: montage === 'bipolar' ? Array.from({ length: displayData.length }, (_, i) => i) : this.state.selectedChannels,
+            selectedChannels: displayChannels,
             amplitudeScale: this.state.amplitudeScale,
             timeWindow: this.state.timeWindow,
             timeOffset: this.state.timeOffset,
@@ -703,6 +1185,9 @@ const App = {
         if (timeRangeEl) {
             timeRangeEl.textContent = startT + 's to ' + endT + 's';
         }
+        this.refreshSignalOverlay();
+        this.updateWorkspaceStatus();
+        this.updateExportEstimate();
     },
 
     updateTimeOffsetRange() {
@@ -1189,14 +1674,26 @@ const App = {
         this.state.eegData = null;
         this.state.filteredData = null;
         this.state.analysisResults = {};
+        this.state.annotations = [];
+        this.state.viewerCursorTime = null;
+        this.state.viewerSelection = null;
+        this.state.viewerHover = null;
+        this.state.viewerDisplay = null;
+        this.state.viewerDragStart = null;
         this.state.isLoaded = false;
         this.state.selectedChannels = [];
+        window.scrollTo(0, 0);
 
         document.getElementById('upload-section').classList.remove('hidden');
         document.getElementById('dashboard').classList.remove('visible');
         document.getElementById('main-nav').classList.remove('visible');
         document.getElementById('file-badge').classList.remove('visible');
         document.getElementById('new-file-btn').classList.remove('visible');
+        document.getElementById('workspace-status').classList.remove('visible');
+        document.getElementById('annotation-form').hidden = true;
+        document.getElementById('viewer-selection-bar').hidden = true;
+        document.getElementById('viewer-hover-tooltip').hidden = true;
+        this.renderAnnotations();
 
         // hide mobile elements
         document.getElementById('mobile-bottom-nav').classList.remove('visible');
@@ -1232,7 +1729,12 @@ const App = {
         else if (type === 'error') icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
         else icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
 
-        toast.innerHTML = icon + '<span>' + message + '</span>';
+        const iconWrap = document.createElement('span');
+        iconWrap.className = 'toast-icon';
+        iconWrap.innerHTML = icon;
+        const messageWrap = document.createElement('span');
+        messageWrap.textContent = String(message);
+        toast.append(iconWrap, messageWrap);
         container.appendChild(toast);
 
         setTimeout(() => {
