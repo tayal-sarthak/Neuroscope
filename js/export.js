@@ -527,6 +527,7 @@ const EEGExport = {
             workspace: {
                 processingState: state.filteredData ? 'filtered' : 'raw',
                 selectedChannels: state.selectedChannels.map(index => ({ index, label: eegData.channelLabels[index] })),
+                badChannels: (state.badChannels || []).map(index => ({ index, label: eegData.channelLabels[index] })),
                 amplitudeScale: state.amplitudeScale,
                 timeWindow: state.timeWindow,
                 timeOffset: state.timeOffset,

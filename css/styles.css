@@ -597,6 +597,38 @@ body {
     transition: background var(--transition);
     font-size: 0.82rem;
 }
+.channel-select-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+    cursor: pointer;
+}
+.channel-bad-toggle {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    font: 700 0.72rem/1 var(--font);
+    cursor: pointer;
+}
+.channel-bad-toggle:hover {
+    background: #FCECEF;
+    color: var(--danger);
+}
+.channel-bad-toggle[aria-pressed="true"] {
+    background: #F9DDE3;
+    color: #A51D35;
+}
+.channel-item.is-bad .ch-name {
+    color: #A51D35;
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+}
 .channel-item:hover {
     background: var(--white);
 }

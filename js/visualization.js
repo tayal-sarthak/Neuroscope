@@ -37,6 +37,7 @@ const EEGVisualization = {
             channelData, channelLabels, sampleRate,
             selectedChannels = null,
             amplitudeScale = 1,
+            badChannels = [],
             tracePalette = 'channel',
             gridMode = 'standard',
             invertPolarity = false,
@@ -116,14 +117,16 @@ const EEGVisualization = {
                 : tracePalette === 'ink'
                     ? '#14233A'
                     : this.channelColors[chIdx % this.channelColors.length];
+            const isBad = badChannels.includes(chIdx);
 
-            ctx.fillStyle = '#64748B';
+            ctx.fillStyle = isBad ? '#B4233C' : '#64748B';
             ctx.font = '11px Inter, sans-serif';
             ctx.textAlign = 'right';
             ctx.fillText(channelLabels[chIdx], leftMargin - 8, centerY + 4);
 
-            ctx.strokeStyle = color;
+            ctx.strokeStyle = isBad ? '#C73E4D' : color;
             ctx.lineWidth = 1;
+            ctx.setLineDash(isBad ? [4, 3] : []);
             ctx.beginPath();
 
             let first = true;
@@ -141,6 +144,7 @@ const EEGVisualization = {
                 }
             }
             ctx.stroke();
+            ctx.setLineDash([]);
         }
 
         ctx.strokeStyle = '#E2E8F0';

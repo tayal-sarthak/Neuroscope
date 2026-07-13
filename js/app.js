@@ -4,6 +4,7 @@ const App = {
         eegData: null,
         filteredData: null,
         selectedChannels: [],
+        badChannels: [],
         activeTab: 'viewer',
         amplitudeScale: 1,
         tracePalette: 'channel',
@@ -819,6 +820,7 @@ const App = {
             this.state.filteredData = null;
             this.state.analysisResults = {};
             this.state.annotations = [];
+            this.state.badChannels = [];
             this.setImportProgress(100, 'Recording ready');
             this.initializeDashboard();
 
@@ -845,6 +847,7 @@ const App = {
             this.state.filteredData = null;
             this.state.analysisResults = {};
             this.state.annotations = [];
+            this.state.badChannels = [];
             this.setImportProgress(100, 'Recording ready');
             this.initializeDashboard();
 
@@ -927,9 +930,12 @@ const App = {
         container.innerHTML = '';
 
         this.state.eegData.channelLabels.forEach((label, idx) => {
-            const item = document.createElement('label');
+            const item = document.createElement('div');
             item.className = 'channel-item';
             item.dataset.channelLabel = label.toLowerCase();
+
+            const selectionLabel = document.createElement('label');
+            selectionLabel.className = 'channel-select-label';
 
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
@@ -956,9 +962,28 @@ const App = {
             nameSpan.className = 'ch-name';
             nameSpan.textContent = label;
 
-            item.appendChild(checkbox);
-            item.appendChild(colorDot);
-            item.appendChild(nameSpan);
+            selectionLabel.append(checkbox, colorDot, nameSpan);
+
+            const badButton = document.createElement('button');
+            badButton.type = 'button';
+            badButton.className = 'channel-bad-toggle';
+            badButton.textContent = '!';
+            badButton.title = `Mark ${label} as a bad channel`;
+            badButton.setAttribute('aria-label', `Mark ${label} as a bad channel`);
+            badButton.setAttribute('aria-pressed', 'false');
+            badButton.addEventListener('click', () => {
+                const isBad = this.state.badChannels.includes(idx);
+                this.state.badChannels = isBad
+                    ? this.state.badChannels.filter(index => index !== idx)
+                    : [...this.state.badChannels, idx].sort((a, b) => a - b);
+                item.classList.toggle('is-bad', !isBad);
+                badButton.setAttribute('aria-pressed', String(!isBad));
+                badButton.title = `${!isBad ? 'Restore' : 'Mark'} ${label} ${!isBad ? 'to usable' : 'as a bad channel'}`;
+                this.updateChannelSelectionCount();
+                this.refreshSignalViewer();
+            });
+
+            item.append(selectionLabel, badButton);
             container.appendChild(item);
         });
         document.getElementById('channel-search').value = '';
@@ -980,7 +1005,10 @@ const App = {
         const count = document.getElementById('channel-selection-count');
         if (count) count.textContent = `${selected} / ${total}`;
         const status = document.getElementById('status-channels');
-        if (status) status.textContent = `${selected} selected`;
+        if (status) {
+            const bad = this.state.badChannels.length;
+            status.textContent = bad ? `${selected} selected · ${bad} bad` : `${selected} selected`;
+        }
     },
 
     updateWorkspaceStatus() {
@@ -1186,6 +1214,7 @@ const App = {
         }, {
             selectedChannels: displayChannels,
             amplitudeScale: this.state.amplitudeScale,
+            badChannels: montage === 'monopolar' ? this.state.badChannels : [],
             tracePalette: this.state.tracePalette,
             gridMode: this.state.viewerGrid,
             invertPolarity: this.state.invertPolarity,
@@ -1700,6 +1729,7 @@ const App = {
         this.state.viewerDragStart = null;
         this.state.isLoaded = false;
         this.state.selectedChannels = [];
+        this.state.badChannels = [];
         window.scrollTo(0, 0);
 
         document.getElementById('upload-section').classList.remove('hidden');
