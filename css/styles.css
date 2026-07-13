@@ -2170,6 +2170,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
     gap: 4px;
 }
 .note-navigation .btn-tool {
+    width: auto;
+    min-width: 84px;
+    padding-inline: 9px;
     white-space: nowrap;
 }
 
