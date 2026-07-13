@@ -567,5 +567,48 @@ const EEGExport = {
             ].join('\t'));
         }
         return this.downloadFile(rows.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_events.tsv`, 'text/tab-separated-values;charset=utf-8');
+    },
+
+    exportBIDSChannelsTSV(eegData, badChannels = []) {
+        const bad = new Set(badChannels);
+        const rows = ['name\ttype\tunits\tstatus\tstatus_description'];
+        eegData.channelLabels.forEach((label, index) => {
+            const isBad = bad.has(index);
+            rows.push([
+                this._tsvCell(label),
+                'EEG',
+                'uV',
+                isBad ? 'bad' : 'good',
+                isBad ? 'Marked bad during manual NeuroScope review' : 'n/a'
+            ].join('\t'));
+        });
+        return this.downloadFile(rows.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_channels.tsv`, 'text/tab-separated-values;charset=utf-8');
+    },
+
+    exportQualityCSV(eegData, qualityResults) {
+        const rows = ['Channel,Start_seconds,End_seconds,Peak_to_peak_uV,Flat_transition_percent,Repeated_extreme_percent,Review_flags'];
+        for (const result of qualityResults) {
+            rows.push([
+                this._csvCell(result.label),
+                Number(result.startTime || 0).toFixed(3),
+                Number(result.endTime || 0).toFixed(3),
+                Number(result.peakToPeak || 0).toFixed(4),
+                (Number(result.flatRatio || 0) * 100).toFixed(4),
+                (Number(result.repeatedExtremeRatio || 0) * 100).toFixed(4),
+                this._csvCell(result.flags?.join('|') || '')
+            ].join(','));
+        }
+        return this.downloadFile(rows.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_quality_review.csv`, 'text/csv;charset=utf-8');
+    },
+
+    exportAnnotationsJSON(eegData, annotations) {
+        const output = {
+            schemaVersion: 1,
+            recording: eegData.filename,
+            duration: eegData.duration,
+            exportedAt: new Date().toISOString(),
+            annotations
+        };
+        return this.downloadFile(JSON.stringify(output, null, 2), `${this._safeBaseName(eegData.filename)}_annotations.json`, 'application/json');
     }
 };

@@ -2745,6 +2745,9 @@ kbd {
     display: flex;
     gap: 6px;
 }
+.export-card-actions-stack {
+    flex-direction: column;
+}
 .btn-export-secondary {
     background: #FFFFFF;
     border: 1px solid var(--border);

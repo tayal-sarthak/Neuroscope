@@ -988,6 +988,28 @@ const App = {
             }
             this.runExport(event.currentTarget, () => EEGExport.exportBIDSEventsTSV(this.state.eegData, this.state.annotations), 'BIDS events TSV download started');
         });
+
+        document.getElementById('export-bids-channels').addEventListener('click', event => {
+            if (!this.state.eegData) return;
+            this.runExport(event.currentTarget, () => EEGExport.exportBIDSChannelsTSV(this.state.eegData, this.state.badChannels), 'BIDS channels TSV download started');
+        });
+
+        document.getElementById('export-quality-csv').addEventListener('click', event => {
+            const quality = this.state.analysisResults.quality;
+            if (!quality?.length) {
+                this.showToast('Run a signal quality review before exporting its metrics', 'info');
+                return;
+            }
+            this.runExport(event.currentTarget, () => EEGExport.exportQualityCSV(this.state.eegData, quality), 'Quality review CSV download started');
+        });
+
+        document.getElementById('export-annotations-json').addEventListener('click', event => {
+            if (!this.state.eegData || !this.state.annotations.length) {
+                this.showToast('Add or import at least one recording note first', 'info');
+                return;
+            }
+            this.runExport(event.currentTarget, () => EEGExport.exportAnnotationsJSON(this.state.eegData, this.state.annotations), 'Annotations JSON download started');
+        });
     },
 
 
@@ -1909,6 +1931,8 @@ const App = {
         const results = this.state.eegData.channelLabels.map((label, index) => ({
             index,
             label,
+            startTime: this.state.timeOffset,
+            endTime: Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow),
             ...EEGAnalysis.computeSignalQuality(data[index].subarray(start, end))
         }));
         this.state.analysisResults.quality = results;
