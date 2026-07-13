@@ -1,5 +1,38 @@
 //  edf bdf csv tsv json txt gdf vhdr
 const EEGParsers = {
+    parseDelimitedRows(text, delimiter = ',') {
+        const rows = [];
+        let row = [];
+        let cell = '';
+        let quoted = false;
+        const source = String(text || '').replace(/^\uFEFF/, '');
+        for (let i = 0; i < source.length; i++) {
+            const char = source[i];
+            if (char === '"') {
+                if (quoted && source[i + 1] === '"') {
+                    cell += '"';
+                    i++;
+                } else {
+                    quoted = !quoted;
+                }
+            } else if (char === delimiter && !quoted) {
+                row.push(cell.trim());
+                cell = '';
+            } else if ((char === '\n' || char === '\r') && !quoted) {
+                if (char === '\r' && source[i + 1] === '\n') i++;
+                row.push(cell.trim());
+                if (row.some(value => value !== '')) rows.push(row);
+                row = [];
+                cell = '';
+            } else {
+                cell += char;
+            }
+        }
+        row.push(cell.trim());
+        if (row.some(value => value !== '')) rows.push(row);
+        return rows;
+    },
+
 
     // detect file type dispatch parser
     async parseFile(file) {

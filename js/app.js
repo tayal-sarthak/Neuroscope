@@ -391,6 +391,13 @@ const App = {
 
     bindAnnotationControls() {
         const form = document.getElementById('annotation-form');
+        const importInput = document.getElementById('annotation-import-input');
+        document.getElementById('annotation-import-btn').addEventListener('click', () => importInput.click());
+        importInput.addEventListener('change', async () => {
+            const file = importInput.files?.[0];
+            if (file) await this.importAnnotations(file);
+            importInput.value = '';
+        });
         document.getElementById('add-annotation-btn').addEventListener('click', () => this.openAnnotationForm());
         document.getElementById('annotation-cancel').addEventListener('click', () => {
             form.hidden = true;
@@ -459,6 +466,67 @@ const App = {
         document.getElementById('annotation-duration').value = duration.toFixed(3);
         form.hidden = false;
         document.getElementById('annotation-note').focus();
+    },
+
+    async importAnnotations(file) {
+        if (!this.state.eegData) return;
+        try {
+            const text = await file.text();
+            const delimiter = file.name.toLowerCase().endsWith('.tsv') || text.split(/\r?\n/, 1)[0].includes('\t') ? '\t' : ',';
+            const rows = EEGParsers.parseDelimitedRows(text, delimiter);
+            if (rows.length < 2) throw new Error('The file does not contain annotation rows');
+            const headers = rows[0].map(value => value.trim().toLowerCase());
+            const column = (...names) => names.map(name => headers.indexOf(name)).find(index => index >= 0) ?? -1;
+            const onsetIndex = column('onset', 'onset_seconds', 'time', 'time_seconds');
+            if (onsetIndex < 0) throw new Error('An onset column is required');
+            const durationIndex = column('duration', 'duration_seconds');
+            const typeIndex = column('trial_type', 'type');
+            const channelsIndex = column('channel', 'channels');
+            const noteIndex = column('description', 'note');
+            const createdIndex = column('created_at');
+            const existing = new Set(this.state.annotations.map(item => `${item.onset}|${item.duration}|${item.type}|${item.note}`));
+            let imported = 0;
+            let skipped = 0;
+
+            for (const row of rows.slice(1)) {
+                const onset = Number(row[onsetIndex]);
+                const duration = durationIndex >= 0 ? Number(row[durationIndex] || 0) : 0;
+                const typeValue = typeIndex >= 0 ? row[typeIndex] : 'observation';
+                const type = ['observation', 'bad_artifact', 'clinical_event', 'signal_quality'].includes(typeValue) ? typeValue : 'observation';
+                const note = noteIndex >= 0 ? row[noteIndex].trim() : typeValue.replace(/_/g, ' ');
+                if (!Number.isFinite(onset) || !Number.isFinite(duration) || onset < 0 || duration < 0 || onset + duration > this.state.eegData.duration || !note) {
+                    skipped++;
+                    continue;
+                }
+                const channelsValue = channelsIndex >= 0 ? row[channelsIndex] : '';
+                const channels = channelsValue && channelsValue.toLowerCase() !== 'n/a'
+                    ? channelsValue.split('|').map(value => value.trim()).filter(Boolean)
+                    : [];
+                const signature = `${onset}|${duration}|${type}|${note}`;
+                if (existing.has(signature)) {
+                    skipped++;
+                    continue;
+                }
+                existing.add(signature);
+                this.state.annotations.push({
+                    id: window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    onset,
+                    duration,
+                    type,
+                    channels,
+                    note,
+                    createdAt: createdIndex >= 0 && row[createdIndex] ? row[createdIndex] : new Date().toISOString(),
+                    importedFrom: file.name
+                });
+                imported++;
+            }
+
+            this.state.annotations.sort((a, b) => a.onset - b.onset);
+            this.renderAnnotations();
+            this.showToast(`Imported ${imported} notes${skipped ? ` · skipped ${skipped}` : ''}`, imported ? 'success' : 'info');
+        } catch (error) {
+            this.showToast(`Could not import notes: ${error.message}`, 'error');
+        }
     },
 
     editAnnotation(annotation) {
