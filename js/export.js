@@ -531,7 +531,10 @@ const EEGExport = {
                 amplitudeScale: state.amplitudeScale,
                 timeWindow: state.timeWindow,
                 timeOffset: state.timeOffset,
-                montage: document.getElementById('montage-select')?.value || 'monopolar'
+                montage: document.getElementById('montage-select')?.value || 'monopolar',
+                tracePalette: state.tracePalette || 'channel',
+                viewerGrid: state.viewerGrid || 'standard',
+                invertPolarity: Boolean(state.invertPolarity)
             },
             annotations: state.annotations || [],
             analysesAvailable: Object.keys(state.analysisResults || {})

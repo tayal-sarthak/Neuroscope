@@ -971,6 +971,13 @@ const App = {
             if (!this.state.eegData) return;
             this.runExport(event.currentTarget, () => EEGExport.exportSessionManifest(this.state.eegData, this.state), 'Session manifest download started');
         });
+        const sessionInput = document.getElementById('import-session-input');
+        document.getElementById('import-session-json').addEventListener('click', () => sessionInput.click());
+        sessionInput.addEventListener('change', async () => {
+            const file = sessionInput.files?.[0];
+            if (file) await this.importSessionManifest(file);
+            sessionInput.value = '';
+        });
 
         document.getElementById('export-annotations-csv').addEventListener('click', event => {
             if (!this.state.eegData) return;
@@ -1022,6 +1029,68 @@ const App = {
         progressBar.style.setProperty('--progress', `${Math.max(0, Math.min(100, value))}%`);
         progressBar.setAttribute('aria-valuenow', String(Math.round(value)));
         document.getElementById('upload-progress-text').textContent = label;
+    },
+
+    async importSessionManifest(file) {
+        if (!this.state.eegData) return;
+        try {
+            const manifest = JSON.parse(await file.text());
+            if (!manifest?.recording || !manifest?.workspace || !Array.isArray(manifest.annotations)) {
+                throw new Error('This is not a NeuroScope review manifest');
+            }
+            const recording = manifest.recording;
+            const current = this.state.eegData;
+            const labelsMatch = Array.isArray(recording.channelLabels)
+                && recording.channelLabels.length === current.channelLabels.length
+                && recording.channelLabels.every((label, index) => label === current.channelLabels[index]);
+            if (!labelsMatch || Number(recording.sampleRate) !== Number(current.sampleRate)) {
+                throw new Error('Channel labels or sample rate do not match the loaded recording');
+            }
+
+            const workspace = manifest.workspace;
+            const selected = (workspace.selectedChannels || []).map(item => Number(item.index)).filter(index => Number.isInteger(index) && index >= 0 && index < current.channelLabels.length);
+            const bad = (workspace.badChannels || []).map(item => Number(item.index)).filter(index => Number.isInteger(index) && index >= 0 && index < current.channelLabels.length);
+            this.state.selectedChannels = selected.length ? Array.from(new Set(selected)).sort((a, b) => a - b) : [];
+            this.state.badChannels = Array.from(new Set(bad)).sort((a, b) => a - b);
+            this.state.annotations = manifest.annotations.filter(annotation => {
+                const onset = Number(annotation.onset);
+                const duration = Number(annotation.duration || 0);
+                return Number.isFinite(onset) && Number.isFinite(duration) && onset >= 0 && duration >= 0 && onset + duration <= current.duration;
+            }).map(annotation => ({
+                ...annotation,
+                id: annotation.id || window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                onset: Number(annotation.onset),
+                duration: Number(annotation.duration || 0)
+            })).sort((a, b) => a.onset - b.onset);
+
+            const amplitude = Math.max(0.1, Math.min(10, Number(workspace.amplitudeScale) || 1));
+            const windowSize = Math.max(0.5, Math.min(current.duration, Number(workspace.timeWindow) || 10));
+            this.state.amplitudeScale = amplitude;
+            this.state.timeWindow = windowSize;
+            this.state.tracePalette = ['channel', 'blue', 'ink'].includes(workspace.tracePalette) ? workspace.tracePalette : 'channel';
+            this.state.viewerGrid = ['standard', 'fine', 'off'].includes(workspace.viewerGrid) ? workspace.viewerGrid : 'standard';
+            this.state.invertPolarity = Boolean(workspace.invertPolarity);
+            document.getElementById('amplitude-scale').value = amplitude;
+            document.getElementById('amplitude-value').textContent = `${amplitude.toFixed(1)}x`;
+            document.getElementById('time-window').value = windowSize;
+            document.getElementById('time-window-value').textContent = `${windowSize}s`;
+            document.getElementById('trace-palette').value = this.state.tracePalette;
+            document.getElementById('viewer-grid').value = this.state.viewerGrid;
+            document.getElementById('invert-polarity').checked = this.state.invertPolarity;
+            document.getElementById('montage-select').value = ['monopolar', 'bipolar', 'average'].includes(workspace.montage) ? workspace.montage : 'monopolar';
+            this.updateTimeOffsetRange();
+            this.setTimeOffset(Number(workspace.timeOffset) || 0);
+            this.updateChannelCheckboxes();
+            this.syncBadChannelUI();
+            this.renderAnnotations();
+            this.refreshSignalViewer();
+            const filteredNotice = workspace.processingState === 'filtered'
+                ? ' Filtered samples are not stored in review manifests, so the current raw signal remains active.'
+                : '';
+            this.showToast(`Review restored: ${this.state.annotations.length} notes and ${this.state.badChannels.length} bad channels.${filteredNotice}`, 'success');
+        } catch (error) {
+            this.showToast(`Could not restore review: ${error.message}`, 'error');
+        }
     },
 
     resetImportProgress() {

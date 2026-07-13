@@ -841,8 +841,12 @@
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5M8 17h3"/></svg>
                         </div>
                         <h3>Session Manifest</h3>
-                        <p>Export provenance, view settings, processing state, notes, and analysis availability without duplicating raw samples.</p>
-                        <button class="btn-export" id="export-session-json">Download JSON</button>
+                        <p>Save or restore review settings, channel status, and notes without duplicating raw signal samples.</p>
+                        <input type="file" id="import-session-input" accept=".json,application/json" hidden>
+                        <div class="export-card-actions">
+                            <button class="btn-export" id="export-session-json">Save Review JSON</button>
+                            <button class="btn-export btn-export-secondary" id="import-session-json">Restore Review JSON</button>
+                        </div>
                     </div>
                     <div class="export-card">
                         <div class="export-icon">
