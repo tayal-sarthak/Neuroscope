@@ -1972,6 +1972,37 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .channel-item:hover {
     background: #FFFFFF;
 }
+.display-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+}
+.display-options label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+.display-options .toolbar-select {
+    width: 100%;
+    min-width: 0;
+}
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+.toggle-row input {
+    accent-color: var(--primary);
+}
 .main-content {
     padding: 22px 24px 36px;
 }

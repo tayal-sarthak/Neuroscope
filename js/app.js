@@ -6,6 +6,9 @@ const App = {
         selectedChannels: [],
         activeTab: 'viewer',
         amplitudeScale: 1,
+        tracePalette: 'channel',
+        viewerGrid: 'standard',
+        invertPolarity: false,
         timeWindow: 10,
         timeOffset: 0,
         analysisResults: {},
@@ -160,6 +163,19 @@ const App = {
 
 
         document.getElementById('time-precision').addEventListener('change', () => {
+            this.refreshSignalViewer();
+        });
+
+        document.getElementById('trace-palette').addEventListener('change', (event) => {
+            this.state.tracePalette = event.target.value;
+            this.refreshSignalViewer();
+        });
+        document.getElementById('viewer-grid').addEventListener('change', (event) => {
+            this.state.viewerGrid = event.target.value;
+            this.refreshSignalViewer();
+        });
+        document.getElementById('invert-polarity').addEventListener('change', (event) => {
+            this.state.invertPolarity = event.target.checked;
             this.refreshSignalViewer();
         });
     },
@@ -1170,6 +1186,9 @@ const App = {
         }, {
             selectedChannels: displayChannels,
             amplitudeScale: this.state.amplitudeScale,
+            tracePalette: this.state.tracePalette,
+            gridMode: this.state.viewerGrid,
+            invertPolarity: this.state.invertPolarity,
             timeWindow: this.state.timeWindow,
             timeOffset: this.state.timeOffset,
             timePrecision: parseInt(document.getElementById('time-precision').value) || 1,

@@ -37,6 +37,9 @@ const EEGVisualization = {
             channelData, channelLabels, sampleRate,
             selectedChannels = null,
             amplitudeScale = 1,
+            tracePalette = 'channel',
+            gridMode = 'standard',
+            invertPolarity = false,
             timeWindow = 10,
             timeOffset = 0,
             montage = 'monopolar'
@@ -65,18 +68,20 @@ const EEGVisualization = {
         const maxPoints = plotWidth * 2;
         const decimation = Math.max(1, Math.floor((endSample - startSample) / maxPoints));
 
-        ctx.strokeStyle = '#F1F5F9';
-        ctx.lineWidth = 1;
-
-        for (let i = 0; i <= numChannels; i++) {
-            const y = topMargin + i * channelHeight;
-            ctx.beginPath();
-            ctx.moveTo(leftMargin, y);
-            ctx.lineTo(width - rightMargin, y);
-            ctx.stroke();
+        if (gridMode !== 'off') {
+            ctx.strokeStyle = gridMode === 'fine' ? '#E8EEF5' : '#F0F3F7';
+            ctx.lineWidth = 1;
+            const subdivisions = gridMode === 'fine' ? 2 : 1;
+            for (let i = 0; i <= numChannels * subdivisions; i++) {
+                const y = topMargin + i * channelHeight / subdivisions;
+                ctx.beginPath();
+                ctx.moveTo(leftMargin, y);
+                ctx.lineTo(width - rightMargin, y);
+                ctx.stroke();
+            }
         }
 
-        const timeGridStep = this._niceTimeStep(timeWindow);
+        const timeGridStep = this._niceTimeStep(timeWindow) / (gridMode === 'fine' ? 2 : 1);
         const startTime = Math.ceil(timeOffset / timeGridStep) * timeGridStep;
         const timePrecision = options.timePrecision !== undefined ? options.timePrecision : 1;
 
@@ -88,10 +93,12 @@ const EEGVisualization = {
         for (let t = startTime; t <= timeOffset + timeWindow + timeGridStep * 0.01; t += timeGridStep) {
             const x = leftMargin + ((t - timeOffset) / timeWindow) * plotWidth;
             if (x < leftMargin - 5 || x > width - rightMargin + 5) continue;
-            ctx.beginPath();
-            ctx.moveTo(x, topMargin);
-            ctx.lineTo(x, height - bottomMargin);
-            ctx.stroke();
+            if (gridMode !== 'off') {
+                ctx.beginPath();
+                ctx.moveTo(x, topMargin);
+                ctx.lineTo(x, height - bottomMargin);
+                ctx.stroke();
+            }
 
             const labelText = this._formatTime(t, timePrecision);
             const textW = ctx.measureText(labelText).width;
@@ -104,7 +111,11 @@ const EEGVisualization = {
             const chIdx = channels[ch];
             const data = channelData[chIdx];
             const centerY = topMargin + (ch + 0.5) * channelHeight;
-            const color = this.channelColors[chIdx % this.channelColors.length];
+            const color = tracePalette === 'blue'
+                ? '#315AEF'
+                : tracePalette === 'ink'
+                    ? '#14233A'
+                    : this.channelColors[chIdx % this.channelColors.length];
 
             ctx.fillStyle = '#64748B';
             ctx.font = '11px Inter, sans-serif';
@@ -118,7 +129,8 @@ const EEGVisualization = {
             let first = true;
             for (let s = startSample; s < endSample; s += decimation) {
                 const x = leftMargin + ((s - startSample) / samplesInView) * plotWidth;
-                const y = centerY - (data[s] * amplitudeScale * channelHeight * 0.003);
+                const polarity = invertPolarity ? -1 : 1;
+                const y = centerY - (data[s] * polarity * amplitudeScale * channelHeight * 0.003);
                 const clampedY = Math.max(topMargin + ch * channelHeight + 2, Math.min(topMargin + (ch + 1) * channelHeight - 2, y));
 
                 if (first) {
