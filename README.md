@@ -54,15 +54,18 @@ The Signal Viewer is the core of NeuroScope, offering a powerful canvas-based di
 **Key Features**
 - Multi-channel simultaneous display with independent vertical scaling per channel
 - Real-time amplitude scaling (0.1x to 10x magnification)
-- Flexible time window control (1 to 30 seconds visible at once)
+- Flexible time window control from 0.5 seconds through the complete recording
 - Scroll through the entire recording with the position slider
+- Navigate long recordings from a compact full-duration overview with viewport and annotation markers
 - Pan horizontally with a trackpad or Shift + mouse wheel, or use the left and right arrow keys
 - Hover over the waveform for exact time, channel, and amplitude readouts
 - Click to pin a time cursor or drag across the waveform to select a precise time range
 - Create point or duration annotations directly from the active cursor or selected range
+- Edit, filter, import, and step between notes with previous/next controls or N/P shortcuts
 - Export the current viewer range without re-entering start and end times
 - Channel selection and deselection with checkboxes in the sidebar
-- Color-coded traces for visual channel identification
+- Mark channels bad manually and carry that status into session and BIDS exports
+- Choose channel-color, signal-blue, or clinical-ink traces; standard, fine, or hidden grids; and normal or inverted polarity
 - Multiple montage views (monopolar, average reference, bipolar)
 - Automatic grid rendering with time markers and channel separators
 - HiDPI (Retina) display support for crisp rendering
@@ -105,7 +108,7 @@ Generate a time-frequency spectrogram using the Short-Time Fourier Transform. Ch
 
 ### Statistics
 
-Compute comprehensive statistical measures for every channel, including mean, standard deviation, variance, RMS amplitude, min, max, peak-to-peak, skewness, kurtosis, and zero crossing count. Results appear in a sortable table with RMS and variance bar charts. Download the statistics as a CSV file.
+Compute comprehensive statistical measures for every channel, including mean, standard deviation, variance, RMS amplitude, min, max, peak-to-peak, skewness, kurtosis, and zero crossing count. A separate visible-window quality review screens for possible flat signal, repeated extremes, and unusually large ranges while clearly labeling results as manual-review prompts rather than automatic rejection. Download statistics and quality metrics as CSV files.
 
 ### Topography
 
@@ -123,13 +126,16 @@ Download your processed data and visualizations in multiple formats.
 - **Statistics CSV**, all computed measures
 - **Annotations CSV**, point and duration observations with channel associations
 - **BIDS events TSV**, onset, duration, trial type, channel, and description fields
-- **Session manifest JSON**, recording provenance, processing state, selected channels, view settings, annotations, and available analyses without duplicating raw samples
+- **BIDS channels TSV**, EEG channel names, units, and manually reviewed good/bad status
+- **Quality review CSV**, visible-window screening metrics and review flags
+- **Annotations JSON**, a machine-readable note sidecar
+- **Restorable review JSON**, recording provenance, selected and bad channels, view settings, and annotations without duplicating raw samples
 
 The Export Center shows an estimated output size before a download begins and prevents multiple overlapping export jobs. The default scope is the visible ten-second window rather than the entire recording, which avoids unexpectedly generating files many times larger than the source EDF.
 
 ### Recording Notes
 
-Add point or duration-linked observations directly below the signal viewer. Notes can describe artifacts, clinical events, signal-quality concerns, or general observations and can apply to all channels or the currently selected channels. Selecting a note jumps the viewer back to that point in the recording, and notes are included in session, annotation CSV, and BIDS events exports.
+Add point or duration-linked observations directly below the signal viewer. Notes can describe artifacts, clinical events, signal-quality concerns, or general observations and can apply to all channels or the currently selected channels. Notes can be edited, filtered by type, imported from NeuroScope CSV or BIDS events TSV, and traversed from the viewer. They are included in review JSON, annotation CSV/JSON, and BIDS events exports.
 
 ## Signal Processing Details
 
