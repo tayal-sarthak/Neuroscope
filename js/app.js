@@ -15,6 +15,8 @@ const App = {
         analysisResults: {},
         filterPreviewData: null,
         annotations: [],
+        annotationFilter: 'all',
+        editingAnnotationId: null,
         viewerCursorTime: null,
         viewerSelection: null,
         viewerHover: null,
@@ -393,6 +395,12 @@ const App = {
         document.getElementById('annotation-cancel').addEventListener('click', () => {
             form.hidden = true;
             form.reset();
+            this.state.editingAnnotationId = null;
+            document.getElementById('annotation-submit').textContent = 'Save note';
+        });
+        document.getElementById('annotation-filter').addEventListener('change', (event) => {
+            this.state.annotationFilter = event.target.value;
+            this.renderAnnotations();
         });
         form.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -411,27 +419,39 @@ const App = {
                 ? this.state.selectedChannels.map(index => this.state.eegData.channelLabels[index])
                 : [];
 
-            this.state.annotations.push({
-                id: window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            const existing = this.state.annotations.find(item => item.id === this.state.editingAnnotationId);
+            const annotation = {
+                id: existing?.id || window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
                 onset,
                 duration,
                 type: document.getElementById('annotation-type').value,
                 channels,
                 note,
-                createdAt: new Date().toISOString()
-            });
+                createdAt: existing?.createdAt || new Date().toISOString(),
+                updatedAt: existing ? new Date().toISOString() : undefined
+            };
+            if (existing) {
+                this.state.annotations = this.state.annotations.map(item => item.id === existing.id ? annotation : item);
+            } else {
+                this.state.annotations.push(annotation);
+            }
             this.state.annotations.sort((a, b) => a.onset - b.onset);
+            const edited = Boolean(existing);
+            this.state.editingAnnotationId = null;
             form.hidden = true;
             form.reset();
             document.getElementById('annotation-duration').value = '0';
+            document.getElementById('annotation-submit').textContent = 'Save note';
             this.renderAnnotations();
-            this.showToast('Recording note saved', 'success');
+            this.showToast(edited ? 'Recording note updated' : 'Recording note saved', 'success');
         });
     },
 
     openAnnotationForm(range = null) {
         if (!this.state.eegData) return;
         const form = document.getElementById('annotation-form');
+        this.state.editingAnnotationId = null;
+        document.getElementById('annotation-submit').textContent = 'Save note';
         const selectedRange = range || this.state.viewerSelection;
         const onset = selectedRange?.start ?? this.state.viewerCursorTime ?? this.state.timeOffset;
         const duration = selectedRange ? Math.max(0, selectedRange.end - selectedRange.start) : 0;
@@ -441,22 +461,41 @@ const App = {
         document.getElementById('annotation-note').focus();
     },
 
+    editAnnotation(annotation) {
+        const form = document.getElementById('annotation-form');
+        this.state.editingAnnotationId = annotation.id;
+        document.getElementById('annotation-onset').value = annotation.onset.toFixed(3);
+        document.getElementById('annotation-duration').value = annotation.duration.toFixed(3);
+        document.getElementById('annotation-type').value = annotation.type;
+        document.getElementById('annotation-channels').value = annotation.channels?.length ? 'selected' : '';
+        document.getElementById('annotation-note').value = annotation.note;
+        document.getElementById('annotation-submit').textContent = 'Update note';
+        form.hidden = false;
+        form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        document.getElementById('annotation-note').focus();
+    },
+
     renderAnnotations() {
         const list = document.getElementById('annotation-list');
         const count = this.state.annotations.length;
-        document.getElementById('annotation-count').textContent = `${count} ${count === 1 ? 'note' : 'notes'}`;
+        const visibleAnnotations = this.state.annotationFilter === 'all'
+            ? this.state.annotations
+            : this.state.annotations.filter(item => item.type === this.state.annotationFilter);
+        document.getElementById('annotation-count').textContent = visibleAnnotations.length === count
+            ? `${count} ${count === 1 ? 'note' : 'notes'}`
+            : `${visibleAnnotations.length} of ${count}`;
         list.replaceChildren();
 
-        if (count === 0) {
+        if (visibleAnnotations.length === 0) {
             const empty = document.createElement('p');
             empty.className = 'annotation-empty';
-            empty.textContent = 'No notes yet. Add one from the signal toolbar.';
+            empty.textContent = count ? 'No notes match this filter.' : 'No notes yet. Add one from the signal toolbar.';
             list.appendChild(empty);
             this.refreshSignalOverlay();
             return;
         }
 
-        for (const annotation of this.state.annotations) {
+        for (const annotation of visibleAnnotations) {
             const row = document.createElement('article');
             row.className = 'annotation-row';
 
@@ -481,6 +520,14 @@ const App = {
             note.textContent = annotation.note;
             content.append(meta, note);
 
+            const actions = document.createElement('div');
+            actions.className = 'annotation-row-actions';
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'annotation-edit';
+            edit.textContent = 'Edit';
+            edit.addEventListener('click', () => this.editAnnotation(annotation));
+
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.className = 'annotation-remove';
@@ -490,7 +537,8 @@ const App = {
                 this.renderAnnotations();
             });
 
-            row.append(jump, content, remove);
+            actions.append(edit, remove);
+            row.append(jump, content, actions);
             list.appendChild(row);
         }
         this.refreshSignalOverlay();
@@ -876,6 +924,8 @@ const App = {
         this.state.viewerSelection = null;
         this.state.viewerHover = null;
         this.state.viewerDragStart = null;
+        this.state.annotationFilter = 'all';
+        this.state.editingAnnotationId = null;
         window.scrollTo(0, 0);
 
         // all channels default
@@ -894,6 +944,7 @@ const App = {
         document.getElementById('info-format').textContent = data.format;
 
         this.buildChannelList();
+        document.getElementById('annotation-filter').value = 'all';
         this.renderAnnotations();
 
         this.populateChannelDropdown('timefreq-channel', data.channelLabels);
@@ -1784,6 +1835,8 @@ const App = {
         this.state.filteredData = null;
         this.state.analysisResults = {};
         this.state.annotations = [];
+        this.state.annotationFilter = 'all';
+        this.state.editingAnnotationId = null;
         this.state.viewerCursorTime = null;
         this.state.viewerSelection = null;
         this.state.viewerHover = null;

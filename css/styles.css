@@ -2239,6 +2239,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-weight: 600;
     white-space: nowrap;
 }
+.annotation-header-tools,
+.annotation-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.annotation-filter {
+    min-height: 30px;
+    padding-block: 5px;
+    font-size: 0.72rem;
+}
 .annotation-form {
     display: flex;
     align-items: end;
@@ -2300,6 +2311,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-top: 1px solid var(--border-light);
 }
 .annotation-time,
+.annotation-edit,
 .annotation-remove {
     border: 0;
     background: transparent;
@@ -2327,6 +2339,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 .annotation-remove {
     color: var(--danger);
+}
+.annotation-edit {
+    color: var(--primary);
 }
 
 .export-grid {
@@ -2413,7 +2428,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     .annotation-row {
         grid-template-columns: 88px minmax(0, 1fr);
     }
-    .annotation-remove {
+    .annotation-row-actions {
         grid-column: 2;
         justify-self: start;
     }

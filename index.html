@@ -355,7 +355,17 @@
                             <h3 id="annotation-heading">Recording notes</h3>
                             <p>Time-linked observations travel with session and annotation exports.</p>
                         </div>
-                        <span id="annotation-count" class="annotation-count">0 notes</span>
+                        <div class="annotation-header-tools">
+                            <label for="annotation-filter" class="sr-only">Filter recording notes</label>
+                            <select id="annotation-filter" class="toolbar-select annotation-filter">
+                                <option value="all">All note types</option>
+                                <option value="observation">Observations</option>
+                                <option value="bad_artifact">Artifacts</option>
+                                <option value="clinical_event">Clinical events</option>
+                                <option value="signal_quality">Signal quality</option>
+                            </select>
+                            <span id="annotation-count" class="annotation-count">0 notes</span>
+                        </div>
                     </div>
                     <form id="annotation-form" class="annotation-form" hidden>
                         <label>Onset (s)<input type="number" id="annotation-onset" min="0" step="0.001" required></label>
@@ -377,7 +387,7 @@
                         <label class="annotation-note-field">Note<input type="text" id="annotation-note" maxlength="240" placeholder="Describe what you observed" required></label>
                         <div class="annotation-actions">
                             <button type="button" id="annotation-cancel" class="btn-ghost">Cancel</button>
-                            <button type="submit" class="btn-primary">Save note</button>
+                            <button type="submit" id="annotation-submit" class="btn-primary">Save note</button>
                         </div>
                     </form>
                     <div id="annotation-list" class="annotation-list">
