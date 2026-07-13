@@ -603,6 +603,23 @@
                     <button id="stats-compute" class="btn-primary">Compute Statistics</button>
                     <button id="stats-download-csv" class="btn-secondary">Download as CSV</button>
                 </div>
+                <section class="quality-review" aria-labelledby="quality-review-heading">
+                    <div class="quality-review-copy">
+                        <h3 id="quality-review-heading">Signal quality review</h3>
+                        <p>Screen the visible window for flat signal, repeated extremes, and unusually large peak-to-peak range. Results are review prompts, not automatic rejection or clinical conclusions.</p>
+                    </div>
+                    <div class="quality-review-actions">
+                        <button id="quality-scan" class="btn-secondary">Review visible window</button>
+                        <button id="quality-mark-flagged" class="btn-ghost" disabled>Mark flagged as bad</button>
+                    </div>
+                    <output id="quality-summary" class="quality-summary">No quality review run yet.</output>
+                    <div id="quality-table-wrap" class="quality-table-wrap" hidden>
+                        <table class="stats-table quality-table">
+                            <thead><tr><th>Channel</th><th>Peak-to-peak</th><th>Flat transitions</th><th>Repeated extremes</th><th>Review</th></tr></thead>
+                            <tbody id="quality-tbody"></tbody>
+                        </table>
+                    </div>
+                </section>
                 <div class="stats-table-wrap">
                     <table class="stats-table" id="stats-table">
                         <thead>

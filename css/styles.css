@@ -1173,6 +1173,64 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .stats-charts .chart-container {
     flex: 1;
 }
+.quality-review {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px 20px;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: var(--accent-bg);
+    border-radius: var(--radius-md);
+}
+.quality-review-copy h3 {
+    color: var(--text);
+    font-size: 0.9rem;
+}
+.quality-review-copy p {
+    max-width: 72ch;
+    margin-top: 3px;
+    color: #3D6268;
+    font-size: 0.75rem;
+}
+.quality-review-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.quality-summary,
+.quality-table-wrap {
+    grid-column: 1 / -1;
+}
+.quality-summary {
+    color: #315C63;
+    font-size: 0.74rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.quality-table-wrap {
+    overflow-x: auto;
+    background: #FFFFFF;
+    border-radius: var(--radius-sm);
+}
+.quality-table-wrap[hidden] {
+    display: none;
+}
+.quality-flagged td {
+    background: #FFF3F5;
+}
+.quality-flagged td:last-child {
+    color: #A51D35;
+    font-weight: 600;
+}
+@media (max-width: 768px) {
+    .quality-review {
+        grid-template-columns: 1fr;
+    }
+    .quality-review-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
 
 /* Topography */
 .topo-display {

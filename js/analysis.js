@@ -456,6 +456,33 @@ const EEGAnalysis = {
         };
     },
 
+    computeSignalQuality(signal) {
+        const stats = this.computeStatistics(signal);
+        if (!signal.length) {
+            return { ...stats, flatRatio: 1, repeatedExtremeRatio: 0, flags: ['empty signal'] };
+        }
+
+        const transitionThreshold = Math.max(0.01, (stats.std || 0) * 0.0001);
+        const extremeThreshold = Math.max(0.001, (stats.peakToPeak || 0) * 0.000001);
+        let flatTransitions = 0;
+        let repeatedExtremes = 0;
+        for (let i = 1; i < signal.length; i++) {
+            if (Math.abs(signal[i] - signal[i - 1]) <= transitionThreshold) flatTransitions++;
+            if (Math.abs(signal[i] - stats.min) <= extremeThreshold || Math.abs(signal[i] - stats.max) <= extremeThreshold) {
+                repeatedExtremes++;
+            }
+        }
+
+        const flatRatio = flatTransitions / Math.max(1, signal.length - 1);
+        const repeatedExtremeRatio = repeatedExtremes / Math.max(1, signal.length - 1);
+        const flags = [];
+        if (stats.peakToPeak < 1 || flatRatio > 0.98) flags.push('possible flat signal');
+        if (repeatedExtremeRatio > 0.01) flags.push('possible clipping');
+        if (stats.peakToPeak > 1000) flags.push('large amplitude range');
+
+        return { ...stats, flatRatio, repeatedExtremeRatio, flags };
+    },
+
     // hjorth params activity mobility complexity
     hjorthParameters(signal) {
         const n = signal.length;

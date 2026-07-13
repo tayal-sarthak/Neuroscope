@@ -208,6 +208,15 @@ const App = {
 
 
         document.getElementById('stats-compute').addEventListener('click', () => this.computeStatistics());
+        document.getElementById('quality-scan').addEventListener('click', () => this.computeSignalQuality());
+        document.getElementById('quality-mark-flagged').addEventListener('click', () => {
+            const flagged = this.state.analysisResults.quality?.filter(item => item.flags.length).map(item => item.index) || [];
+            this.state.badChannels = Array.from(new Set([...this.state.badChannels, ...flagged])).sort((a, b) => a - b);
+            this.syncBadChannelUI();
+            this.updateChannelSelectionCount();
+            this.refreshSignalViewer();
+            this.showToast(`${flagged.length} flagged ${flagged.length === 1 ? 'channel' : 'channels'} marked as bad`, 'info');
+        });
         document.getElementById('stats-download-csv').addEventListener('click', () => {
             if (this.state.analysisResults.statistics) {
                 EEGExport.exportStatsCSV(this.state.eegData.channelLabels, this.state.analysisResults.statistics);
@@ -910,6 +919,10 @@ const App = {
         document.getElementById('export-channel-scope').value = 'selected';
         document.getElementById('export-signal-source').value = 'current';
         this.updateExportEstimate();
+        document.getElementById('quality-table-wrap').hidden = true;
+        document.getElementById('quality-tbody').replaceChildren();
+        document.getElementById('quality-summary').textContent = 'No quality review run yet.';
+        document.getElementById('quality-mark-flagged').disabled = true;
 
         document.getElementById('upload-section').classList.add('hidden');
         document.getElementById('dashboard').classList.add('visible');
@@ -997,6 +1010,15 @@ const App = {
             cb.checked = this.state.selectedChannels.includes(idx);
         });
         this.updateChannelSelectionCount();
+    },
+
+    syncBadChannelUI() {
+        document.querySelectorAll('#channel-list .channel-item').forEach((item, index) => {
+            const isBad = this.state.badChannels.includes(index);
+            item.classList.toggle('is-bad', isBad);
+            const button = item.querySelector('.channel-bad-toggle');
+            if (button) button.setAttribute('aria-pressed', String(isBad));
+        });
     },
 
     updateChannelSelectionCount() {
@@ -1665,6 +1687,46 @@ const App = {
         );
 
         this.showToast('Statistical analysis complete', 'success');
+    },
+
+    computeSignalQuality() {
+        if (!this.state.eegData) return;
+        const data = this.state.filteredData || this.state.eegData.channelData;
+        const sampleRate = this.state.eegData.sampleRate;
+        const start = Math.max(0, Math.floor(this.state.timeOffset * sampleRate));
+        const end = Math.min(this.state.eegData.numSamples, Math.ceil((this.state.timeOffset + this.state.timeWindow) * sampleRate));
+        const results = this.state.eegData.channelLabels.map((label, index) => ({
+            index,
+            label,
+            ...EEGAnalysis.computeSignalQuality(data[index].subarray(start, end))
+        }));
+        this.state.analysisResults.quality = results;
+
+        const tbody = document.getElementById('quality-tbody');
+        tbody.replaceChildren();
+        for (const result of results) {
+            const row = document.createElement('tr');
+            if (result.flags.length) row.className = 'quality-flagged';
+            const values = [
+                result.label,
+                `${result.peakToPeak.toFixed(2)} µV`,
+                `${(result.flatRatio * 100).toFixed(2)}%`,
+                `${(result.repeatedExtremeRatio * 100).toFixed(2)}%`,
+                result.flags.length ? result.flags.join(' · ') : 'No obvious issue'
+            ];
+            for (const value of values) {
+                const cell = document.createElement('td');
+                cell.textContent = value;
+                row.appendChild(cell);
+            }
+            tbody.appendChild(row);
+        }
+
+        const flagged = results.filter(result => result.flags.length).length;
+        document.getElementById('quality-table-wrap').hidden = false;
+        document.getElementById('quality-summary').textContent = `${results.length} channels reviewed from ${this.state.timeOffset.toFixed(2)}–${Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow).toFixed(2)} s · ${flagged} flagged for manual review`;
+        document.getElementById('quality-mark-flagged').disabled = flagged === 0;
+        this.showToast('Signal quality review complete', 'success');
     },
 
 
