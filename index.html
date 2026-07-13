@@ -80,6 +80,7 @@
             </button>
         </nav>
         <div class="header-right">
+            <button id="keyboard-help-btn" class="shortcut-btn" title="Keyboard shortcuts" aria-label="Show keyboard shortcuts">?</button>
             <button id="new-file-btn" class="btn-header" title="Load a different file">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                 <span>New File</span>
@@ -896,6 +897,25 @@
 
     <!-- Toast Notification -->
     <div id="toast-container" class="toast-container"></div>
+
+    <dialog id="keyboard-help-dialog" class="keyboard-help-dialog" aria-labelledby="keyboard-help-title">
+        <div class="dialog-heading">
+            <div>
+                <h2 id="keyboard-help-title">Keyboard shortcuts</h2>
+                <p>Keep focus on the signal canvas for review shortcuts.</p>
+            </div>
+            <button type="button" id="keyboard-help-close" class="dialog-close" aria-label="Close keyboard shortcuts">×</button>
+        </div>
+        <dl class="shortcut-list">
+            <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Pan through the recording</dd></div>
+            <div><dt><kbd>+</kbd> <kbd>−</kbd></dt><dd>Zoom the time window</dd></div>
+            <div><dt><kbd>A</kbd></dt><dd>Add a note at the cursor or selected range</dd></div>
+            <div><dt><kbd>N</kbd> <kbd>P</kbd></dt><dd>Jump to the next or previous note</dd></div>
+            <div><dt><kbd>Esc</kbd></dt><dd>Clear the cursor or time selection</dd></div>
+            <div><dt><kbd>Shift</kbd> + scroll</dt><dd>Pan with a mouse or trackpad</dd></div>
+            <div><dt><kbd>?</kbd></dt><dd>Open this shortcut reference</dd></div>
+        </dl>
+    </dialog>
 
     <!-- Scripts -->
     <script src="js/parsers.js?v=20260713-3"></script>

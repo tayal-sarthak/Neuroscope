@@ -41,6 +41,7 @@ const App = {
         this.bindMobileControls();
         this.bindAnnotationControls();
         this.bindViewerInteractions();
+        this.bindKeyboardHelp();
     },
 
     loadHostedTelemetry() {
@@ -732,6 +733,17 @@ const App = {
             } else if (event.key.toLowerCase() === 'p') {
                 event.preventDefault();
                 this.jumpToAnnotation(-1);
+            } else if (event.key === '+' || event.key === '=') {
+                event.preventDefault();
+                document.getElementById('viewer-zoom-in').click();
+            } else if (event.key === '-' || event.key === '_') {
+                event.preventDefault();
+                document.getElementById('viewer-zoom-out').click();
+            } else if (event.key === 'Escape') {
+                this.state.viewerSelection = null;
+                this.state.viewerCursorTime = null;
+                this.updateViewerSelectionBar();
+                this.refreshSignalOverlay();
             }
         });
 
@@ -745,6 +757,26 @@ const App = {
         });
         document.getElementById('previous-note').addEventListener('click', () => this.jumpToAnnotation(-1));
         document.getElementById('next-note').addEventListener('click', () => this.jumpToAnnotation(1));
+    },
+
+    bindKeyboardHelp() {
+        const dialog = document.getElementById('keyboard-help-dialog');
+        const open = () => {
+            if (!dialog.open) dialog.showModal?.();
+        };
+        document.getElementById('keyboard-help-btn').addEventListener('click', open);
+        document.getElementById('keyboard-help-close').addEventListener('click', () => dialog.close());
+        dialog.addEventListener('click', (event) => {
+            if (event.target === dialog) dialog.close();
+        });
+        document.addEventListener('keydown', (event) => {
+            const target = event.target;
+            const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+            if (!isTyping && event.key === '?') {
+                event.preventDefault();
+                open();
+            }
+        });
     },
 
     getViewerPoint(event) {

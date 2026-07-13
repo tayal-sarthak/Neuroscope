@@ -1960,6 +1960,20 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-color: #527292;
     color: #FFFFFF;
 }
+.shortcut-btn {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #36516E;
+    border-radius: var(--radius-sm);
+    background: #183451;
+    color: #DCE8F5;
+    font: 700 0.82rem/1 var(--font);
+    cursor: pointer;
+}
+.shortcut-btn:hover {
+    border-color: #6E8BAB;
+    color: #FFFFFF;
+}
 
 .workspace-status {
     position: fixed;
@@ -2386,6 +2400,80 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .toast.error { background: var(--danger); }
 .toast-icon {
     display: inline-flex;
+}
+.keyboard-help-dialog {
+    width: min(520px, calc(100vw - 28px));
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: #FFFFFF;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(16, 36, 62, 0.18);
+}
+.keyboard-help-dialog::backdrop {
+    background: rgba(10, 24, 42, 0.58);
+}
+.dialog-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+.dialog-heading h2 {
+    font-size: 1.1rem;
+}
+.dialog-heading p {
+    margin-top: 3px;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+}
+.dialog-close {
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+    color: var(--text-secondary);
+    font: 500 1.25rem/1 var(--font);
+    cursor: pointer;
+}
+.shortcut-list {
+    padding: 10px 20px 18px;
+}
+.shortcut-list > div {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+.shortcut-list > div:last-child {
+    border-bottom: 0;
+}
+.shortcut-list dt,
+.shortcut-list dd {
+    margin: 0;
+}
+.shortcut-list dd {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+kbd {
+    display: inline-flex;
+    min-width: 26px;
+    min-height: 25px;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 7px;
+    border: 1px solid #C4D0DC;
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: #F7F9FB;
+    color: var(--text);
+    font: 600 0.72rem/1 var(--font);
 }
 
 @media (max-width: 1100px) {
