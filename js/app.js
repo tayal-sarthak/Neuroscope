@@ -552,6 +552,8 @@ const App = {
         document.getElementById('annotation-count').textContent = visibleAnnotations.length === count
             ? `${count} ${count === 1 ? 'note' : 'notes'}`
             : `${visibleAnnotations.length} of ${count}`;
+        document.getElementById('previous-note').disabled = count === 0;
+        document.getElementById('next-note').disabled = count === 0;
         list.replaceChildren();
 
         if (visibleAnnotations.length === 0) {
@@ -609,6 +611,22 @@ const App = {
             row.append(jump, content, actions);
             list.appendChild(row);
         }
+        this.refreshSignalOverlay();
+    },
+
+    jumpToAnnotation(direction) {
+        if (!this.state.annotations.length) return;
+        const notes = this.state.annotations.slice().sort((a, b) => a.onset - b.onset);
+        const anchor = this.state.viewerCursorTime ?? this.state.timeOffset;
+        const target = direction > 0
+            ? notes.find(note => note.onset > anchor + 0.001) || notes[0]
+            : notes.slice().reverse().find(note => note.onset < anchor - 0.001) || notes[notes.length - 1];
+        this.state.viewerCursorTime = target.onset;
+        this.state.viewerSelection = target.duration > 0
+            ? { start: target.onset, end: target.onset + target.duration }
+            : null;
+        this.setTimeOffset(Math.max(0, target.onset - this.state.timeWindow * 0.15));
+        this.updateViewerSelectionBar();
         this.refreshSignalOverlay();
     },
 
@@ -687,6 +705,12 @@ const App = {
             } else if (event.key.toLowerCase() === 'a') {
                 event.preventDefault();
                 this.openAnnotationForm();
+            } else if (event.key.toLowerCase() === 'n') {
+                event.preventDefault();
+                this.jumpToAnnotation(1);
+            } else if (event.key.toLowerCase() === 'p') {
+                event.preventDefault();
+                this.jumpToAnnotation(-1);
             }
         });
 
@@ -698,6 +722,8 @@ const App = {
             this.updateViewerSelectionBar();
             this.refreshSignalOverlay();
         });
+        document.getElementById('previous-note').addEventListener('click', () => this.jumpToAnnotation(-1));
+        document.getElementById('next-note').addEventListener('click', () => this.jumpToAnnotation(1));
     },
 
     getViewerPoint(event) {

@@ -2147,6 +2147,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-radius: var(--radius-sm);
     font-variant-numeric: tabular-nums;
 }
+.note-navigation {
+    display: inline-flex;
+    gap: 4px;
+}
+.note-navigation .btn-tool {
+    white-space: nowrap;
+}
 
 .format-note {
     max-width: 440px;
