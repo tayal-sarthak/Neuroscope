@@ -1,6 +1,6 @@
 /* ============================
    NeuroScope - EEG Analysis Platform
-   Color Scheme: White & Light Blue
+   Color Scheme: Clinical ink, signal blue, teal, and data-spectrum accents
    ============================ */
 
 :root {
@@ -58,6 +58,10 @@ body {
     line-height: 1.6;
     overflow-x: hidden;
     min-height: 100vh;
+}
+svg [stroke="#4A90D9"],
+svg[stroke="#4A90D9"] {
+    stroke: var(--primary);
 }
 
 ::-webkit-scrollbar {

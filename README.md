@@ -161,7 +161,7 @@ README.md               This file
 - PDF reports are generated with jsPDF, also loaded from a CDN
 - The Inter typeface loads from Google Fonts for a modern look
 - All canvases support HiDPI (Retina) rendering for sharp output on high-resolution displays
-- The color scheme uses white and light blue tones with a primary accent of #4A90D9
+- The interface uses clinical ink, signal blue, teal review states, and a distinct colorblind-conscious channel palette
 - The sidebar remembers selected channels and display settings across tab switches
 
 ## Browser Compatibility

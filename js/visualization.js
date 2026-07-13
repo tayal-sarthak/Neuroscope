@@ -1,10 +1,10 @@
 // neuroScope: signals spectrum topo spectrogram
 const EEGVisualization = {
     channelColors: [
-        '#4A90D9', '#E74C3C', '#2ECC71', '#F39C12', '#9B59B6',
-        '#1ABC9C', '#E67E22', '#3498DB', '#E91E63', '#00BCD4',
-        '#8BC34A', '#FF5722', '#607D8B', '#795548', '#CDDC39',
-        '#FF9800', '#673AB7', '#009688', '#F44336'
+        '#315AEF', '#D1495B', '#14866D', '#D97706', '#7C4DCE',
+        '#008C95', '#D65A31', '#2878B5', '#B83280', '#0E7490',
+        '#6B8E23', '#C2410C', '#475569', '#8B5E3C', '#65A30D',
+        '#B45309', '#5B5FC7', '#0F766E', '#B4233C'
     ],
 
     bandColors: {
@@ -86,8 +86,8 @@ const EEGVisualization = {
         const startTime = Math.ceil(timeOffset / timeGridStep) * timeGridStep;
         const timePrecision = options.timePrecision !== undefined ? options.timePrecision : 1;
 
-        ctx.strokeStyle = '#F1F5F9';
-        ctx.fillStyle = '#94A3B8';
+        ctx.strokeStyle = '#E8EDF3';
+        ctx.fillStyle = '#687A8F';
         ctx.font = '10px Inter, sans-serif';
         ctx.textAlign = 'center';
 
@@ -153,14 +153,14 @@ const EEGVisualization = {
 
         const scaleBarHeight = 50;
         const scaleBarAmplitude = (scaleBarHeight / (channelHeight * 0.003 * amplitudeScale));
-        ctx.strokeStyle = '#94A3B8';
+        ctx.strokeStyle = '#687A8F';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(width - rightMargin + 5, topMargin + 10);
         ctx.lineTo(width - rightMargin + 5, topMargin + 10 + scaleBarHeight);
         ctx.stroke();
 
-        ctx.fillStyle = '#94A3B8';
+        ctx.fillStyle = '#687A8F';
         ctx.font = '9px Inter, sans-serif';
         ctx.textAlign = 'left';
         ctx.fillText(scaleBarAmplitude.toFixed(0) + 'uV', width - rightMargin + 8, topMargin + 10 + scaleBarHeight / 2 + 3);
@@ -411,12 +411,12 @@ const EEGVisualization = {
         ctx.textAlign = 'left';
         ctx.fillText(`Channel: ${channelLabel}`, margin.left, 18);
 
-        ctx.fillStyle = '#94A3B8';
+        ctx.fillStyle = '#8A99AA';
         ctx.fillRect(width - 180, 8, 10, 10);
         ctx.fillStyle = '#64748B';
         ctx.fillText('Original', width - 165, 17);
 
-        ctx.fillStyle = '#4A90D9';
+        ctx.fillStyle = '#315AEF';
         ctx.fillRect(width - 90, 8, 10, 10);
         ctx.fillStyle = '#64748B';
         ctx.fillText('Filtered', width - 75, 17);
@@ -433,7 +433,7 @@ const EEGVisualization = {
         }
         ctx.stroke();
 
-        ctx.strokeStyle = '#4A90D9';
+        ctx.strokeStyle = '#315AEF';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         first = true;
@@ -458,7 +458,7 @@ const EEGVisualization = {
         ctx.lineWidth = 1;
         ctx.strokeRect(margin.left, margin.top, plotW, plotH);
 
-        ctx.fillStyle = '#94A3B8';
+        ctx.fillStyle = '#687A8F';
         ctx.font = '10px Inter, sans-serif';
         const timeLen = showSamples / sampleRate;
         const numTimeLabels = Math.min(8, Math.max(3, Math.ceil(timeLen)));
@@ -512,10 +512,10 @@ const EEGVisualization = {
         const dbMin = -80;
         const dbMax = 5;
 
-        ctx.strokeStyle = '#F1F5F9';
+        ctx.strokeStyle = '#E8EDF3';
         ctx.lineWidth = 1;
 
-        ctx.fillStyle = '#94A3B8';
+        ctx.fillStyle = '#687A8F';
         ctx.font = '9px Inter, sans-serif';
         ctx.textAlign = 'right';
         for (let db = dbMin; db <= dbMax; db += 10) {
@@ -565,7 +565,7 @@ const EEGVisualization = {
         ctx.fillText('-3 dB', margin.left + plotW + 2, y3db + 3);
 
         if (options.filterType && options.params) {
-            ctx.fillStyle = 'rgba(74, 144, 217, 0.06)';
+            ctx.fillStyle = 'rgba(49, 90, 239, 0.08)';
             const p = options.params;
             let shadeLeft = margin.left;
             let shadeRight = margin.left + plotW;
@@ -582,7 +582,7 @@ const EEGVisualization = {
             ctx.fillRect(shadeLeft, margin.top, shadeRight - shadeLeft, plotH);
         }
 
-        ctx.strokeStyle = '#4A90D9';
+        ctx.strokeStyle = '#315AEF';
         ctx.lineWidth = 2;
         ctx.beginPath();
         let first = true;
@@ -867,12 +867,12 @@ const EEGVisualization = {
         ctx.stroke();
 
         for (const e of electrodes) {
-            ctx.fillStyle = '#1E293B';
+            ctx.fillStyle = '#14233A';
             ctx.beginPath();
             ctx.arc(e.x, e.y, 4, 0, 2 * Math.PI);
             ctx.fill();
 
-            ctx.fillStyle = '#1E293B';
+            ctx.fillStyle = '#14233A';
             ctx.font = 'bold 9px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(e.label, e.x, e.y - 8);
@@ -1030,7 +1030,7 @@ const EEGVisualization = {
                         display: true,
                         text: 'Power Spectral Density',
                         font: { family: 'Inter', size: 14, weight: '600' },
-                        color: '#1E293B'
+                        color: '#14233A'
                     },
                     legend: {
                         position: 'top',
@@ -1043,11 +1043,11 @@ const EEGVisualization = {
                         title: { display: true, text: 'Frequency (Hz)', font: { family: 'Inter' } },
                         min: 0,
                         max: maxFreq,
-                        grid: { color: '#F1F5F9' }
+                        grid: { color: '#E8EDF3' }
                     },
                     y: {
                         title: { display: true, text: options.logScale ? 'Power (dB)' : 'Power (uV^2/Hz)', font: { family: 'Inter' } },
-                        grid: { color: '#F1F5F9' }
+                        grid: { color: '#E8EDF3' }
                     }
                 }
             }
@@ -1092,7 +1092,7 @@ const EEGVisualization = {
                         display: true,
                         text: displayType === 'relative' ? 'Relative Band Power (%)' : 'Absolute Band Power',
                         font: { family: 'Inter', size: 14, weight: '600' },
-                        color: '#1E293B'
+                        color: '#14233A'
                     },
                     legend: {
                         position: 'top',
@@ -1100,10 +1100,10 @@ const EEGVisualization = {
                     }
                 },
                 scales: {
-                    x: { grid: { color: '#F1F5F9' }, ticks: { font: { family: 'Inter', size: 10 } } },
+                    x: { grid: { color: '#E8EDF3' }, ticks: { font: { family: 'Inter', size: 10 } } },
                     y: {
                         title: { display: true, text: displayType === 'relative' ? '%' : 'uV^2', font: { family: 'Inter' } },
-                        grid: { color: '#F1F5F9' }
+                        grid: { color: '#E8EDF3' }
                     }
                 }
             }
@@ -1142,7 +1142,7 @@ const EEGVisualization = {
                         display: true,
                         text: 'Average Band Distribution',
                         font: { family: 'Inter', size: 14, weight: '600' },
-                        color: '#1E293B'
+                        color: '#14233A'
                     },
                     legend: {
                         position: 'right',
@@ -1153,7 +1153,7 @@ const EEGVisualization = {
         });
     },
 
-    createStatsChart(canvasId, labels, values, title, color = '#4A90D9') {
+    createStatsChart(canvasId, labels, values, title, color = '#315AEF') {
         this.destroyChart(canvasId);
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
@@ -1180,13 +1180,13 @@ const EEGVisualization = {
                         display: true,
                         text: title,
                         font: { family: 'Inter', size: 14, weight: '600' },
-                        color: '#1E293B'
+                        color: '#14233A'
                     },
                     legend: { display: false }
                 },
                 scales: {
-                    x: { grid: { color: '#F1F5F9' }, ticks: { font: { family: 'Inter', size: 10 } } },
-                    y: { grid: { color: '#F1F5F9' }, beginAtZero: true }
+                    x: { grid: { color: '#E8EDF3' }, ticks: { font: { family: 'Inter', size: 10 } } },
+                    y: { grid: { color: '#E8EDF3' }, beginAtZero: true }
                 }
             }
         });
