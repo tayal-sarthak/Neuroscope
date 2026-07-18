@@ -2465,8 +2465,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-size: 0.72rem;
 }
 .annotation-form {
-    display: flex;
-    align-items: end;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
     gap: 10px;
     margin-top: 14px;
     padding: 12px;
@@ -2479,6 +2480,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .annotation-form label {
     display: flex;
     flex-direction: column;
+    grid-column: span 3;
     gap: 4px;
     color: var(--text-secondary);
     font-size: 0.72rem;
@@ -2500,10 +2502,67 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-color: var(--primary);
 }
 .annotation-note-field {
-    flex: 1;
+    grid-column: 1 / -1 !important;
+}
+.annotation-check-field {
+    display: grid !important;
+    grid-column: span 4 !important;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 8px !important;
+    padding: 10px;
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.annotation-check-field input {
+    min-height: auto;
+    margin-top: 2px;
+    padding: 0;
+}
+.annotation-check-field span,
+.annotation-check-field small {
+    display: block;
+}
+.annotation-check-field strong {
+    color: var(--text);
+    font-size: 0.74rem;
+}
+.annotation-check-field small {
+    margin-top: 3px;
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    font-weight: 450;
+    line-height: 1.35;
+}
+.annotation-state-snapshot {
+    grid-column: span 4;
+    min-height: 100%;
+    padding: 10px;
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.annotation-state-snapshot span,
+.annotation-state-snapshot strong {
+    display: block;
+}
+.annotation-state-snapshot span {
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    font-weight: 600;
+}
+.annotation-state-snapshot strong {
+    margin-top: 4px;
+    color: var(--text);
+    font-size: 0.74rem;
+    line-height: 1.4;
 }
 .annotation-actions {
     display: flex;
+    grid-column: 1 / -1;
+    justify-content: flex-end;
     gap: 6px;
 }
 .annotation-list {
@@ -2707,8 +2766,14 @@ kbd {
         margin-left: 0;
     }
     .annotation-form {
-        align-items: stretch;
-        flex-direction: column;
+        grid-template-columns: 1fr;
+    }
+    .annotation-form > label,
+    .annotation-note-field,
+    .annotation-check-field,
+    .annotation-state-snapshot,
+    .annotation-actions {
+        grid-column: 1 !important;
     }
     .annotation-actions {
         justify-content: flex-end;
