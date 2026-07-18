@@ -22,16 +22,14 @@ const App = {
         viewerHover: null,
         viewerDisplay: null,
         viewerDragStart: null,
+        viewerContextPoint: null,
         exportBusy: false,
+        isImporting: false,
         isLoaded: false
     },
 
     init() {
         this.loadHostedTelemetry();
-        setTimeout(() => {
-            document.getElementById('loading-screen').classList.add('hidden');
-        }, 1200);
-
         this.bindEvents();
         this.bindSidebarControls();
         this.bindTabNavigation();
@@ -42,6 +40,51 @@ const App = {
         this.bindAnnotationControls();
         this.bindViewerInteractions();
         this.bindKeyboardHelp();
+        this.finishInitialLoad();
+    },
+
+    async finishInitialLoad() {
+        this.setLoadingScreenProgress(62, 'Loading workspace controls');
+        const fontReady = document.fonts?.ready || Promise.resolve();
+        await Promise.race([
+            fontReady.catch(() => undefined),
+            new Promise(resolve => setTimeout(resolve, 400))
+        ]);
+        this.setLoadingScreenProgress(100, 'Workspace ready');
+        await this.waitForPaint();
+        if (!this.state.isImporting) this.hideLoadingScreen();
+    },
+
+    waitForPaint() {
+        return new Promise(resolve => requestAnimationFrame(() => resolve()));
+    },
+
+    showLoadingScreen(title, subtitle) {
+        const screen = document.getElementById('loading-screen');
+        document.getElementById('loader-title').textContent = title;
+        document.getElementById('loader-subtitle').textContent = subtitle;
+        screen.classList.remove('hidden');
+        screen.removeAttribute('aria-hidden');
+        screen.setAttribute('aria-busy', 'true');
+        document.body.setAttribute('aria-busy', 'true');
+    },
+
+    setLoadingScreenProgress(value, stage) {
+        const clamped = Math.max(0, Math.min(100, Number(value) || 0));
+        const progress = document.getElementById('loader-progress');
+        document.getElementById('loader-stage').textContent = stage;
+        document.getElementById('loader-progress-value').textContent = `${Math.round(clamped)}%`;
+        document.getElementById('loader-bar-inner').style.setProperty('--loader-progress', `${clamped}%`);
+        progress.setAttribute('aria-valuenow', String(Math.round(clamped)));
+        progress.setAttribute('aria-valuetext', stage);
+    },
+
+    hideLoadingScreen() {
+        const screen = document.getElementById('loading-screen');
+        screen.classList.add('hidden');
+        screen.setAttribute('aria-hidden', 'true');
+        screen.setAttribute('aria-busy', 'false');
+        document.body.removeAttribute('aria-busy');
     },
 
     loadHostedTelemetry() {
@@ -117,7 +160,7 @@ const App = {
         
         document.getElementById('amplitude-scale').addEventListener('input', (e) => {
             this.state.amplitudeScale = parseFloat(e.target.value);
-            document.getElementById('amplitude-value').textContent = this.state.amplitudeScale.toFixed(1) + 'x';
+            document.getElementById('amplitude-value').textContent = this.state.amplitudeScale.toFixed(1) + '×';
             this.refreshSignalViewer();
             this.refreshFilterComparison();
         });
@@ -125,7 +168,7 @@ const App = {
 
         document.getElementById('time-window').addEventListener('input', (e) => {
             this.state.timeWindow = parseFloat(e.target.value);
-            document.getElementById('time-window-value').textContent = this.state.timeWindow + 's';
+            document.getElementById('time-window-value').textContent = this.state.timeWindow + ' s';
             this.updateTimeOffsetRange();
             this.refreshSignalViewer();
             this.refreshFilterComparison();
@@ -134,7 +177,7 @@ const App = {
 
         document.getElementById('time-offset').addEventListener('input', (e) => {
             this.state.timeOffset = parseFloat(e.target.value);
-            document.getElementById('time-offset-value').textContent = this.state.timeOffset.toFixed(1) + 's';
+            document.getElementById('time-offset-value').textContent = this.state.timeOffset.toFixed(1) + ' s';
             this.refreshSignalViewer();
             this.refreshFilterComparison();
         });
@@ -160,7 +203,7 @@ const App = {
                 const clamped = Math.max(0, Math.min(targetTime, maxOffset));
                 this.state.timeOffset = clamped;
                 document.getElementById('time-offset').value = clamped;
-                document.getElementById('time-offset-value').textContent = clamped.toFixed(1) + 's';
+                document.getElementById('time-offset-value').textContent = clamped.toFixed(1) + ' s';
                 this.refreshSignalViewer();
             }
         });
@@ -203,8 +246,11 @@ const App = {
         document.getElementById('bands-display').addEventListener('change', () => {
             if (this.state.analysisResults.bandPowers) {
                 this.renderBandPowerCharts();
+                this.renderBandPowerSummary();
             }
         });
+        document.getElementById('bands-scope').addEventListener('change', () => this.resetBandPowerResults());
+        document.getElementById('bands-export').addEventListener('click', () => this.exportBandPowerResults());
 
 
         document.getElementById('timefreq-compute').addEventListener('click', () => this.computeSpectrogram());
@@ -218,12 +264,12 @@ const App = {
             this.syncBadChannelUI();
             this.updateChannelSelectionCount();
             this.refreshSignalViewer();
-            this.showToast(`${flagged.length} flagged ${flagged.length === 1 ? 'channel' : 'channels'} marked as bad`, 'info');
+            this.showToast(`${flagged.length} flagged ${flagged.length === 1 ? 'channel was' : 'channels were'} marked as bad`, 'info');
         });
         document.getElementById('stats-download-csv').addEventListener('click', () => {
             if (this.state.analysisResults.statistics) {
                 EEGExport.exportStatsCSV(this.state.eegData.channelLabels, this.state.analysisResults.statistics);
-                this.showToast('Statistics CSV downloaded', 'success');
+                this.showToast('Statistics CSV download started', 'success');
             }
         });
 
@@ -404,7 +450,7 @@ const App = {
             form.hidden = true;
             form.reset();
             this.state.editingAnnotationId = null;
-            document.getElementById('annotation-submit').textContent = 'Save note';
+            document.getElementById('annotation-submit').textContent = 'Save annotation';
         });
         document.getElementById('annotation-filter').addEventListener('change', (event) => {
             this.state.annotationFilter = event.target.value;
@@ -418,7 +464,7 @@ const App = {
             const duration = parseFloat(document.getElementById('annotation-duration').value);
             const note = document.getElementById('annotation-note').value.trim();
             if (!Number.isFinite(onset) || !Number.isFinite(duration) || onset < 0 || duration < 0 || onset + duration > this.state.eegData.duration || !note) {
-                this.showToast('Enter a valid onset, duration, and note before saving', 'error');
+                this.showToast('Enter a non-negative onset and duration, then add a note before saving.', 'error');
                 return;
             }
 
@@ -449,22 +495,25 @@ const App = {
             form.hidden = true;
             form.reset();
             document.getElementById('annotation-duration').value = '0';
-            document.getElementById('annotation-submit').textContent = 'Save note';
+            document.getElementById('annotation-submit').textContent = 'Save annotation';
             this.renderAnnotations();
-            this.showToast(edited ? 'Recording note updated' : 'Recording note saved', 'success');
+            this.showToast(edited ? 'Annotation updated' : 'Annotation saved', 'success');
         });
     },
 
-    openAnnotationForm(range = null) {
+    openAnnotationForm(range = null, defaults = {}) {
         if (!this.state.eegData) return;
         const form = document.getElementById('annotation-form');
+        form.reset();
         this.state.editingAnnotationId = null;
-        document.getElementById('annotation-submit').textContent = 'Save note';
+        document.getElementById('annotation-submit').textContent = 'Save annotation';
         const selectedRange = range || this.state.viewerSelection;
         const onset = selectedRange?.start ?? this.state.viewerCursorTime ?? this.state.timeOffset;
         const duration = selectedRange ? Math.max(0, selectedRange.end - selectedRange.start) : 0;
         document.getElementById('annotation-onset').value = onset.toFixed(3);
         document.getElementById('annotation-duration').value = duration.toFixed(3);
+        document.getElementById('annotation-type').value = defaults.type || 'observation';
+        document.getElementById('annotation-note').value = defaults.note || '';
         form.hidden = false;
         document.getElementById('annotation-note').focus();
     },
@@ -475,11 +524,11 @@ const App = {
             const text = await file.text();
             const delimiter = file.name.toLowerCase().endsWith('.tsv') || text.split(/\r?\n/, 1)[0].includes('\t') ? '\t' : ',';
             const rows = EEGParsers.parseDelimitedRows(text, delimiter);
-            if (rows.length < 2) throw new Error('The file does not contain annotation rows');
+            if (rows.length < 2) throw new Error('The file does not contain any annotation rows.');
             const headers = rows[0].map(value => value.trim().toLowerCase());
             const column = (...names) => names.map(name => headers.indexOf(name)).find(index => index >= 0) ?? -1;
             const onsetIndex = column('onset', 'onset_seconds', 'time', 'time_seconds');
-            if (onsetIndex < 0) throw new Error('An onset column is required');
+            if (onsetIndex < 0) throw new Error('Add an onset column before importing this file.');
             const durationIndex = column('duration', 'duration_seconds');
             const typeIndex = column('trial_type', 'type');
             const channelsIndex = column('channel', 'channels');
@@ -524,9 +573,9 @@ const App = {
 
             this.state.annotations.sort((a, b) => a.onset - b.onset);
             this.renderAnnotations();
-            this.showToast(`Imported ${imported} notes${skipped ? ` · skipped ${skipped}` : ''}`, imported ? 'success' : 'info');
+            this.showToast(`Imported ${imported} ${imported === 1 ? 'annotation' : 'annotations'}${skipped ? ` · skipped ${skipped}` : ''}`, imported ? 'success' : 'info');
         } catch (error) {
-            this.showToast(`Could not import notes: ${error.message}`, 'error');
+            this.showToast(`Annotations could not be imported: ${error.message}`, 'error');
         }
     },
 
@@ -538,7 +587,7 @@ const App = {
         document.getElementById('annotation-type').value = annotation.type;
         document.getElementById('annotation-channels').value = annotation.channels?.length ? 'selected' : '';
         document.getElementById('annotation-note').value = annotation.note;
-        document.getElementById('annotation-submit').textContent = 'Update note';
+        document.getElementById('annotation-submit').textContent = 'Update annotation';
         form.hidden = false;
         form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         document.getElementById('annotation-note').focus();
@@ -551,8 +600,8 @@ const App = {
             ? this.state.annotations
             : this.state.annotations.filter(item => item.type === this.state.annotationFilter);
         document.getElementById('annotation-count').textContent = visibleAnnotations.length === count
-            ? `${count} ${count === 1 ? 'note' : 'notes'}`
-            : `${visibleAnnotations.length} of ${count}`;
+            ? `${count} ${count === 1 ? 'annotation' : 'annotations'}`
+            : `${visibleAnnotations.length} of ${count} annotations`;
         document.getElementById('previous-note').disabled = count === 0;
         document.getElementById('next-note').disabled = count === 0;
         list.replaceChildren();
@@ -560,12 +609,20 @@ const App = {
         if (visibleAnnotations.length === 0) {
             const empty = document.createElement('p');
             empty.className = 'annotation-empty';
-            empty.textContent = count ? 'No notes match this filter.' : 'No notes yet. Add one from the signal toolbar.';
+            empty.textContent = count
+                ? 'No annotations match this filter.'
+                : 'No annotations yet. Select a point or range, then choose Add annotation.';
             list.appendChild(empty);
             this.refreshSignalOverlay();
             return;
         }
 
+        const annotationTypeLabels = {
+            observation: 'Observation',
+            bad_artifact: 'Artifact / bad segment',
+            clinical_event: 'Clinical event',
+            signal_quality: 'Signal quality'
+        };
         for (const annotation of visibleAnnotations) {
             const row = document.createElement('article');
             row.className = 'annotation-row';
@@ -577,7 +634,7 @@ const App = {
             jump.textContent = annotation.duration > 0
                 ? `${annotation.onset.toFixed(2)}–${end.toFixed(2)} s`
                 : `${annotation.onset.toFixed(2)} s`;
-            jump.title = 'Jump signal viewer to this time';
+            jump.title = 'Move the signal viewer to this annotation';
             jump.addEventListener('click', () => {
                 this.setTimeOffset(annotation.onset);
             });
@@ -586,7 +643,7 @@ const App = {
             content.className = 'annotation-content';
             const meta = document.createElement('strong');
             const channelText = annotation.channels?.length ? ` · ${annotation.channels.join(', ')}` : '';
-            meta.textContent = annotation.type.replace(/_/g, ' ') + channelText;
+            meta.textContent = (annotationTypeLabels[annotation.type] || annotation.type.replace(/_/g, ' ')) + channelText;
             const note = document.createElement('p');
             note.textContent = annotation.note;
             content.append(meta, note);
@@ -597,12 +654,14 @@ const App = {
             edit.type = 'button';
             edit.className = 'annotation-edit';
             edit.textContent = 'Edit';
+            edit.setAttribute('aria-label', `Edit annotation at ${annotation.onset.toFixed(2)} seconds`);
             edit.addEventListener('click', () => this.editAnnotation(annotation));
 
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.className = 'annotation-remove';
-            remove.textContent = 'Remove';
+            remove.textContent = 'Delete';
+            remove.setAttribute('aria-label', `Delete annotation at ${annotation.onset.toFixed(2)} seconds`);
             remove.addEventListener('click', () => {
                 this.state.annotations = this.state.annotations.filter(item => item.id !== annotation.id);
                 this.renderAnnotations();
@@ -635,6 +694,14 @@ const App = {
         const overlay = document.getElementById('viewer-interaction-canvas');
         const overview = document.getElementById('viewer-overview-canvas');
         const tooltip = document.getElementById('viewer-hover-tooltip');
+        const contextMenu = document.getElementById('viewer-context-menu');
+
+        const clearViewerSelection = () => {
+            this.state.viewerSelection = null;
+            this.state.viewerCursorTime = null;
+            this.updateViewerSelectionBar();
+            this.refreshSignalOverlay();
+        };
 
         const moveFromOverview = (event) => {
             if (!this.state.eegData) return;
@@ -658,6 +725,7 @@ const App = {
 
         overlay.addEventListener('pointerdown', (event) => {
             if (event.button !== 0 || !this.state.eegData) return;
+            this.closeViewerContextMenu();
             const point = this.getViewerPoint(event);
             if (!point) return;
             overlay.setPointerCapture?.(event.pointerId);
@@ -710,6 +778,13 @@ const App = {
             }
         });
 
+        overlay.addEventListener('contextmenu', (event) => {
+            if (!this.state.eegData) return;
+            event.preventDefault();
+            const point = this.getViewerPoint(event);
+            if (point) this.openViewerContextMenu(event, point);
+        });
+
         overlay.addEventListener('wheel', (event) => {
             const horizontalIntent = event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY);
             if (!horizontalIntent || !this.state.eegData) return;
@@ -740,23 +815,67 @@ const App = {
                 event.preventDefault();
                 document.getElementById('viewer-zoom-out').click();
             } else if (event.key === 'Escape') {
-                this.state.viewerSelection = null;
-                this.state.viewerCursorTime = null;
-                this.updateViewerSelectionBar();
-                this.refreshSignalOverlay();
+                this.closeViewerContextMenu();
+                clearViewerSelection();
             }
         });
 
         document.getElementById('selection-annotate').addEventListener('click', () => this.openAnnotationForm(this.state.viewerSelection));
         document.getElementById('selection-export').addEventListener('click', () => this.exportViewerSelection());
         document.getElementById('selection-clear').addEventListener('click', () => {
-            this.state.viewerSelection = null;
-            this.state.viewerCursorTime = null;
-            this.updateViewerSelectionBar();
-            this.refreshSignalOverlay();
+            clearViewerSelection();
         });
         document.getElementById('previous-note').addEventListener('click', () => this.jumpToAnnotation(-1));
         document.getElementById('next-note').addEventListener('click', () => this.jumpToAnnotation(1));
+
+        document.getElementById('context-add-note').addEventListener('click', () => {
+            this.closeViewerContextMenu();
+            this.openAnnotationForm(this.state.viewerSelection);
+        });
+        document.getElementById('context-mark-artifact').addEventListener('click', () => {
+            this.closeViewerContextMenu();
+            this.openAnnotationForm(this.state.viewerSelection, { type: 'bad_artifact' });
+        });
+        document.getElementById('context-use-export').addEventListener('click', () => {
+            this.closeViewerContextMenu();
+            this.useViewerRangeForExport();
+        });
+        document.getElementById('context-export-csv').addEventListener('click', () => {
+            this.closeViewerContextMenu();
+            this.exportViewerSelection();
+        });
+        document.getElementById('context-clear-selection').addEventListener('click', () => {
+            this.closeViewerContextMenu();
+            clearViewerSelection();
+        });
+        contextMenu.addEventListener('keydown', (event) => {
+            const items = Array.from(contextMenu.querySelectorAll('[role="menuitem"]:not(:disabled)'));
+            const currentIndex = items.indexOf(document.activeElement);
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                const direction = event.key === 'ArrowDown' ? 1 : -1;
+                const nextIndex = (currentIndex + direction + items.length) % items.length;
+                items[nextIndex]?.focus({ preventScroll: true });
+            } else if (event.key === 'Home' || event.key === 'End') {
+                event.preventDefault();
+                items[event.key === 'Home' ? 0 : items.length - 1]?.focus({ preventScroll: true });
+            } else if (event.key.toLowerCase() === 'a') {
+                event.preventDefault();
+                this.closeViewerContextMenu();
+                this.openAnnotationForm(this.state.viewerSelection);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                this.closeViewerContextMenu();
+                clearViewerSelection();
+                overlay.focus({ preventScroll: true });
+            }
+        });
+        document.addEventListener('pointerdown', (event) => {
+            if (!contextMenu.hidden && !contextMenu.contains(event.target) && event.target !== overlay) {
+                this.closeViewerContextMenu();
+            }
+        });
+        document.addEventListener('scroll', () => this.closeViewerContextMenu(), true);
     },
 
     bindKeyboardHelp() {
@@ -803,6 +922,46 @@ const App = {
         };
     },
 
+    openViewerContextMenu(event, point) {
+        const menu = document.getElementById('viewer-context-menu');
+        const container = document.getElementById('viewer-canvas-container');
+        const selection = this.state.viewerSelection;
+        const isInsideSelection = Boolean(selection && point.time >= selection.start && point.time <= selection.end);
+
+        if (!isInsideSelection) {
+            this.state.viewerSelection = null;
+            this.state.viewerCursorTime = point.time;
+        }
+        this.state.viewerContextPoint = point;
+        this.updateViewerSelectionBar();
+        this.refreshSignalOverlay();
+
+        const activeSelection = this.state.viewerSelection;
+        document.getElementById('viewer-context-time').textContent = activeSelection
+            ? `${activeSelection.start.toFixed(3)}–${activeSelection.end.toFixed(3)} s`
+            : `${point.time.toFixed(3)} s · ${point.channel}`;
+        document.getElementById('viewer-context-detail').textContent = activeSelection
+            ? `${(activeSelection.end - activeSelection.start).toFixed(3)} s selected`
+            : `${point.amplitude.toFixed(2)} µV at the selected point`;
+        document.getElementById('context-use-export').disabled = !activeSelection;
+        document.getElementById('context-export-csv').disabled = !activeSelection;
+
+        menu.hidden = false;
+        const containerRect = container.getBoundingClientRect();
+        const x = event.clientX - containerRect.left;
+        const y = event.clientY - containerRect.top;
+        const left = Math.max(8, Math.min(x, container.clientWidth - menu.offsetWidth - 8));
+        const top = Math.max(8, Math.min(y, container.clientHeight - menu.offsetHeight - 8));
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+        document.getElementById('context-add-note').focus({ preventScroll: true });
+    },
+
+    closeViewerContextMenu() {
+        const menu = document.getElementById('viewer-context-menu');
+        if (menu) menu.hidden = true;
+    },
+
     updateViewerTooltip(point, event) {
         const tooltip = document.getElementById('viewer-hover-tooltip');
         const container = document.getElementById('viewer-canvas-container').getBoundingClientRect();
@@ -823,14 +982,14 @@ const App = {
         if (selection) {
             const duration = selection.end - selection.start;
             document.getElementById('viewer-selection-time').textContent = `${selection.start.toFixed(3)}–${selection.end.toFixed(3)} s`;
-            document.getElementById('viewer-selection-detail').textContent = `${duration.toFixed(3)} s selected · ${this.state.selectedChannels.length} channels`;
+            document.getElementById('viewer-selection-detail').textContent = `${duration.toFixed(3)} s · ${this.state.selectedChannels.length} selected ${this.state.selectedChannels.length === 1 ? 'channel' : 'channels'}`;
             exportButton.disabled = false;
             annotateButton.textContent = 'Annotate range';
         } else {
             document.getElementById('viewer-selection-time').textContent = `Cursor at ${cursor.toFixed(3)} s`;
-            document.getElementById('viewer-selection-detail').textContent = 'Pinned point · press A or choose Add note';
+            document.getElementById('viewer-selection-detail').textContent = 'Pinned point · press A or choose Add annotation';
             exportButton.disabled = true;
-            annotateButton.textContent = 'Add note';
+            annotateButton.textContent = 'Add annotation';
         }
     },
 
@@ -839,7 +998,7 @@ const App = {
         const maxOffset = Math.max(0, this.state.eegData.duration - this.state.timeWindow);
         this.state.timeOffset = Math.max(0, Math.min(value, maxOffset));
         document.getElementById('time-offset').value = this.state.timeOffset;
-        document.getElementById('time-offset-value').textContent = this.state.timeOffset.toFixed(1) + 's';
+        document.getElementById('time-offset-value').textContent = this.state.timeOffset.toFixed(1) + ' s';
         this.refreshSignalViewer();
         this.refreshFilterComparison();
     },
@@ -863,7 +1022,30 @@ const App = {
             endTime: this.state.viewerSelection.end,
             channelScope: 'selected'
         });
-        this.runExport(document.getElementById('selection-export'), () => EEGExport.exportCSV(this.state.eegData, options), 'Selected range CSV download started');
+        this.runExport(document.getElementById('selection-export'), () => EEGExport.exportCSV(this.state.eegData, options), 'Selected-range CSV download started');
+    },
+
+    useViewerRangeForExport() {
+        if (!this.state.eegData) return;
+        const selection = this.state.viewerSelection;
+        const start = selection?.start ?? this.state.timeOffset;
+        const end = selection?.end ?? Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow);
+        document.getElementById('export-start-time').value = start.toFixed(3);
+        document.getElementById('export-end-time').value = end.toFixed(3);
+        this.updateExportEstimate();
+        this.showToast(selection ? 'Selected range copied to the export time scope' : 'Visible window copied to the export time scope', 'success');
+    },
+
+    exportBandPowerResults() {
+        const results = this.state.analysisResults;
+        if (!results.bandPowers || !this.state.eegData) {
+            this.showToast('Compute band power before downloading its CSV.', 'info');
+            return;
+        }
+        const channels = results.bandPowerChannels || [];
+        const labels = channels.map(index => this.state.eegData.channelLabels[index]);
+        EEGExport.exportBandPowerCSV(labels, results.bandPowers);
+        this.showToast('Band-power CSV download started', 'success');
     },
 
     bindExportControls() {
@@ -874,17 +1056,17 @@ const App = {
         document.getElementById('export-csv').addEventListener('click', event => {
             if (!this.state.eegData) return;
             const options = this.getExportOptions();
-            this.runExport(event.currentTarget, () => EEGExport.exportCSV(this.state.eegData, options), 'Scoped CSV download started');
+            this.runExport(event.currentTarget, () => EEGExport.exportCSV(this.state.eegData, options), 'Signal CSV download started');
         });
 
         document.getElementById('export-json').addEventListener('click', event => {
             if (!this.state.eegData) return;
             const options = this.getExportOptions();
-            this.runExport(event.currentTarget, () => EEGExport.exportJSON(this.state.eegData, this.state.analysisResults, options), 'Scoped JSON download started');
+            this.runExport(event.currentTarget, () => EEGExport.exportJSON(this.state.eegData, this.state.analysisResults, options), 'Data JSON download started');
         });
 
         document.getElementById('export-png').addEventListener('click', event => {
-            this.runExport(event.currentTarget, () => EEGExport.exportPNG('viewer-canvas', 'eeg_signals.png'), 'PNG download started');
+            this.runExport(event.currentTarget, () => EEGExport.exportPNG('viewer-canvas', 'eeg_signals.png'), 'Signal-view PNG download started');
         });
 
         document.getElementById('export-pdf').addEventListener('click', event => {
@@ -892,28 +1074,28 @@ const App = {
             this.runExport(
                 event.currentTarget,
                 () => EEGExport.exportPDF(this.state.eegData, this.state.analysisResults),
-                'PDF report download started',
-                'PDF export is unavailable because the PDF library did not load'
+                'Analysis report PDF download started',
+                'The PDF report is unavailable because its browser library did not load. Reload the page and try again.'
             );
         });
 
         document.getElementById('export-filtered-csv').addEventListener('click', event => {
             if (!this.state.eegData) return;
             if (!this.state.filteredData) {
-                this.showToast('Apply a filter before exporting processed signal data', 'info');
+                this.showToast('Apply a filter before downloading filtered signal data.', 'info');
                 return;
             }
             const options = this.getExportOptions({ data: this.state.filteredData, sourceLabel: 'filtered' });
-            this.runExport(event.currentTarget, () => EEGExport.exportFilteredCSV(this.state.eegData, this.state.filteredData, options), 'Processed CSV download started');
+            this.runExport(event.currentTarget, () => EEGExport.exportFilteredCSV(this.state.eegData, this.state.filteredData, options), 'Filtered-signal CSV download started');
         });
 
         document.getElementById('export-spectrum-csv').addEventListener('click', () => {
             if (this.state.analysisResults.spectrumData) {
                 const sd = this.state.analysisResults.spectrumData;
                 EEGExport.exportSpectrumCSV(sd.freqs, sd.datasets, this.state.eegData.channelLabels);
-                this.showToast('Spectrum CSV downloaded', 'success');
+                this.showToast('Spectrum CSV download started', 'success');
             } else {
-                this.showToast('Compute the spectrum first to export this data', 'info');
+                this.showToast('Compute a spectrum before downloading its CSV.', 'info');
             }
         });
 
@@ -921,32 +1103,18 @@ const App = {
         document.getElementById('export-svg').addEventListener('click', () => {
             if (this.state.eegData) {
                 EEGExport.exportSVG('viewer-canvas', 'eeg_signals.svg');
-                this.showToast('SVG image downloaded', 'success');
+                this.showToast('Signal-view SVG download started', 'success');
             }
         });
 
 
         document.getElementById('export-use-viewer-range').addEventListener('click', () => {
-            if (!this.state.eegData) return;
-            const selection = this.state.viewerSelection;
-            const start = selection?.start ?? this.state.timeOffset;
-            const end = selection?.end ?? Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow);
-            document.getElementById('export-start-time').value = start.toFixed(3);
-            document.getElementById('export-end-time').value = end.toFixed(3);
-            this.updateExportEstimate();
-            this.showToast(selection ? 'Viewer selection copied to export scope' : 'Visible viewer window copied to export scope', 'success');
+            this.useViewerRangeForExport();
         });
 
 
         document.getElementById('export-band-power-csv').addEventListener('click', () => {
-            if (this.state.analysisResults.bandPowers && this.state.eegData) {
-                const channels = this.state.selectedChannels.length > 0 ? this.state.selectedChannels : [0];
-                const labels = channels.map(i => this.state.eegData.channelLabels[i]);
-                EEGExport.exportBandPowerCSV(labels, this.state.analysisResults.bandPowers);
-                this.showToast('Band power CSV downloaded', 'success');
-            } else {
-                this.showToast('Compute band powers first to export this data', 'info');
-            }
+            this.exportBandPowerResults();
         });
 
 
@@ -954,10 +1122,10 @@ const App = {
             const dpiMultiplier = parseInt(document.getElementById('export-dpi').value) || 3;
             const canvas = this.getCurrentVisualizationCanvas();
             if (!canvas) {
-                this.showToast('Generate some visualizations first, then export them', 'info');
+                this.showToast('Compute or open a visualization before downloading the active plot.', 'info');
                 return;
             }
-            this.runExport(event.currentTarget, () => EEGExport.exportHighResPNG(canvas, `${canvas.id}_highres.png`, dpiMultiplier), 'High-resolution PNG download started');
+            this.runExport(event.currentTarget, () => EEGExport.exportHighResPNG(canvas, `${canvas.id}_highres.png`, dpiMultiplier), 'Active-plot PNG download started');
         });
 
 
@@ -969,7 +1137,7 @@ const App = {
 
         document.getElementById('export-session-json').addEventListener('click', event => {
             if (!this.state.eegData) return;
-            this.runExport(event.currentTarget, () => EEGExport.exportSessionManifest(this.state.eegData, this.state), 'Session manifest download started');
+            this.runExport(event.currentTarget, () => EEGExport.exportSessionManifest(this.state.eegData, this.state), 'Review session download started');
         });
         const sessionInput = document.getElementById('import-session-input');
         document.getElementById('import-session-json').addEventListener('click', () => sessionInput.click());
@@ -982,7 +1150,7 @@ const App = {
         document.getElementById('export-annotations-csv').addEventListener('click', event => {
             if (!this.state.eegData) return;
             if (this.state.annotations.length === 0) {
-                this.showToast('Add at least one recording note before exporting annotations', 'info');
+                this.showToast('Add at least one annotation before downloading an annotations CSV.', 'info');
                 return;
             }
             this.runExport(event.currentTarget, () => EEGExport.exportAnnotationsCSV(this.state.eegData, this.state.annotations), 'Annotations CSV download started');
@@ -990,7 +1158,7 @@ const App = {
 
         document.getElementById('export-bids-events').addEventListener('click', event => {
             if (!this.state.eegData || this.state.annotations.length === 0) {
-                this.showToast('Add at least one point or range annotation before exporting BIDS events', 'info');
+                this.showToast('Add at least one point or range annotation before downloading BIDS events.', 'info');
                 return;
             }
             this.runExport(event.currentTarget, () => EEGExport.exportBIDSEventsTSV(this.state.eegData, this.state.annotations), 'BIDS events TSV download started');
@@ -1004,7 +1172,7 @@ const App = {
         document.getElementById('export-quality-csv').addEventListener('click', event => {
             const quality = this.state.analysisResults.quality;
             if (!quality?.length) {
-                this.showToast('Run a signal quality review before exporting its metrics', 'info');
+                this.showToast('Screen the visible window before downloading quality metrics.', 'info');
                 return;
             }
             this.runExport(event.currentTarget, () => EEGExport.exportQualityCSV(this.state.eegData, quality), 'Quality review CSV download started');
@@ -1012,7 +1180,7 @@ const App = {
 
         document.getElementById('export-annotations-json').addEventListener('click', event => {
             if (!this.state.eegData || !this.state.annotations.length) {
-                this.showToast('Add or import at least one recording note first', 'info');
+                this.showToast('Add or import at least one annotation before downloading annotation JSON.', 'info');
                 return;
             }
             this.runExport(event.currentTarget, () => EEGExport.exportAnnotationsJSON(this.state.eegData, this.state.annotations), 'Annotations JSON download started');
@@ -1029,6 +1197,31 @@ const App = {
         progressBar.style.setProperty('--progress', `${Math.max(0, Math.min(100, value))}%`);
         progressBar.setAttribute('aria-valuenow', String(Math.round(value)));
         document.getElementById('upload-progress-text').textContent = label;
+        this.setLoadingScreenProgress(value, label);
+    },
+
+    beginImport(title, subtitle) {
+        if (this.state.isImporting) return false;
+        this.state.isImporting = true;
+        this.showLoadingScreen(title, subtitle);
+        this.setImportProgress(6, 'Preparing the local file reader');
+        return true;
+    },
+
+    async completeImport() {
+        this.setImportProgress(100, 'Recording ready');
+        await this.waitForPaint();
+        await this.waitForPaint();
+        await new Promise(resolve => setTimeout(resolve, 100));
+        this.state.isImporting = false;
+        this.hideLoadingScreen();
+        this.resetImportProgress();
+    },
+
+    abortImport() {
+        this.state.isImporting = false;
+        this.hideLoadingScreen();
+        this.resetImportProgress();
     },
 
     async importSessionManifest(file) {
@@ -1036,7 +1229,7 @@ const App = {
         try {
             const manifest = JSON.parse(await file.text());
             if (!manifest?.recording || !manifest?.workspace || !Array.isArray(manifest.annotations)) {
-                throw new Error('This is not a NeuroScope review manifest');
+                throw new Error('This file is not a NeuroScope review session.');
             }
             const recording = manifest.recording;
             const current = this.state.eegData;
@@ -1044,7 +1237,7 @@ const App = {
                 && recording.channelLabels.length === current.channelLabels.length
                 && recording.channelLabels.every((label, index) => label === current.channelLabels[index]);
             if (!labelsMatch || Number(recording.sampleRate) !== Number(current.sampleRate)) {
-                throw new Error('Channel labels or sample rate do not match the loaded recording');
+                throw new Error('The channel labels or sampling rate do not match the open recording.');
             }
 
             const workspace = manifest.workspace;
@@ -1071,9 +1264,9 @@ const App = {
             this.state.viewerGrid = ['standard', 'fine', 'off'].includes(workspace.viewerGrid) ? workspace.viewerGrid : 'standard';
             this.state.invertPolarity = Boolean(workspace.invertPolarity);
             document.getElementById('amplitude-scale').value = amplitude;
-            document.getElementById('amplitude-value').textContent = `${amplitude.toFixed(1)}x`;
+            document.getElementById('amplitude-value').textContent = `${amplitude.toFixed(1)}×`;
             document.getElementById('time-window').value = windowSize;
-            document.getElementById('time-window-value').textContent = `${windowSize}s`;
+            document.getElementById('time-window-value').textContent = `${windowSize} s`;
             document.getElementById('trace-palette').value = this.state.tracePalette;
             document.getElementById('viewer-grid').value = this.state.viewerGrid;
             document.getElementById('invert-polarity').checked = this.state.invertPolarity;
@@ -1085,11 +1278,11 @@ const App = {
             this.renderAnnotations();
             this.refreshSignalViewer();
             const filteredNotice = workspace.processingState === 'filtered'
-                ? ' Filtered samples are not stored in review manifests, so the current raw signal remains active.'
+                ? ' Filtered samples are not stored in review sessions, so the raw signal remains active.'
                 : '';
-            this.showToast(`Review restored: ${this.state.annotations.length} notes and ${this.state.badChannels.length} bad channels.${filteredNotice}`, 'success');
+            this.showToast(`Review restored: ${this.state.annotations.length} ${this.state.annotations.length === 1 ? 'annotation' : 'annotations'} and ${this.state.badChannels.length} ${this.state.badChannels.length === 1 ? 'bad channel' : 'bad channels'}.${filteredNotice}`, 'success');
         } catch (error) {
-            this.showToast(`Could not restore review: ${error.message}`, 'error');
+            this.showToast(`Review session could not be restored: ${error.message}`, 'error');
         }
     },
 
@@ -1100,56 +1293,61 @@ const App = {
         progressBar.classList.remove('indeterminate');
         progressBar.style.setProperty('--progress', '0%');
         progressBar.setAttribute('aria-valuenow', '0');
+        document.getElementById('upload-progress-text').textContent = 'Reading recording';
     },
 
     async loadFile(file) {
-        this.setImportProgress(12, 'Reading your file');
-        await new Promise(requestAnimationFrame);
+        if (!this.beginImport('Opening recording', `${file.name} · remains in this browser`)) return;
+        this.setImportProgress(14, 'Reading the file and checking its format');
+        await this.waitForPaint();
 
         try {
             const eegData = await EEGParsers.parseFile(file);
-            this.setImportProgress(78, 'Validating channels and metadata');
-            await new Promise(requestAnimationFrame);
+            this.setImportProgress(78, 'Validating channel labels and recording metadata');
+            await this.waitForPaint();
 
             this.state.eegData = eegData;
             this.state.filteredData = null;
             this.state.analysisResults = {};
             this.state.annotations = [];
             this.state.badChannels = [];
-            this.setImportProgress(100, 'Recording ready');
             this.initializeDashboard();
+            await this.completeImport();
 
-            this.showToast(`Loaded ${eegData.channelLabels.length} channels from ${file.name}`, 'success');
+            this.showToast(`Opened ${eegData.channelLabels.length} ${eegData.channelLabels.length === 1 ? 'channel' : 'channels'} from ${file.name}`, 'success');
         } catch (err) {
-            this.showToast(`There was an issue reading this file, ${err.message}`, 'error');
-            this.resetImportProgress();
+            this.abortImport();
+            this.showToast(`${file.name} could not be opened: ${err.message}`, 'error');
         }
     },
 
     async loadSampleData() {
-        this.setImportProgress(10, 'Loading sample EEG data (chb02_16.edf)');
-        await new Promise(requestAnimationFrame);
+        if (!this.beginImport('Opening sample recording', 'chb02_16.edf · CHB-MIT · remains in this browser')) return;
+        this.setImportProgress(12, 'Reading the bundled sample file');
+        await this.waitForPaint();
 
         try {
             const response = await fetch('chb02_16.edf');
-            if (!response.ok) throw new Error('Could not fetch sample file');
+            if (!response.ok) throw new Error('The sample file could not be fetched. Run NeuroScope from a local web server or use the hosted app.');
             const buffer = await response.arrayBuffer();
-            this.setImportProgress(62, 'Parsing EDF records');
-            await new Promise(requestAnimationFrame);
+            this.setImportProgress(64, 'Parsing EDF data records');
+            await this.waitForPaint();
 
             const eegData = EEGParsers.parseEDF(buffer, 'chb02_16.edf');
+            this.setImportProgress(88, 'Validating channel labels and recording metadata');
+            await this.waitForPaint();
             this.state.eegData = eegData;
             this.state.filteredData = null;
             this.state.analysisResults = {};
             this.state.annotations = [];
             this.state.badChannels = [];
-            this.setImportProgress(100, 'Recording ready');
             this.initializeDashboard();
+            await this.completeImport();
 
-            this.showToast(`Sample data loaded: ${eegData.channelLabels.length} channels from CHB-MIT database`, 'success');
+            this.showToast(`Opened the CHB-MIT sample with ${eegData.channelLabels.length} channels`, 'success');
         } catch (err) {
-            this.showToast(`Could not load sample data: ${err.message}`, 'error');
-            this.resetImportProgress();
+            this.abortImport();
+            this.showToast(`The CHB-MIT sample could not be opened: ${err.message}`, 'error');
         }
     },
 
@@ -1162,6 +1360,7 @@ const App = {
         this.state.viewerSelection = null;
         this.state.viewerHover = null;
         this.state.viewerDragStart = null;
+        this.state.viewerContextPoint = null;
         this.state.annotationFilter = 'all';
         this.state.editingAnnotationId = null;
         window.scrollTo(0, 0);
@@ -1177,7 +1376,7 @@ const App = {
 
         document.getElementById('info-channels').textContent = data.channelLabels.length;
         document.getElementById('info-srate').textContent = data.sampleRate + ' Hz';
-        document.getElementById('info-duration').textContent = data.duration.toFixed(1) + 's';
+        document.getElementById('info-duration').textContent = data.duration.toFixed(1) + ' s';
         document.getElementById('info-samples').textContent = data.numSamples.toLocaleString();
         document.getElementById('info-format').textContent = data.format;
 
@@ -1194,11 +1393,11 @@ const App = {
         document.getElementById('time-offset').max = maxTime;
         this.state.timeWindow = Math.min(10, Math.ceil(data.duration));
         document.getElementById('time-window').value = this.state.timeWindow;
-        document.getElementById('time-window-value').textContent = this.state.timeWindow + 's';
+        document.getElementById('time-window-value').textContent = this.state.timeWindow + ' s';
         document.getElementById('time-window').max = Math.max(0.5, data.duration);
         this.state.timeOffset = 0;
         document.getElementById('time-offset').value = 0;
-        document.getElementById('time-offset-value').textContent = '0.0s';
+        document.getElementById('time-offset-value').textContent = '0.0 s';
         document.getElementById('jump-to-time').max = Math.max(0, data.duration);
 
         document.getElementById('export-end-time').max = data.duration;
@@ -1210,15 +1409,17 @@ const App = {
         this.updateExportEstimate();
         document.getElementById('quality-table-wrap').hidden = true;
         document.getElementById('quality-tbody').replaceChildren();
-        document.getElementById('quality-summary').textContent = 'No quality review run yet.';
+        document.getElementById('quality-summary').textContent = 'Quality screen not run.';
         document.getElementById('quality-mark-flagged').disabled = true;
+        document.getElementById('bands-scope').value = 'visible';
+        document.getElementById('bands-display').value = 'absolute';
+        this.resetBandPowerResults();
+        this.closeViewerContextMenu();
 
         document.getElementById('upload-section').classList.add('hidden');
         document.getElementById('dashboard').classList.add('visible');
 
         document.getElementById('mobile-bottom-nav').classList.add('visible');
-
-        this.resetImportProgress();
 
         this.switchTab('viewer');
 
@@ -1270,8 +1471,8 @@ const App = {
             badButton.type = 'button';
             badButton.className = 'channel-bad-toggle';
             badButton.textContent = '!';
-            badButton.title = `Mark ${label} as a bad channel`;
-            badButton.setAttribute('aria-label', `Mark ${label} as a bad channel`);
+            badButton.title = `Mark ${label} as bad`;
+            badButton.setAttribute('aria-label', `Mark ${label} as bad`);
             badButton.setAttribute('aria-pressed', 'false');
             badButton.addEventListener('click', () => {
                 const isBad = this.state.badChannels.includes(idx);
@@ -1280,7 +1481,9 @@ const App = {
                     : [...this.state.badChannels, idx].sort((a, b) => a - b);
                 item.classList.toggle('is-bad', !isBad);
                 badButton.setAttribute('aria-pressed', String(!isBad));
-                badButton.title = `${!isBad ? 'Restore' : 'Mark'} ${label} ${!isBad ? 'to usable' : 'as a bad channel'}`;
+                const actionLabel = !isBad ? `Mark ${label} as good` : `Mark ${label} as bad`;
+                badButton.title = actionLabel;
+                badButton.setAttribute('aria-label', actionLabel);
                 this.updateChannelSelectionCount();
                 this.refreshSignalViewer();
             });
@@ -1318,7 +1521,7 @@ const App = {
         const status = document.getElementById('status-channels');
         if (status) {
             const bad = this.state.badChannels.length;
-            status.textContent = bad ? `${selected} selected · ${bad} bad` : `${selected} selected`;
+            status.textContent = bad ? `${selected} selected · ${bad} marked bad` : `${selected} selected`;
         }
     },
 
@@ -1332,7 +1535,7 @@ const App = {
         this.updateChannelSelectionCount();
     },
 
-    reportExport(success, successMessage, errorMessage = 'The download could not be prepared') {
+    reportExport(success, successMessage, errorMessage = 'The download could not be prepared. Check the export scope and try again.') {
         if (success) this.showToast(successMessage, 'success');
         else this.showToast(errorMessage, 'error');
     },
@@ -1371,7 +1574,7 @@ const App = {
         document.getElementById('export-filtered-csv').disabled = !this.state.filteredData;
 
         if (!Number.isFinite(duration) || duration <= 0 || options.channelIndices.length === 0) {
-            output.textContent = 'Choose at least one channel and a valid time range';
+            output.textContent = 'Select at least one channel and enter an end time after the start time.';
             output.classList.add('error');
             return;
         }
@@ -1379,7 +1582,7 @@ const App = {
         output.classList.remove('error');
         const csvBytes = EEGExport.estimateSignalExport(this.state.eegData, options, 'csv');
         const jsonBytes = EEGExport.estimateSignalExport(this.state.eegData, options, 'json');
-        output.textContent = `Estimated CSV ${this.formatBytes(csvBytes)} · JSON ${this.formatBytes(jsonBytes)} · ${options.channelIndices.length} channels · ${duration.toFixed(2)} s`;
+        output.textContent = `Estimated size: CSV ${this.formatBytes(csvBytes)} · JSON ${this.formatBytes(jsonBytes)} · ${options.channelIndices.length} ${options.channelIndices.length === 1 ? 'channel' : 'channels'} · ${duration.toFixed(2)} s`;
     },
 
     formatBytes(bytes) {
@@ -1388,9 +1591,9 @@ const App = {
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     },
 
-    async runExport(button, producer, successMessage, errorMessage = 'The download could not be prepared') {
+    async runExport(button, producer, successMessage, errorMessage = 'The download could not be prepared. Check the export scope and try again.') {
         if (this.state.exportBusy) {
-            this.showToast('Another export is still being prepared', 'info');
+            this.showToast('An export is already being prepared. Wait for it to finish before starting another.', 'info');
             return;
         }
         this.state.exportBusy = true;
@@ -1554,7 +1757,7 @@ const App = {
         const endT = Math.min(data.duration, this.state.timeOffset + this.state.timeWindow).toFixed(precision);
         const timeRangeEl = document.getElementById('viewer-time-range');
         if (timeRangeEl) {
-            timeRangeEl.textContent = startT + 's to ' + endT + 's';
+            timeRangeEl.textContent = `${startT}–${endT} s`;
         }
         this.refreshSignalOverlay();
         this.updateWorkspaceStatus();
@@ -1569,7 +1772,7 @@ const App = {
         if (this.state.timeOffset > maxOffset) {
             this.state.timeOffset = maxOffset;
             slider.value = maxOffset;
-            document.getElementById('time-offset-value').textContent = maxOffset.toFixed(1) + 's';
+            document.getElementById('time-offset-value').textContent = maxOffset.toFixed(1) + ' s';
         }
     },
 
@@ -1612,60 +1815,87 @@ const App = {
             logScale: scale === 'log'
         });
 
-        this.showToast('Spectrum analysis complete', 'success');
+        this.showToast('Power spectrum computed', 'success');
     },
 
 
 
-    computeBandPowers() {
+    async computeBandPowers() {
         if (!this.state.eegData) return;
 
-        const data = this.state.filteredData || this.state.eegData.channelData;
+        const button = document.getElementById('bands-compute');
+        const originalLabel = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Computing…';
+        document.getElementById('band-analysis-status').textContent = 'Computing band power locally with Welch PSD…';
+        await this.waitForPaint();
+
+        const sourceData = this.state.filteredData || this.state.eegData.channelData;
         const sampleRate = this.state.eegData.sampleRate;
         const channels = this.state.selectedChannels.length > 0 ? this.state.selectedChannels : [0];
+        const scopeMode = document.getElementById('bands-scope').value;
+        const startTime = scopeMode === 'visible' ? this.state.timeOffset : 0;
+        const endTime = scopeMode === 'visible'
+            ? Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow)
+            : this.state.eegData.duration;
+        const startSample = Math.max(0, Math.floor(startTime * sampleRate));
+        const endSample = Math.min(this.state.eegData.numSamples, Math.ceil(endTime * sampleRate));
 
-        const allBandPowers = [];
-        let avgBands = null;
+        try {
+            if (endSample - startSample < 16) throw new Error('The selected time scope is too short. Choose a longer visible window.');
 
-        for (const chIdx of channels) {
-            const psd = EEGAnalysis.welchPSD(data[chIdx], sampleRate);
-            const bands = EEGAnalysis.computeBandPowers(psd.freqs, psd.psd);
-            allBandPowers.push(bands);
+            const allBandPowers = [];
+            let avgBands = null;
 
-            if (!avgBands) {
-                avgBands = JSON.parse(JSON.stringify(bands));
-            } else {
-                for (const key of Object.keys(bands)) {
-                    avgBands[key].power += bands[key].power;
+            for (const chIdx of channels) {
+                const interval = sourceData[chIdx].slice(startSample, endSample);
+                const psd = EEGAnalysis.welchPSD(interval, sampleRate);
+                const bands = EEGAnalysis.computeBandPowers(psd.freqs, psd.psd);
+                allBandPowers.push(bands);
+
+                if (!avgBands) {
+                    avgBands = JSON.parse(JSON.stringify(bands));
+                } else {
+                    for (const key of Object.keys(bands)) {
+                        avgBands[key].power += bands[key].power;
+                    }
                 }
             }
-        }
 
-        // average
-        if (avgBands) {
-            for (const key of Object.keys(avgBands)) {
-                avgBands[key].power /= channels.length;
+            if (avgBands) {
+                for (const key of Object.keys(avgBands)) {
+                    avgBands[key].power /= channels.length;
+                }
             }
+
+            this.state.analysisResults.bandPowers = allBandPowers;
+            this.state.analysisResults.avgBandPowers = avgBands;
+            this.state.analysisResults.bandPowerChannels = channels.slice();
+            this.state.analysisResults.bandPowerScope = {
+                mode: scopeMode,
+                startTime,
+                endTime,
+                source: this.state.filteredData ? 'Filtered' : 'Raw'
+            };
+
+            document.getElementById('band-empty-state').hidden = true;
+            document.getElementById('band-results').hidden = false;
+            document.getElementById('bands-export').disabled = false;
+            this.renderBandPowerSummary();
+            this.renderBandPowerCharts();
+            this.showToast(`Band power computed for ${channels.length} ${channels.length === 1 ? 'channel' : 'channels'}`, 'success');
+        } catch (error) {
+            this.resetBandPowerResults();
+            this.showToast(`Band power could not be computed: ${error.message}`, 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = originalLabel;
         }
-
-        this.state.analysisResults.bandPowers = allBandPowers;
-        this.state.analysisResults.avgBandPowers = avgBands;
-
-        const bandKeys = ['delta', 'theta', 'alpha', 'beta', 'gamma'];
-        for (const key of bandKeys) {
-            const el = document.getElementById(`band-${key}`);
-            if (el && avgBands) {
-                el.textContent = avgBands[key].power.toFixed(2) + ' uV\u00B2';
-            }
-        }
-
-        this.renderBandPowerCharts();
-        this.showToast('Band power analysis complete', 'success');
     },
 
     renderBandPowerCharts() {
         const displayType = document.getElementById('bands-display').value;
-        const channels = this.state.selectedChannels.length > 0 ? this.state.selectedChannels : [0];
+        const channels = this.state.analysisResults.bandPowerChannels || [];
         const labels = channels.map(i => this.state.eegData.channelLabels[i]);
 
         EEGVisualization.createBandPowerChart(
@@ -1681,6 +1911,48 @@ const App = {
                 this.state.analysisResults.avgBandPowers
             );
         }
+    },
+
+    renderBandPowerSummary() {
+        const avgBands = this.state.analysisResults.avgBandPowers;
+        const scope = this.state.analysisResults.bandPowerScope;
+        const channels = this.state.analysisResults.bandPowerChannels || [];
+        if (!avgBands || !scope) return;
+
+        const displayType = document.getElementById('bands-display').value;
+        const bandKeys = ['delta', 'theta', 'alpha', 'beta', 'gamma'];
+        const totalPower = bandKeys.reduce((sum, key) => sum + avgBands[key].power, 0);
+        for (const key of bandKeys) {
+            const absolute = avgBands[key].power;
+            const relative = totalPower > 0 ? absolute / totalPower * 100 : 0;
+            document.getElementById(`band-${key}`).textContent = displayType === 'relative'
+                ? `${relative.toFixed(1)}%`
+                : `${absolute.toFixed(2)} µV²`;
+        }
+
+        const dominantKey = bandKeys.reduce((best, key) => avgBands[key].power > avgBands[best].power ? key : best, bandKeys[0]);
+        const dominantRelative = totalPower > 0 ? avgBands[dominantKey].power / totalPower * 100 : 0;
+        const intervalLabel = `${scope.startTime.toFixed(2)}–${scope.endTime.toFixed(2)} s`;
+        document.getElementById('band-profile-unit').textContent = displayType === 'relative' ? '% of band total' : 'µV²';
+        document.getElementById('band-dominant').textContent = `${dominantKey[0].toUpperCase()}${dominantKey.slice(1)} · ${dominantRelative.toFixed(1)}%`;
+        document.getElementById('band-channel-scope').textContent = `${channels.length} ${channels.length === 1 ? 'channel' : 'channels'}`;
+        document.getElementById('band-interval').textContent = intervalLabel;
+        document.getElementById('band-source').textContent = scope.source;
+        document.getElementById('band-analysis-status').textContent = `Latest run: ${intervalLabel} · ${channels.length} ${channels.length === 1 ? 'channel' : 'channels'} · ${scope.source.toLowerCase()} signal`;
+    },
+
+    resetBandPowerResults() {
+        delete this.state.analysisResults.bandPowers;
+        delete this.state.analysisResults.avgBandPowers;
+        delete this.state.analysisResults.bandPowerChannels;
+        delete this.state.analysisResults.bandPowerScope;
+        EEGVisualization.destroyChart('bands-bar-chart');
+        EEGVisualization.destroyChart('bands-pie-chart');
+        document.getElementById('band-results').hidden = true;
+        document.getElementById('band-empty-state').hidden = false;
+        document.getElementById('bands-export').disabled = true;
+        const scopeLabel = document.getElementById('bands-scope').value === 'visible' ? 'visible signal window' : 'complete recording';
+        document.getElementById('band-analysis-status').textContent = `Ready to compute band power for the ${scopeLabel}.`;
     },
 
 
@@ -1703,7 +1975,7 @@ const App = {
             if (!isFinite(filteredClip[i])) { hasNaN = true; break; }
         }
         if (hasNaN) {
-            this.showToast('Filter produced unstable output, try a lower order or different cutoff', 'error');
+            this.showToast('This filter produced non-finite values. Lower the order or move the cutoff away from the Nyquist frequency.', 'error');
             return;
         }
 
@@ -1731,7 +2003,7 @@ const App = {
 
         this.drawFilterResponse(filterType, params, sampleRate);
 
-        this.showToast('Filter preview ready', 'info');
+        this.showToast('Filter preview updated for the selected channel', 'info');
     },
 
     applyFilter() {
@@ -1759,17 +2031,17 @@ const App = {
 
                 if (!stable) {
                     overlay.style.display = 'none';
-                    this.showToast('Filter produced unstable output, try a lower order or different cutoff', 'error');
+                    this.showToast('This filter produced non-finite values. Lower the order or move the cutoff away from the Nyquist frequency.', 'error');
                     return;
                 }
 
                 this.state.filteredData = filtered;
 
                 let desc = '';
-                if (filterType === 'bandpass') desc = `Bandpass ${params.low} - ${params.high} Hz, order ${params.order}`;
-                else if (filterType === 'highpass') desc = `Highpass above ${params.low} Hz, order ${params.order}`;
-                else if (filterType === 'lowpass') desc = `Lowpass below ${params.high} Hz, order ${params.order}`;
-                else if (filterType === 'notch') desc = `Notch at ${params.low} Hz`;
+                if (filterType === 'bandpass') desc = `Filtered · bandpass ${params.low}–${params.high} Hz · order ${params.order}`;
+                else if (filterType === 'highpass') desc = `Filtered · highpass above ${params.low} Hz · order ${params.order}`;
+                else if (filterType === 'lowpass') desc = `Filtered · lowpass below ${params.high} Hz · order ${params.order}`;
+                else if (filterType === 'notch') desc = `Filtered · notch at ${params.low} Hz`;
 
                 this.updateFilterStatus(desc);
 
@@ -1802,7 +2074,7 @@ const App = {
                 this.refreshSignalViewer();
                 this.showToast('Filter applied to all channels', 'success');
             } catch (err) {
-                this.showToast('Filter encountered an error, try different settings', 'error');
+                this.showToast('The filter could not be applied. Try a lower order or different cutoff.', 'error');
             } finally {
                 overlay.style.display = 'none';
             }
@@ -1821,7 +2093,7 @@ const App = {
         const respCanvas = document.getElementById('filter-response-canvas');
         respCanvas.width = respCanvas.width;
 
-        this.showToast('Signals restored to original', 'info');
+        this.showToast('Raw signal restored', 'info');
     },
 
     updateFilterStatus(description) {
@@ -1832,7 +2104,7 @@ const App = {
             textEl.textContent = description;
         } else {
             statusEl.classList.remove('active-filter');
-            textEl.textContent = 'Viewing the original signal';
+            textEl.textContent = 'Raw signal active';
         }
     },
 
@@ -1841,30 +2113,30 @@ const App = {
 
         if (filterType === 'bandpass') {
             if (params.low >= params.high) {
-                this.showToast('Low cutoff must be less than high cutoff', 'error');
+                this.showToast('Low cutoff must be lower than high cutoff.', 'error');
                 return false;
             }
             if (params.high >= nyquist) {
-                this.showToast('High cutoff must be below Nyquist at ' + nyquist.toFixed(0) + ' Hz', 'error');
+                this.showToast(`High cutoff must be below the Nyquist frequency (${nyquist.toFixed(0)} Hz).`, 'error');
                 return false;
             }
             if (params.low < 0.05) {
-                this.showToast('Low cutoff must be at least 0.05 Hz', 'error');
+                this.showToast('Low cutoff must be 0.05 Hz or higher.', 'error');
                 return false;
             }
         } else if (filterType === 'highpass') {
             if (params.low >= nyquist) {
-                this.showToast('Cutoff must be below Nyquist at ' + nyquist.toFixed(0) + ' Hz', 'error');
+                this.showToast(`Highpass cutoff must be below the Nyquist frequency (${nyquist.toFixed(0)} Hz).`, 'error');
                 return false;
             }
         } else if (filterType === 'lowpass') {
             if (params.high >= nyquist) {
-                this.showToast('Cutoff must be below Nyquist at ' + nyquist.toFixed(0) + ' Hz', 'error');
+                this.showToast(`Lowpass cutoff must be below the Nyquist frequency (${nyquist.toFixed(0)} Hz).`, 'error');
                 return false;
             }
         } else if (filterType === 'notch') {
             if (params.low >= nyquist) {
-                this.showToast('Notch frequency must be below Nyquist at ' + nyquist.toFixed(0) + ' Hz', 'error');
+                this.showToast(`Notch frequency must be below the Nyquist frequency (${nyquist.toFixed(0)} Hz).`, 'error');
                 return false;
             }
         }
@@ -1933,7 +2205,7 @@ const App = {
             minVal, maxVal, colormap
         );
 
-        this.showToast('Spectrogram generated', 'success');
+        this.showToast('Spectrogram computed', 'success');
     },
 
 
@@ -1975,7 +2247,7 @@ const App = {
             'stats-rms-chart',
             labels,
             statsArray.map(s => s.rms),
-            'RMS Amplitude per Channel',
+            'RMS amplitude by channel',
             '#4A90D9'
         );
 
@@ -1984,11 +2256,11 @@ const App = {
             'stats-variance-chart',
             labels,
             statsArray.map(s => s.variance),
-            'Variance per Channel',
+            'Variance by channel',
             '#10B981'
         );
 
-        this.showToast('Statistical analysis complete', 'success');
+        this.showToast('Channel statistics computed', 'success');
     },
 
     computeSignalQuality() {
@@ -2016,7 +2288,7 @@ const App = {
                 `${result.peakToPeak.toFixed(2)} µV`,
                 `${(result.flatRatio * 100).toFixed(2)}%`,
                 `${(result.repeatedExtremeRatio * 100).toFixed(2)}%`,
-                result.flags.length ? result.flags.join(' · ') : 'No obvious issue'
+                result.flags.length ? result.flags.join(' · ') : 'No automatic flag'
             ];
             for (const value of values) {
                 const cell = document.createElement('td');
@@ -2028,9 +2300,9 @@ const App = {
 
         const flagged = results.filter(result => result.flags.length).length;
         document.getElementById('quality-table-wrap').hidden = false;
-        document.getElementById('quality-summary').textContent = `${results.length} channels reviewed from ${this.state.timeOffset.toFixed(2)}–${Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow).toFixed(2)} s · ${flagged} flagged for manual review`;
+        document.getElementById('quality-summary').textContent = `${results.length} ${results.length === 1 ? 'channel' : 'channels'} screened from ${this.state.timeOffset.toFixed(2)}–${Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow).toFixed(2)} s · ${flagged} flagged for manual review`;
         document.getElementById('quality-mark-flagged').disabled = flagged === 0;
-        this.showToast('Signal quality review complete', 'success');
+        this.showToast('Visible-window quality screen complete', 'success');
     },
 
 
@@ -2078,7 +2350,7 @@ const App = {
             maxVal
         );
 
-        this.showToast('Topographic map generated', 'success');
+        this.showToast('Scalp map computed', 'success');
     },
 
 
@@ -2095,6 +2367,8 @@ const App = {
         this.state.viewerHover = null;
         this.state.viewerDisplay = null;
         this.state.viewerDragStart = null;
+        this.state.viewerContextPoint = null;
+        this.state.isImporting = false;
         this.state.isLoaded = false;
         this.state.selectedChannels = [];
         this.state.badChannels = [];
@@ -2109,6 +2383,9 @@ const App = {
         document.getElementById('annotation-form').hidden = true;
         document.getElementById('viewer-selection-bar').hidden = true;
         document.getElementById('viewer-hover-tooltip').hidden = true;
+        this.closeViewerContextMenu();
+        this.resetBandPowerResults();
+        this.resetImportProgress();
         this.renderAnnotations();
 
         // hide mobile elements
