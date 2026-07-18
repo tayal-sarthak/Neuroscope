@@ -739,9 +739,13 @@ const App = {
             const onsetIndex = column('onset', 'onset_seconds', 'time', 'time_seconds');
             if (onsetIndex < 0) throw new Error('Add an onset column before importing this file.');
             const durationIndex = column('duration', 'duration_seconds');
-            const typeIndex = column('trial_type', 'type');
+            const typeIndex = column('trial_type', 'type', 'label');
             const channelsIndex = column('channel', 'channels');
             const noteIndex = column('description', 'note');
+            const exclusionIndex = column('exclude_from_analysis');
+            const signalStateIndex = column('signal_state');
+            const montageIndex = column('montage');
+            const filterIndex = column('filter');
             const createdIndex = column('created_at');
             const existing = new Set(this.state.annotations.map(item => `${item.onset}|${item.duration}|${item.type}|${item.note}`));
             let imported = 0;
@@ -751,8 +755,9 @@ const App = {
                 const onset = Number(row[onsetIndex]);
                 const duration = durationIndex >= 0 ? Number(row[durationIndex] || 0) : 0;
                 const typeValue = typeIndex >= 0 ? row[typeIndex] : 'observation';
+                const normalizedType = String(typeValue).trim().toLowerCase().replace(/[\s-]+/g, '_');
                 const supportedTypes = ['eye_blink', 'muscle_artifact', 'bad_electrode', 'clinical_event', 'uncertain', 'observation', 'bad_artifact', 'signal_quality'];
-                const type = supportedTypes.includes(typeValue) ? typeValue : 'observation';
+                const type = supportedTypes.includes(normalizedType) ? normalizedType : 'observation';
                 const note = noteIndex >= 0 ? row[noteIndex].trim() : typeValue.replace(/_/g, ' ');
                 if (!Number.isFinite(onset) || !Number.isFinite(duration) || onset < 0 || duration < 0 || onset + duration > this.state.eegData.duration || !note) {
                     skipped++;
@@ -768,6 +773,10 @@ const App = {
                     continue;
                 }
                 existing.add(signature);
+                const exclusionValue = exclusionIndex >= 0 ? String(row[exclusionIndex]).trim().toLowerCase() : '';
+                const signalState = signalStateIndex >= 0 ? String(row[signalStateIndex]).trim().toLowerCase() : '';
+                const montage = montageIndex >= 0 ? String(row[montageIndex]).trim().toLowerCase() : '';
+                const filterDescription = filterIndex >= 0 ? String(row[filterIndex]).trim() : '';
                 this.state.annotations.push({
                     id: window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
                     onset,
@@ -775,8 +784,13 @@ const App = {
                     type,
                     channels,
                     note,
-                    excludeFromAnalysis: false,
-                    workspaceSnapshot: null,
+                    excludeFromAnalysis: ['true', '1', 'yes'].includes(exclusionValue),
+                    workspaceSnapshot: signalState || montage || filterDescription ? {
+                        capturedAt: new Date().toISOString(),
+                        signalState: signalState === 'filtered' ? 'filtered' : 'raw',
+                        montage: ['monopolar', 'average', 'bipolar'].includes(montage) ? montage : 'monopolar',
+                        filter: filterDescription ? { description: filterDescription } : null
+                    } : null,
                     createdAt: createdIndex >= 0 && row[createdIndex] ? row[createdIndex] : new Date().toISOString(),
                     importedFrom: file.name
                 });

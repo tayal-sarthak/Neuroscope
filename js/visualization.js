@@ -15,6 +15,21 @@ const EEGVisualization = {
         gamma: '#EF4444'
     },
 
+    annotationColors: {
+        eye_blink: '#2878B5',
+        muscle_artifact: '#7657A8',
+        bad_electrode: '#C73E4D',
+        clinical_event: '#7C3AED',
+        uncertain: '#B36A00',
+        bad_artifact: '#C73E4D',
+        signal_quality: '#B36A00',
+        observation: '#315AEF'
+    },
+
+    _annotationColor(type) {
+        return this.annotationColors[type] || this.annotationColors.observation;
+    },
+
     // draw signals canvas
     drawSignals(canvas, eegData, options = {}) {
         const ctx = canvas.getContext('2d');
@@ -210,7 +225,7 @@ const EEGVisualization = {
         for (const annotation of options.annotations || []) {
             const x = annotation.onset / overview.duration * width;
             const annotationWidth = Math.max(2, annotation.duration / overview.duration * width);
-            ctx.fillStyle = annotation.type === 'bad_artifact' ? 'rgba(199, 62, 77, 0.48)' : 'rgba(14, 142, 157, 0.46)';
+            ctx.fillStyle = `${this._annotationColor(annotation.type)}78`;
             ctx.fillRect(x, 5, annotationWidth, height - 10);
         }
 
@@ -271,10 +286,7 @@ const EEGVisualization = {
             const duration = Math.max(0, Number(annotation.duration || 0));
             const end = onset + duration;
             if (end < timeOffset || onset > visibleEnd) continue;
-            const color = annotation.type === 'bad_artifact' ? '#C73E4D'
-                : annotation.type === 'clinical_event' ? '#7C3AED'
-                : annotation.type === 'signal_quality' ? '#B36A00'
-                : '#2563EB';
+            const color = this._annotationColor(annotation.type);
             const x1 = toX(Math.max(timeOffset, onset));
             const x2 = duration > 0 ? toX(Math.min(visibleEnd, end)) : x1;
             ctx.fillStyle = color + '20';
