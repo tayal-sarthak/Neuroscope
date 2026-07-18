@@ -16,6 +16,9 @@ const App = {
         filterPreviewData: null,
         activeFilter: null,
         qualityTimelineBusy: false,
+        analysisHistory: [],
+        historyUndoing: false,
+        currentMontage: 'monopolar',
         annotations: [],
         annotationFilter: 'all',
         editingAnnotationId: null,
@@ -40,6 +43,7 @@ const App = {
         this.bindFilterControls();
         this.bindMobileControls();
         this.bindAnnotationControls();
+        this.bindHistoryControls();
         this.bindViewerInteractions();
         this.bindKeyboardHelp();
         this.finishInitialLoad();
@@ -263,10 +267,15 @@ const App = {
         document.getElementById('quality-timeline-scan').addEventListener('click', () => this.scanRecordingQuality());
         document.getElementById('quality-mark-flagged').addEventListener('click', () => {
             const flagged = this.state.analysisResults.quality?.filter(item => item.flags.length).map(item => item.index) || [];
+            const before = this.state.badChannels.slice();
             this.state.badChannels = Array.from(new Set([...this.state.badChannels, ...flagged])).sort((a, b) => a - b);
             this.syncBadChannelUI();
             this.updateChannelSelectionCount();
             this.refreshSignalViewer();
+            this.recordHistory('channel_status', `Marked ${flagged.length} quality-screened ${flagged.length === 1 ? 'channel' : 'channels'} bad`, before, this.state.badChannels.slice(), {
+                type: 'bad_channel_batch',
+                previous: before
+            });
             this.showToast(`${flagged.length} flagged ${flagged.length === 1 ? 'channel was' : 'channels were'} marked as bad`, 'info');
         });
         document.getElementById('stats-download-csv').addEventListener('click', () => {
@@ -305,7 +314,144 @@ const App = {
         });
 
 
-        document.getElementById('montage-select').addEventListener('change', () => this.refreshSignalViewer());
+        document.getElementById('montage-select').addEventListener('change', (event) => {
+            const before = this.state.currentMontage;
+            const after = event.target.value;
+            this.state.currentMontage = after;
+            this.refreshSignalViewer();
+            if (before !== after) {
+                const labels = { monopolar: 'Monopolar', average: 'Average reference', bipolar: 'Bipolar' };
+                this.recordHistory('montage', `Changed montage to ${labels[after] || after}`, labels[before] || before, labels[after] || after, {
+                    type: 'montage',
+                    previous: before
+                });
+            }
+        });
+    },
+
+    bindHistoryControls() {
+        document.getElementById('history-undo').addEventListener('click', () => this.undoLatestHistoryStep());
+        document.getElementById('history-restore-raw').addEventListener('click', () => this.resetFilter());
+        document.getElementById('history-export').addEventListener('click', () => {
+            if (!this.state.eegData || !this.state.analysisHistory.length) {
+                this.showToast('Open a recording before downloading workflow history.', 'info');
+                return;
+            }
+            const exported = EEGExport.exportWorkflowHistory(this.state.eegData, this.state.analysisHistory);
+            this.showToast(exported ? 'Workflow JSON download started' : 'Workflow JSON could not be prepared', exported ? 'success' : 'error');
+        });
+    },
+
+    recordHistory(action, summary, before, after, undoData = null) {
+        if (this.state.historyUndoing || !this.state.eegData) return;
+        this.state.analysisHistory.push({
+            id: window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            timestamp: new Date().toISOString(),
+            action,
+            summary,
+            before,
+            after,
+            reversible: Boolean(undoData),
+            undoData,
+            undone: false
+        });
+        this.renderAnalysisHistory();
+    },
+
+    renderAnalysisHistory() {
+        const list = document.getElementById('history-list');
+        if (!list) return;
+        list.replaceChildren();
+        if (!this.state.analysisHistory.length) {
+            const empty = document.createElement('li');
+            empty.className = 'history-empty';
+            empty.textContent = 'Workflow steps will appear here as you review the recording';
+            list.appendChild(empty);
+        } else {
+            for (const entry of this.state.analysisHistory.slice().reverse()) {
+                const item = document.createElement('li');
+                item.className = `history-item${entry.undone ? ' is-undone' : ''}`;
+                const time = document.createElement('time');
+                time.className = 'history-time';
+                time.dateTime = entry.timestamp;
+                time.textContent = new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const content = document.createElement('div');
+                content.className = 'history-content';
+                const title = document.createElement('strong');
+                title.textContent = entry.summary;
+                const comparison = document.createElement('span');
+                comparison.textContent = `${this.formatHistoryValue(entry.before)} → ${this.formatHistoryValue(entry.after)}`;
+                content.append(title, comparison);
+                const state = document.createElement('span');
+                state.className = 'history-state';
+                state.textContent = entry.undone ? 'Undone' : entry.reversible ? 'Undo available' : 'Recorded';
+                item.append(time, content, state);
+                list.appendChild(item);
+            }
+        }
+
+        const latest = this.state.analysisHistory[this.state.analysisHistory.length - 1];
+        document.getElementById('history-comparison').textContent = latest
+            ? `${latest.summary}: ${this.formatHistoryValue(latest.before)} → ${this.formatHistoryValue(latest.after)}`
+            : 'No before-and-after comparison yet';
+        document.getElementById('history-undo').disabled = !this.getLatestReversibleHistory();
+        document.getElementById('history-restore-raw').disabled = !this.state.filteredData;
+    },
+
+    formatHistoryValue(value) {
+        if (Array.isArray(value)) return value.length ? value.join(', ') : 'None';
+        if (value === null || value === undefined || value === '') return 'None';
+        if (typeof value === 'object') return JSON.stringify(value);
+        return String(value);
+    },
+
+    getLatestReversibleHistory() {
+        return this.state.analysisHistory.slice().reverse().find(entry => entry.reversible && !entry.undone) || null;
+    },
+
+    undoLatestHistoryStep() {
+        const entry = this.getLatestReversibleHistory();
+        if (!entry) return;
+        this.state.historyUndoing = true;
+        try {
+            const undo = entry.undoData;
+            if (undo.type === 'bad_channel') {
+                this.state.badChannels = undo.wasBad
+                    ? Array.from(new Set([...this.state.badChannels, undo.index])).sort((a, b) => a - b)
+                    : this.state.badChannels.filter(index => index !== undo.index);
+                this.syncBadChannelUI();
+                this.updateChannelSelectionCount();
+                this.refreshSignalViewer();
+            } else if (undo.type === 'bad_channel_batch') {
+                this.state.badChannels = undo.previous.slice();
+                this.syncBadChannelUI();
+                this.updateChannelSelectionCount();
+                this.refreshSignalViewer();
+            } else if (undo.type === 'montage') {
+                document.getElementById('montage-select').value = undo.previous;
+                this.state.currentMontage = undo.previous;
+                this.refreshSignalViewer();
+            } else if (undo.type === 'annotation_exclusion') {
+                this.state.annotations = this.state.annotations.map(annotation => annotation.id === undo.annotationId
+                    ? { ...annotation, excludeFromAnalysis: undo.previous }
+                    : annotation);
+                this.renderAnnotations();
+            } else if (undo.type === 'filter_to_raw') {
+                this.state.filteredData = null;
+                this.state.filterPreviewData = null;
+                this.state.activeFilter = null;
+                this.updateFilterStatus(null);
+                delete this.state.analysisResults.qualityTimeline;
+                this.renderQualityTimeline();
+                document.getElementById('quality-timeline-status').textContent = 'Signal state changed · scan the recording again';
+                this.refreshSignalViewer();
+            }
+            entry.undone = true;
+            this.showToast(`Undid: ${entry.summary}`, 'info');
+        } finally {
+            this.state.historyUndoing = false;
+            this.renderAnalysisHistory();
+        }
     },
 
     bindFilterControls() {
@@ -477,6 +623,7 @@ const App = {
                 : [];
 
             const existing = this.state.annotations.find(item => item.id === this.state.editingAnnotationId);
+            const previousExclusion = Boolean(existing?.excludeFromAnalysis);
             const exportBundle = document.getElementById('annotation-export-bundle').checked;
             const annotation = {
                 id: existing?.id || window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -503,6 +650,20 @@ const App = {
             document.getElementById('annotation-duration').value = '0';
             document.getElementById('annotation-submit').textContent = 'Save annotation';
             this.renderAnnotations();
+            const rangeLabel = duration > 0
+                ? `${onset.toFixed(2)}–${(onset + duration).toFixed(2)} seconds`
+                : `${onset.toFixed(2)} seconds`;
+            this.recordHistory(
+                'annotation',
+                annotation.excludeFromAnalysis
+                    ? `Flagged ${rangeLabel} for analysis exclusion`
+                    : `${edited ? 'Updated' : 'Added'} annotation at ${rangeLabel}`,
+                previousExclusion ? 'Exclusion flagged' : edited ? 'Existing annotation' : 'No annotation',
+                annotation.excludeFromAnalysis ? 'Exclusion flagged' : 'Annotation saved',
+                previousExclusion !== annotation.excludeFromAnalysis
+                    ? { type: 'annotation_exclusion', annotationId: annotation.id, previous: previousExclusion }
+                    : null
+            );
             if (exportBundle) {
                 const exported = EEGExport.exportAnnotatedSignalBundle(this.state.eegData, this.state.filteredData, annotation);
                 this.showToast(
@@ -1362,11 +1523,16 @@ const App = {
             document.getElementById('viewer-grid').value = this.state.viewerGrid;
             document.getElementById('invert-polarity').checked = this.state.invertPolarity;
             document.getElementById('montage-select').value = ['monopolar', 'bipolar', 'average'].includes(workspace.montage) ? workspace.montage : 'monopolar';
+            this.state.currentMontage = document.getElementById('montage-select').value;
+            if (Array.isArray(manifest.analysisHistory)) {
+                this.state.analysisHistory = manifest.analysisHistory.filter(entry => entry && entry.timestamp && entry.summary);
+            }
             this.updateTimeOffsetRange();
             this.setTimeOffset(Number(workspace.timeOffset) || 0);
             this.updateChannelCheckboxes();
             this.syncBadChannelUI();
             this.renderAnnotations();
+            this.renderAnalysisHistory();
             this.refreshSignalViewer();
             const filteredNotice = workspace.processingState === 'filtered'
                 ? ' Filtered samples are not stored in review sessions, so the raw signal remains active.'
@@ -1456,6 +1622,10 @@ const App = {
         this.state.viewerContextPoint = null;
         this.state.annotationFilter = 'all';
         this.state.editingAnnotationId = null;
+        this.state.analysisHistory = [];
+        this.state.historyUndoing = false;
+        document.getElementById('montage-select').value = 'monopolar';
+        this.state.currentMontage = 'monopolar';
         window.scrollTo(0, 0);
 
         // all channels default
@@ -1517,6 +1687,7 @@ const App = {
         document.getElementById('mobile-bottom-nav').classList.add('visible');
 
         this.switchTab('viewer');
+        this.recordHistory('recording', `Opened raw recording ${data.filename}`, 'No recording', 'Raw recording', null);
 
         requestAnimationFrame(() => {
             this.refreshSignalViewer();
@@ -1581,6 +1752,13 @@ const App = {
                 badButton.setAttribute('aria-label', actionLabel);
                 this.updateChannelSelectionCount();
                 this.refreshSignalViewer();
+                this.recordHistory(
+                    'channel_status',
+                    `${!isBad ? 'Marked' : 'Returned'} ${label} ${!isBad ? 'bad' : 'to good status'}`,
+                    isBad ? 'Bad' : 'Good',
+                    isBad ? 'Good' : 'Bad',
+                    { type: 'bad_channel', index: idx, wasBad: isBad }
+                );
             });
 
             item.append(selectionLabel, badButton);
@@ -1886,6 +2064,7 @@ const App = {
             this.renderQualityTimeline();
             const flagged = segments.filter(segment => Object.values(segment.channelsByFlag).some(channels => channels.length)).length;
             status.textContent = `${segments.length} regions screened · ${flagged} highlighted · ${this.state.filteredData ? 'filtered' : 'raw'} signal`;
+            this.recordHistory('quality_timeline', 'Screened complete recording for signal-quality regions', 'Not screened', `${flagged} highlighted regions`, null);
             this.showToast('Recording quality timeline updated', 'success');
         } catch (error) {
             console.error('Quality timeline scan failed', error);
@@ -2034,6 +2213,14 @@ const App = {
             maxFreq,
             logScale: scale === 'log'
         });
+
+        this.recordHistory(
+            'spectrum',
+            `Computed PSD for ${channels.length} ${channels.length === 1 ? 'channel' : 'channels'}`,
+            'No current PSD',
+            `${method === 'welch' ? 'Welch' : 'Direct FFT'} · ${this.state.filteredData ? 'filtered' : 'raw'} signal`,
+            null
+        );
 
         this.showToast('Power spectrum computed', 'success');
     },
@@ -2232,6 +2419,8 @@ const App = {
         const filterType = document.querySelector('.filter-type-btn.active').getAttribute('data-filter');
         const params = this.getFilterParams(filterType);
         const sampleRate = this.state.eegData.sampleRate;
+        const hadFilteredSignal = Boolean(this.state.filteredData);
+        const previousFilterLabel = this.state.activeFilter?.description || 'Raw signal';
 
         if (!this.validateFilterParams(params, filterType, sampleRate)) return;
 
@@ -2299,7 +2488,18 @@ const App = {
                 );
 
                 this.drawFilterResponse(filterType, params, sampleRate);
+                delete this.state.analysisResults.qualityTimeline;
+                this.renderQualityTimeline();
+                document.getElementById('quality-timeline-status').textContent = 'Signal state changed · scan the recording again';
                 this.refreshSignalViewer();
+                this.recordHistory(
+                    'filter',
+                    `Applied ${this.state.activeFilter.description}`,
+                    previousFilterLabel,
+                    this.state.activeFilter.description,
+                    hadFilteredSignal ? null : { type: 'filter_to_raw' }
+                );
+                this.renderAnalysisHistory();
                 this.showToast('Filter applied to all channels', 'success');
             } catch (err) {
                 this.showToast('The filter could not be applied. Try a lower order or different cutoff.', 'error');
@@ -2310,6 +2510,7 @@ const App = {
     },
 
     resetFilter() {
+        const previousFilterLabel = this.state.activeFilter?.description || (this.state.filteredData ? 'Filtered signal' : null);
         this.state.filteredData = null;
         this.state.filterPreviewData = null;
         this.state.activeFilter = null;
@@ -2322,6 +2523,13 @@ const App = {
         const respCanvas = document.getElementById('filter-response-canvas');
         respCanvas.width = respCanvas.width;
 
+        delete this.state.analysisResults.qualityTimeline;
+        this.renderQualityTimeline();
+        document.getElementById('quality-timeline-status').textContent = 'Signal state changed · scan the recording again';
+        if (previousFilterLabel) {
+            this.recordHistory('filter', 'Restored raw signal', previousFilterLabel, 'Raw signal', null);
+        }
+        this.renderAnalysisHistory();
         this.showToast('Raw signal restored', 'info');
     },
 
@@ -2589,6 +2797,8 @@ const App = {
         this.state.filteredData = null;
         this.state.activeFilter = null;
         this.state.analysisResults = {};
+        this.state.analysisHistory = [];
+        this.state.historyUndoing = false;
         this.state.annotations = [];
         this.state.annotationFilter = 'all';
         this.state.editingAnnotationId = null;
