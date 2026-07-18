@@ -2536,6 +2536,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-weight: 450;
     line-height: 1.35;
 }
+.annotation-check-field.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
 .annotation-state-snapshot {
     grid-column: span 4;
     min-height: 100%;
@@ -2584,6 +2588,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-top: 1px solid var(--border-light);
 }
 .annotation-time,
+.annotation-export,
 .annotation-edit,
 .annotation-remove {
     border: 0;
@@ -2610,11 +2615,36 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-size: 0.8rem;
     overflow-wrap: anywhere;
 }
+.annotation-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+.annotation-badge {
+    max-width: 100%;
+    overflow: hidden;
+    padding: 3px 6px;
+    background: var(--surface-muted);
+    border-radius: var(--radius-xs);
+    color: var(--text-secondary);
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.annotation-badge-warning {
+    background: #FFF4DB;
+    color: #825100;
+}
 .annotation-remove {
     color: var(--danger);
 }
 .annotation-edit {
     color: var(--primary);
+}
+.annotation-export {
+    color: var(--primary-dark);
 }
 
 .export-grid {
