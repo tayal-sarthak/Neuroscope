@@ -375,6 +375,39 @@
                     <div class="viewer-overview-label"><span>Recording overview</span><strong id="viewer-overview-channel">—</strong></div>
                     <canvas id="viewer-overview-canvas" tabindex="0" aria-label="Recording overview. Click or drag to move the visible signal window."></canvas>
                 </div>
+                <section class="quality-timeline" aria-labelledby="quality-timeline-heading">
+                    <div class="quality-timeline-header">
+                        <div>
+                            <h3 id="quality-timeline-heading">Recording quality timeline</h3>
+                            <p>Screen the complete recording, then select a highlighted region to inspect it in the signal viewer</p>
+                        </div>
+                        <div class="quality-timeline-actions">
+                            <button type="button" id="quality-timeline-scan" class="btn-secondary">Scan recording</button>
+                            <output id="quality-timeline-status" aria-live="polite">Not scanned · annotations appear automatically</output>
+                        </div>
+                    </div>
+                    <div id="quality-timeline-lanes" class="quality-timeline-lanes">
+                        <div class="quality-timeline-lane" data-quality-lane="flat">
+                            <span>Flat signal</span><div id="quality-lane-flat" class="quality-lane-track" role="list" aria-label="Possible flat signal regions"></div>
+                        </div>
+                        <div class="quality-timeline-lane" data-quality-lane="amplitude">
+                            <span>Large amplitude</span><div id="quality-lane-amplitude" class="quality-lane-track" role="list" aria-label="Large amplitude regions"></div>
+                        </div>
+                        <div class="quality-timeline-lane" data-quality-lane="clipping">
+                            <span>Clipping</span><div id="quality-lane-clipping" class="quality-lane-track" role="list" aria-label="Possible clipping regions"></div>
+                        </div>
+                        <div class="quality-timeline-lane" data-quality-lane="line_noise">
+                            <span>Line noise</span><div id="quality-lane-line-noise" class="quality-lane-track" role="list" aria-label="Possible line-noise regions"></div>
+                        </div>
+                        <div class="quality-timeline-lane" data-quality-lane="muscle">
+                            <span>Muscle artifact</span><div id="quality-lane-muscle" class="quality-lane-track" role="list" aria-label="Possible muscle-artifact regions"></div>
+                        </div>
+                        <div class="quality-timeline-lane" data-quality-lane="annotations">
+                            <span>Annotations</span><div id="quality-lane-annotations" class="quality-lane-track" role="list" aria-label="Existing annotation regions"></div>
+                        </div>
+                    </div>
+                    <div class="quality-timeline-axis" aria-hidden="true"><span>0 s</span><span id="quality-timeline-midpoint">—</span><span id="quality-timeline-end">—</span></div>
+                </section>
                 <div id="viewer-selection-bar" class="viewer-selection-bar" hidden>
                     <div>
                         <strong id="viewer-selection-time">No time selected</strong>
