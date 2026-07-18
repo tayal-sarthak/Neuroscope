@@ -45,7 +45,7 @@ const EEGParsers = {
             case 'bdf':
                 return this.parseBDF(buffer, file.name);
             case 'gdf':
-                throw new Error('GDF import is not yet verified. Convert this recording to EDF, BDF, CSV, or JSON before loading it.');
+                throw new Error('GDF import is not verified. Convert the recording to EDF, BDF, CSV, TSV, or JSON, then try again.');
             case 'csv':
                 return this.parseCSV(await file.text(), file.name, ',');
             case 'tsv':
@@ -55,11 +55,11 @@ const EEGParsers = {
             case 'json':
                 return this.parseJSON(await file.text(), file.name);
             case 'vhdr':
-                throw new Error('BrainVision VHDR import requires its companion EEG and marker files and is not yet supported.');
+                throw new Error('BrainVision import is not supported because it requires companion EEG and marker files. Convert the recording to EDF, CSV, TSV, or JSON.');
             case 'set':
-                throw new Error('EEGLAB SET import is not yet verified. Export the dataset as EDF, CSV, or JSON first.');
+                throw new Error('EEGLAB SET import is not verified. Export the dataset as EDF, CSV, TSV, or JSON, then try again.');
             case 'cnt':
-                throw new Error('CNT import is not yet verified. Convert the recording to EDF, CSV, or JSON first.');
+                throw new Error('CNT import is not verified. Convert the recording to EDF, CSV, TSV, or JSON, then try again.');
             default:
                 return this.tryAutoDetect(buffer, await file.text(), file.name);
         }
@@ -329,13 +329,13 @@ const EEGParsers = {
 
     // parse gdf
     parseGDF(buffer, filename) {
-        throw new Error('GDF import is not implemented. No generated replacement data will be shown.');
+        throw new Error('GDF import is not implemented. Convert the recording to a supported format; NeuroScope will not substitute generated data.');
     },
 
     // parse csv tsv
     parseCSV(text, filename, delimiter) {
         const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-        if (lines.length < 2) throw new Error('This file has too few lines for meaningful analysis');
+        if (lines.length < 2) throw new Error('This file needs a header and at least one data row.');
         if (!delimiter) {
             const firstLine = lines[0];
             const commas = (firstLine.match(/,/g) || []).length;
@@ -432,7 +432,7 @@ const EEGParsers = {
     parseTXT(text, filename) {
         const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
 
-        if (lines.length < 2) throw new Error('This file needs more data lines for analysis');
+        if (lines.length < 2) throw new Error('This file needs at least two lines of numeric signal data.');
 
         const sampleLine = lines[Math.min(1, lines.length - 1)];
 
@@ -455,7 +455,7 @@ const EEGParsers = {
         });
 
         if (numericLines.length < 2) {
-            throw new Error('This file needs more numeric data for analysis');
+            throw new Error('NeuroScope could not find enough numeric signal data in this file. Check its delimiter and column layout.');
         }
 
         const numCols = numericLines[0].trim().split(/\s+/).length;
@@ -526,7 +526,7 @@ const EEGParsers = {
         }
 
         if (channelData.length === 0) {
-            throw new Error('The JSON file needs channel data to be processed');
+            throw new Error('The JSON file does not contain recognizable channel data. Add channel arrays and try again.');
         }
 
         const numSamples = channelData[0].length;
@@ -551,15 +551,15 @@ const EEGParsers = {
 
     // parse vhdr braivision header
     parseVHDR(text, filename) {
-        throw new Error('BrainVision import is not implemented. No generated replacement data will be shown.');
+        throw new Error('BrainVision import is not implemented. Convert the recording to a supported format; NeuroScope will not substitute generated data.');
     },
 
     parseSET(buffer, filename) {
-        throw new Error('EEGLAB SET import is not implemented. No generated replacement data will be shown.');
+        throw new Error('EEGLAB SET import is not implemented. Convert the recording to a supported format; NeuroScope will not substitute generated data.');
     },
 
     parseCNT(buffer, filename) {
-        throw new Error('CNT import is not implemented. No generated replacement data will be shown.');
+        throw new Error('CNT import is not implemented. Convert the recording to a supported format; NeuroScope will not substitute generated data.');
     },
 
     // auto detect
@@ -582,10 +582,10 @@ const EEGParsers = {
             return this.parseTXT(text, filename);
         } catch (e) { /* continue */ }
 
-        throw new Error('The format of this file was unrecognized, try a supported format listed on the upload page');
+        throw new Error('The file format was not recognized. Use one of the formats listed on the start screen.');
     },
     _createBasicResult(filename, format, labels, sampleRate, buffer) {
-        throw new Error(`${format} import is not implemented. No generated replacement data will be shown.`);
+        throw new Error(`${format} import is not implemented. Convert the recording to a supported format; NeuroScope will not substitute generated data.`);
     },
 
     // generate synthetic eeg test
