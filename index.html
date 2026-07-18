@@ -486,6 +486,23 @@
                         <p class="annotation-empty">No annotations yet. Select a point or range, then choose Add annotation.</p>
                     </div>
                 </section>
+                <section class="analysis-history" aria-labelledby="analysis-history-heading">
+                    <div class="analysis-history-header">
+                        <div>
+                            <h3 id="analysis-history-heading">Analysis history</h3>
+                            <p>Review the processing and review decisions made since this recording was opened</p>
+                        </div>
+                        <div class="analysis-history-actions">
+                            <button type="button" id="history-undo" class="btn-secondary" disabled>Undo latest step</button>
+                            <button type="button" id="history-restore-raw" class="btn-ghost" disabled>Restore raw signal</button>
+                            <button type="button" id="history-export" class="btn-ghost">Download workflow JSON</button>
+                        </div>
+                    </div>
+                    <output id="history-comparison" class="history-comparison" aria-live="polite">No before-and-after comparison yet</output>
+                    <ol id="history-list" class="history-list">
+                        <li class="history-empty">Workflow steps will appear here as you review the recording</li>
+                    </ol>
+                </section>
             </div>
 
             <!-- Spectrum Tab -->
