@@ -2,6 +2,8 @@
 
 A local-first workspace for exploring, annotating, analyzing, and exporting EEG recordings. NeuroScope is designed first for EEG researchers and clinicians, while keeping the workflow approachable for students and general users. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
 
+For a screen-by-screen sitemap and exact workflow guide, see [APP_WALKTHROUGH.md](APP_WALKTHROUGH.md).
+
 ## Gallery
 These images were taken using patient CHB02_16.edf from the CHB-MIT database used on the filtering site, [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/), where the data can be found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel. 
 
@@ -49,7 +51,7 @@ GDF, BrainVision, EEGLAB SET, CNT, and XDF files are rejected with conversion gu
 
 ### Signals
 
-The Signal Viewer is the core of NeuroScope, offering a powerful canvas-based display for multi-channel EEG recordings. Browse your raw EEG waveforms with complete interactive control.
+The Signal viewer is NeuroScope’s main review surface for multichannel EEG recordings. Inspect raw waveforms, move through time, and keep review decisions tied to exact points or ranges.
 
 **Key Features**
 - Multi-channel simultaneous display with independent vertical scaling per channel
@@ -60,8 +62,9 @@ The Signal Viewer is the core of NeuroScope, offering a powerful canvas-based di
 - Pan horizontally with a trackpad or Shift + mouse wheel, or use the left and right arrow keys
 - Hover over the waveform for exact time, channel, and amplitude readouts
 - Click to pin a time cursor or drag across the waveform to select a precise time range
+- Right-click a selected range to add an annotation, preclassify an artifact, set the Export center scope, or download the range as CSV; right-click elsewhere for point-specific review actions
 - Create point or duration annotations directly from the active cursor or selected range
-- Edit, filter, import, and step between notes with previous/next controls or N/P shortcuts
+- Edit, filter, import, and step between annotations with previous/next controls or N/P shortcuts
 - Export the current viewer range without re-entering start and end times
 - Channel selection and deselection with checkboxes in the sidebar
 - Mark channels bad manually and carry that status into session and BIDS exports
@@ -71,13 +74,13 @@ The Signal Viewer is the core of NeuroScope, offering a powerful canvas-based di
 - HiDPI (Retina) display support for crisp rendering
 - Real-time updates as filters are applied
 
-All controls are located in the sidebar for easy access while viewing. The Signal Viewer automatically re-renders when you switch between filtered and original data, enabling rapid comparison during analysis.
+Display controls remain in the sidebar while you review. The Signal viewer re-renders when the active state changes between raw and filtered data, while the status bar identifies which state is active.
 
 ### Spectrum
 
-Compute the power spectral density using the Welch method. View frequency content for each selected channel on a shared chart. Choose between linear and logarithmic display scales.
+Estimate power spectral density with Welch or direct FFT methods. Compare up to the first eight selected channels on one chart and choose a linear or logarithmic power scale.
 
-### Band Power
+### Band power
 
 Decompose signals into the five standard EEG frequency bands.
 
@@ -87,7 +90,7 @@ Decompose signals into the five standard EEG frequency bands.
 - Beta (13 to 30 Hz)
 - Gamma (30 to 100 Hz)
 
-View absolute or relative power with bar charts and a doughnut breakdown.
+Compute either the visible signal window or complete recording, with the visible window as the safer review default. Each run records its exact interval, channel count, and raw/filtered source. View absolute power in µV² or relative band percentages with channel comparison and average-distribution charts, then download the computed table as CSV.
 
 ### Filtering
 
@@ -98,9 +101,9 @@ Design and apply digital filters to clean your EEG signals. Four filter types ar
 - **Lowpass**, remove high-frequency noise above a cutoff
 - **Notch**, suppress power line interference at 50 or 60 Hz
 
-The filter tab includes a channel selector, adjustable order (2nd through 8th), parameter validation against the Nyquist frequency, a real-time signal comparison preview (original versus filtered), and a frequency response chart showing the magnitude curve in dB on a logarithmic frequency axis.
+The Filtering tab includes a channel selector, adjustable order (2nd through 8th), parameter validation against the Nyquist frequency, a raw-versus-filtered preview, and a frequency-response chart showing magnitude in dB on a logarithmic frequency axis.
 
-Click Preview to see the effect on a single channel, then Apply to All Channels to filter every channel at once. A status bar at the top of the tab shows what filter is currently active. Click Reset to Original to restore the unfiltered data.
+Choose **Preview channel** to inspect one channel, then **Apply to all channels** to make that result the active filtered signal. The workspace and filter status bars identify the current state. Choose **Restore raw signal** to remove the applied filtered result.
 
 ### Spectrogram
 
@@ -128,21 +131,21 @@ Download your processed data and visualizations in multiple formats.
 - **BIDS events TSV**, onset, duration, trial type, channel, and description fields
 - **BIDS channels TSV**, EEG channel names, units, and manually reviewed good/bad status
 - **Quality review CSV**, visible-window screening metrics and review flags
-- **Annotations JSON**, a machine-readable note sidecar
+- **Annotations JSON**, a machine-readable annotation sidecar
 - **Restorable review JSON**, recording provenance, selected and bad channels, view settings, and annotations without duplicating raw samples
 
-The Export Center shows an estimated output size before a download begins and prevents multiple overlapping export jobs. The default scope is the visible ten-second window rather than the entire recording, which avoids unexpectedly generating files many times larger than the source EDF.
+The Export center shows an estimated output size before a download begins and prevents multiple overlapping export jobs. The default scope is the initial visible window rather than the complete recording, which avoids unexpectedly generating files many times larger than the source EDF.
 
-### Recording Notes
+### Annotations
 
-Add point or duration-linked observations directly below the signal viewer. Notes can describe artifacts, clinical events, signal-quality concerns, or general observations and can apply to all channels or the currently selected channels. Notes can be edited, filtered by type, imported from NeuroScope CSV or BIDS events TSV, and traversed from the viewer. They are included in review JSON, annotation CSV/JSON, and BIDS events exports.
+Attach point- or range-linked annotations directly below the signal viewer. An annotation records timing, type, channel scope, and a free-text note. Annotations can be edited, filtered, imported from NeuroScope CSV or compatible BIDS events TSV columns, and traversed from the viewer. They are included in review JSON, annotation CSV/JSON, and BIDS events exports.
 
 ## Signal Processing Details
 
 All signal processing runs entirely in the browser using custom JavaScript implementations.
 
 - **FFT** uses an iterative Cooley-Tukey radix-2 algorithm with bit-reversal permutation
-- **Power Spectral Density** relies on the Welch method with overlapping Hanning-windowed segments
+- **Power Spectral Density** uses Welch estimation with overlapping Hann-windowed segments
 - **Filters** are cascaded biquad (second-order section) Butterworth IIR filters with forward-backward zero-phase filtering
 - **Spectrogram** computes an overlapping Short-Time Fourier Transform with configurable window and overlap
 
@@ -159,6 +162,7 @@ js/
   export.js             Data and report export
   app.js                Application controller and state management
 README.md               This file
+APP_WALKTHROUGH.md       Screen map and end-to-end app guide
 ```
 
 ## Technical Notes
