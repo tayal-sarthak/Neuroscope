@@ -1,2 +1,65 @@
+# macOS metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors and local workspace state
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# JavaScript dependencies and generated output
+node_modules/
+dist/
+build/
+coverage/
+.nyc_output/
+.cache/
+.parcel-cache/
+.turbo/
+
+# Logs and process files
+*.log
+*.pid
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Hosting and temporary local output
+.vercel/
+.tmp/
+tmp/
+temp/
+
+# Repository-local private scratch material
 phonetest.py
 private/
+
+# EEG source recordings are intentionally not ignored; the sample EDF ships with NeuroScope.
