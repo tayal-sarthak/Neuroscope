@@ -76,6 +76,7 @@ The Signal viewer is NeuroScope’s main review surface for multichannel EEG rec
 - Automatic grid rendering with time markers and channel separators
 - HiDPI (Retina) display support for crisp rendering
 - Real-time updates as filters are applied
+- Use one collapsible Review dock for quality screening, annotations, and history instead of three stacked panels
 - Screen the complete recording on a clickable quality timeline for flat signal, large amplitude, clipping, line noise, possible muscle artifact, and existing annotations
 - Review before-and-after workflow history, undo supported state changes, restore raw signal, and export the provenance log as JSON
 

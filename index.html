@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=20260718-1">
+    <link rel="stylesheet" href="css/styles.css?v=20260718-2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -375,39 +375,6 @@
                     <div class="viewer-overview-label"><span>Recording overview</span><strong id="viewer-overview-channel">—</strong></div>
                     <canvas id="viewer-overview-canvas" tabindex="0" aria-label="Recording overview. Click or drag to move the visible signal window."></canvas>
                 </div>
-                <section class="quality-timeline" aria-labelledby="quality-timeline-heading">
-                    <div class="quality-timeline-header">
-                        <div>
-                            <h3 id="quality-timeline-heading">Recording quality timeline</h3>
-                            <p>Screen the complete recording, then select a highlighted region to inspect it in the signal viewer</p>
-                        </div>
-                        <div class="quality-timeline-actions">
-                            <button type="button" id="quality-timeline-scan" class="btn-secondary">Scan recording</button>
-                            <output id="quality-timeline-status" aria-live="polite">Not scanned · annotations appear automatically</output>
-                        </div>
-                    </div>
-                    <div id="quality-timeline-lanes" class="quality-timeline-lanes">
-                        <div class="quality-timeline-lane" data-quality-lane="flat">
-                            <span>Flat signal</span><div id="quality-lane-flat" class="quality-lane-track" role="list" aria-label="Possible flat signal regions"></div>
-                        </div>
-                        <div class="quality-timeline-lane" data-quality-lane="amplitude">
-                            <span>Large amplitude</span><div id="quality-lane-amplitude" class="quality-lane-track" role="list" aria-label="Large amplitude regions"></div>
-                        </div>
-                        <div class="quality-timeline-lane" data-quality-lane="clipping">
-                            <span>Clipping</span><div id="quality-lane-clipping" class="quality-lane-track" role="list" aria-label="Possible clipping regions"></div>
-                        </div>
-                        <div class="quality-timeline-lane" data-quality-lane="line_noise">
-                            <span>Line noise</span><div id="quality-lane-line-noise" class="quality-lane-track" role="list" aria-label="Possible line-noise regions"></div>
-                        </div>
-                        <div class="quality-timeline-lane" data-quality-lane="muscle">
-                            <span>Muscle artifact</span><div id="quality-lane-muscle" class="quality-lane-track" role="list" aria-label="Possible muscle-artifact regions"></div>
-                        </div>
-                        <div class="quality-timeline-lane" data-quality-lane="annotations">
-                            <span>Annotations</span><div id="quality-lane-annotations" class="quality-lane-track" role="list" aria-label="Existing annotation regions"></div>
-                        </div>
-                    </div>
-                    <div class="quality-timeline-axis" aria-hidden="true"><span>0 s</span><span id="quality-timeline-midpoint">—</span><span id="quality-timeline-end">—</span></div>
-                </section>
                 <div id="viewer-selection-bar" class="viewer-selection-bar" hidden>
                     <div>
                         <strong id="viewer-selection-time">No time selected</strong>
@@ -419,89 +386,133 @@
                         <button type="button" id="selection-clear" class="btn-ghost">Clear selection</button>
                     </div>
                 </div>
-                <section class="annotation-workbench" aria-labelledby="annotation-heading">
-                    <div class="annotation-header">
-                        <div>
-                            <h3 id="annotation-heading">Annotations</h3>
-                            <p>Leave research notes directly on the signal with timing, labels, channel scope, and workspace provenance</p>
+                <section class="review-dock" aria-labelledby="review-dock-heading">
+                    <h3 id="review-dock-heading" class="sr-only">Review tools</h3>
+                    <div class="review-dock-bar">
+                        <div class="review-dock-tabs" role="tablist" aria-label="Review tools">
+                            <button type="button" id="review-tab-quality" class="review-dock-tab active" role="tab" aria-selected="true" aria-controls="review-panel-quality" data-review-panel="quality">
+                                <span>Quality</span><span id="review-quality-summary" class="review-tab-summary" aria-label="Not scanned">—</span>
+                            </button>
+                            <button type="button" id="review-tab-annotations" class="review-dock-tab" role="tab" aria-selected="false" aria-controls="review-panel-annotations" data-review-panel="annotations" tabindex="-1">
+                                <span>Annotations</span><span id="review-annotation-summary" class="review-tab-summary">0</span>
+                            </button>
+                            <button type="button" id="review-tab-history" class="review-dock-tab" role="tab" aria-selected="false" aria-controls="review-panel-history" data-review-panel="history" tabindex="-1">
+                                <span>History</span><span id="review-history-summary" class="review-tab-summary">0</span>
+                            </button>
                         </div>
-                        <div class="annotation-header-tools">
-                            <button type="button" id="annotation-import-btn" class="btn-tiny">Import annotations</button>
-                            <input type="file" id="annotation-import-input" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
-                            <label for="annotation-filter" class="sr-only">Filter annotations</label>
-                            <select id="annotation-filter" class="toolbar-select annotation-filter">
-                                <option value="all">All annotation labels</option>
-                                <option value="eye_blink">Eye blink</option>
-                                <option value="muscle_artifact">Muscle artifact</option>
-                                <option value="bad_electrode">Bad electrode</option>
-                                <option value="clinical_event">Clinical event</option>
-                                <option value="uncertain">Uncertain</option>
-                                <option value="observation">General observation</option>
-                                <option value="bad_artifact">Other artifact / bad segment</option>
-                                <option value="signal_quality">Signal quality</option>
-                            </select>
-                            <span id="annotation-count" class="annotation-count">0 annotations</span>
-                        </div>
+                        <button type="button" id="review-dock-toggle" class="review-dock-toggle" aria-expanded="true" aria-controls="review-dock-content">
+                            <span id="review-dock-toggle-label">Hide</span>
+                            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="m4 10 4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
                     </div>
-                    <form id="annotation-form" class="annotation-form" hidden>
-                        <label>Onset (s)<input type="number" id="annotation-onset" min="0" step="0.001" required></label>
-                        <label>Duration (s)<input type="number" id="annotation-duration" min="0" step="0.001" value="0" required></label>
-                        <label>Label
-                            <select id="annotation-type">
-                                <option value="eye_blink">Eye blink</option>
-                                <option value="muscle_artifact">Muscle artifact</option>
-                                <option value="bad_electrode">Bad electrode</option>
-                                <option value="clinical_event">Clinical event</option>
-                                <option value="uncertain">Uncertain</option>
-                                <option value="observation">General observation</option>
-                                <option value="bad_artifact">Other artifact / bad segment</option>
-                                <option value="signal_quality">Signal quality</option>
-                            </select>
-                        </label>
-                        <label>Affected channels
-                            <select id="annotation-channels">
-                                <option value="">All channels</option>
-                                <option value="selected">Channels selected in sidebar</option>
-                            </select>
-                        </label>
-                        <label class="annotation-note-field">Research note<input type="text" id="annotation-note" maxlength="240" placeholder="Describe what you observed and why it matters" required></label>
-                        <label class="annotation-check-field">
-                            <input type="checkbox" id="annotation-exclude">
-                            <span><strong>Flag for analysis exclusion</strong><small>Stored as review metadata; current analyses do not omit this range automatically</small></span>
-                        </label>
-                        <div class="annotation-state-snapshot" aria-live="polite">
-                            <span>Workspace snapshot</span>
-                            <strong id="annotation-state-preview">Raw signal · Monopolar · No applied filter</strong>
-                        </div>
-                        <label class="annotation-check-field annotation-export-field">
-                            <input type="checkbox" id="annotation-export-bundle">
-                            <span><strong>Download signal bundle after saving</strong><small>Includes the selected signal range and this annotation in one JSON file</small></span>
-                        </label>
-                        <div class="annotation-actions">
-                            <button type="button" id="annotation-cancel" class="btn-ghost">Discard changes</button>
-                            <button type="submit" id="annotation-submit" class="btn-primary">Save annotation</button>
-                        </div>
-                    </form>
-                    <div id="annotation-list" class="annotation-list">
-                        <p class="annotation-empty">No annotations yet. Select a point or range, then choose Add annotation.</p>
+                    <div id="review-dock-content" class="review-dock-content">
+                        <section id="review-panel-quality" class="review-dock-panel quality-timeline" role="tabpanel" aria-labelledby="review-tab-quality" tabindex="0">
+                            <h4 id="quality-timeline-heading" class="sr-only">Recording quality timeline</h4>
+                            <div class="review-panel-toolbar quality-timeline-actions">
+                                <output id="quality-timeline-status" aria-live="polite">Not scanned · annotations appear automatically</output>
+                                <button type="button" id="quality-timeline-scan" class="btn-secondary">Scan recording</button>
+                            </div>
+                            <div id="quality-timeline-lanes" class="quality-timeline-lanes">
+                                <div class="quality-timeline-lane" data-quality-lane="flat">
+                                    <span>Flat signal</span><div id="quality-lane-flat" class="quality-lane-track" role="list" aria-label="Possible flat signal regions"></div>
+                                </div>
+                                <div class="quality-timeline-lane" data-quality-lane="amplitude">
+                                    <span>Large amplitude</span><div id="quality-lane-amplitude" class="quality-lane-track" role="list" aria-label="Large amplitude regions"></div>
+                                </div>
+                                <div class="quality-timeline-lane" data-quality-lane="clipping">
+                                    <span>Clipping</span><div id="quality-lane-clipping" class="quality-lane-track" role="list" aria-label="Possible clipping regions"></div>
+                                </div>
+                                <div class="quality-timeline-lane" data-quality-lane="line_noise">
+                                    <span>Line noise</span><div id="quality-lane-line-noise" class="quality-lane-track" role="list" aria-label="Possible line-noise regions"></div>
+                                </div>
+                                <div class="quality-timeline-lane" data-quality-lane="muscle">
+                                    <span>Muscle artifact</span><div id="quality-lane-muscle" class="quality-lane-track" role="list" aria-label="Possible muscle-artifact regions"></div>
+                                </div>
+                                <div class="quality-timeline-lane" data-quality-lane="annotations">
+                                    <span>Annotations</span><div id="quality-lane-annotations" class="quality-lane-track" role="list" aria-label="Existing annotation regions"></div>
+                                </div>
+                            </div>
+                            <div class="quality-timeline-axis" aria-hidden="true"><span>0 s</span><span id="quality-timeline-midpoint">—</span><span id="quality-timeline-end">—</span></div>
+                        </section>
+                        <section id="review-panel-annotations" class="review-dock-panel annotation-workbench" role="tabpanel" aria-labelledby="review-tab-annotations" tabindex="0" hidden>
+                            <h4 id="annotation-heading" class="sr-only">Annotations</h4>
+                            <div class="review-panel-toolbar annotation-header-tools">
+                                <span id="annotation-count" class="annotation-count">0 annotations</span>
+                                <div class="review-panel-actions">
+                                    <button type="button" id="annotation-import-btn" class="btn-tiny">Import annotations</button>
+                                    <input type="file" id="annotation-import-input" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
+                                    <label for="annotation-filter" class="sr-only">Filter annotations</label>
+                                    <select id="annotation-filter" class="toolbar-select annotation-filter">
+                                        <option value="all">All annotation labels</option>
+                                        <option value="eye_blink">Eye blink</option>
+                                        <option value="muscle_artifact">Muscle artifact</option>
+                                        <option value="bad_electrode">Bad electrode</option>
+                                        <option value="clinical_event">Clinical event</option>
+                                        <option value="uncertain">Uncertain</option>
+                                        <option value="observation">General observation</option>
+                                        <option value="bad_artifact">Other artifact / bad segment</option>
+                                        <option value="signal_quality">Signal quality</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <form id="annotation-form" class="annotation-form" hidden>
+                                <label>Onset (s)<input type="number" id="annotation-onset" min="0" step="0.001" required></label>
+                                <label>Duration (s)<input type="number" id="annotation-duration" min="0" step="0.001" value="0" required></label>
+                                <label>Label
+                                    <select id="annotation-type">
+                                        <option value="eye_blink">Eye blink</option>
+                                        <option value="muscle_artifact">Muscle artifact</option>
+                                        <option value="bad_electrode">Bad electrode</option>
+                                        <option value="clinical_event">Clinical event</option>
+                                        <option value="uncertain">Uncertain</option>
+                                        <option value="observation">General observation</option>
+                                        <option value="bad_artifact">Other artifact / bad segment</option>
+                                        <option value="signal_quality">Signal quality</option>
+                                    </select>
+                                </label>
+                                <label>Affected channels
+                                    <select id="annotation-channels">
+                                        <option value="">All channels</option>
+                                        <option value="selected">Channels selected in sidebar</option>
+                                    </select>
+                                </label>
+                                <label class="annotation-note-field">Research note<input type="text" id="annotation-note" maxlength="240" placeholder="Describe what you observed and why it matters" required></label>
+                                <label class="annotation-check-field">
+                                    <input type="checkbox" id="annotation-exclude">
+                                    <span><strong>Flag for analysis exclusion</strong><small>Stored as review metadata; current analyses do not omit this range automatically</small></span>
+                                </label>
+                                <div class="annotation-state-snapshot" aria-live="polite">
+                                    <span>Workspace snapshot</span>
+                                    <strong id="annotation-state-preview">Raw signal · Monopolar · No applied filter</strong>
+                                </div>
+                                <label class="annotation-check-field annotation-export-field">
+                                    <input type="checkbox" id="annotation-export-bundle">
+                                    <span><strong>Download signal bundle after saving</strong><small>Includes the selected signal range and this annotation in one JSON file</small></span>
+                                </label>
+                                <div class="annotation-actions">
+                                    <button type="button" id="annotation-cancel" class="btn-ghost">Discard changes</button>
+                                    <button type="submit" id="annotation-submit" class="btn-primary">Save annotation</button>
+                                </div>
+                            </form>
+                            <div id="annotation-list" class="annotation-list">
+                                <p class="annotation-empty">No annotations yet. Select a point or range, then choose Add annotation.</p>
+                            </div>
+                        </section>
+                        <section id="review-panel-history" class="review-dock-panel analysis-history" role="tabpanel" aria-labelledby="review-tab-history" tabindex="0" hidden>
+                            <h4 id="analysis-history-heading" class="sr-only">Analysis history</h4>
+                            <div class="review-panel-toolbar analysis-history-actions">
+                                <output id="history-comparison" class="history-comparison" aria-live="polite">No before-and-after comparison yet</output>
+                                <div class="review-panel-actions">
+                                    <button type="button" id="history-undo" class="btn-secondary" disabled>Undo latest step</button>
+                                    <button type="button" id="history-restore-raw" class="btn-ghost" disabled>Restore raw</button>
+                                    <button type="button" id="history-export" class="btn-ghost">Download workflow</button>
+                                </div>
+                            </div>
+                            <ol id="history-list" class="history-list">
+                                <li class="history-empty">Workflow steps will appear here as you review the recording</li>
+                            </ol>
+                        </section>
                     </div>
-                </section>
-                <section class="analysis-history" aria-labelledby="analysis-history-heading">
-                    <div class="analysis-history-header">
-                        <div>
-                            <h3 id="analysis-history-heading">Analysis history</h3>
-                            <p>Review the processing and review decisions made since this recording was opened</p>
-                        </div>
-                        <div class="analysis-history-actions">
-                            <button type="button" id="history-undo" class="btn-secondary" disabled>Undo latest step</button>
-                            <button type="button" id="history-restore-raw" class="btn-ghost" disabled>Restore raw signal</button>
-                            <button type="button" id="history-export" class="btn-ghost">Download workflow JSON</button>
-                        </div>
-                    </div>
-                    <output id="history-comparison" class="history-comparison" aria-live="polite">No before-and-after comparison yet</output>
-                    <ol id="history-list" class="history-list">
-                        <li class="history-empty">Workflow steps will appear here as you review the recording</li>
-                    </ol>
                 </section>
             </div>
 
@@ -1046,6 +1057,6 @@
     <script src="js/analysis.js?v=20260718-1"></script>
     <script src="js/visualization.js?v=20260718-1"></script>
     <script src="js/export.js?v=20260718-1"></script>
-    <script src="js/app.js?v=20260718-1"></script>
+    <script src="js/app.js?v=20260718-2"></script>
 </body>
 </html>

@@ -19,6 +19,8 @@ const App = {
         analysisHistory: [],
         historyUndoing: false,
         currentMontage: 'monopolar',
+        reviewPanel: 'quality',
+        reviewDockExpanded: true,
         annotations: [],
         annotationFilter: 'all',
         editingAnnotationId: null,
@@ -38,6 +40,7 @@ const App = {
         this.bindEvents();
         this.bindSidebarControls();
         this.bindTabNavigation();
+        this.bindReviewDock();
         this.bindAnalysisControls();
         this.bindExportControls();
         this.bindFilterControls();
@@ -243,6 +246,72 @@ const App = {
         });
     },
 
+    bindReviewDock() {
+        const tabs = Array.from(document.querySelectorAll('.review-dock-tab'));
+        tabs.forEach((tab, index) => {
+            tab.addEventListener('click', () => {
+                this.setReviewPanel(tab.dataset.reviewPanel, { expand: true });
+            });
+            tab.addEventListener('keydown', (event) => {
+                let nextIndex = null;
+                if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+                else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+                else if (event.key === 'Home') nextIndex = 0;
+                else if (event.key === 'End') nextIndex = tabs.length - 1;
+                if (nextIndex === null) return;
+                event.preventDefault();
+                this.setReviewPanel(tabs[nextIndex].dataset.reviewPanel, { expand: true, focus: true });
+            });
+        });
+        document.getElementById('review-dock-toggle').addEventListener('click', () => {
+            this.setReviewDockExpanded(!this.state.reviewDockExpanded);
+        });
+        this.setReviewPanel(this.state.reviewPanel, { expand: this.state.reviewDockExpanded });
+        this.updateReviewDockSummaries();
+    },
+
+    setReviewPanel(panel, options = {}) {
+        const allowed = ['quality', 'annotations', 'history'];
+        if (!allowed.includes(panel)) return;
+        this.state.reviewPanel = panel;
+        document.querySelectorAll('.review-dock-tab').forEach(tab => {
+            const active = tab.dataset.reviewPanel === panel;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+            if (active && options.focus) tab.focus();
+        });
+        document.querySelectorAll('.review-dock-panel').forEach(reviewPanel => {
+            reviewPanel.hidden = reviewPanel.id !== `review-panel-${panel}`;
+        });
+        this.setReviewDockExpanded(options.expand !== false);
+    },
+
+    setReviewDockExpanded(expanded) {
+        this.state.reviewDockExpanded = Boolean(expanded);
+        const dock = document.querySelector('.review-dock');
+        const content = document.getElementById('review-dock-content');
+        const toggle = document.getElementById('review-dock-toggle');
+        dock.classList.toggle('is-collapsed', !this.state.reviewDockExpanded);
+        content.hidden = !this.state.reviewDockExpanded;
+        toggle.setAttribute('aria-expanded', String(this.state.reviewDockExpanded));
+        document.getElementById('review-dock-toggle-label').textContent = this.state.reviewDockExpanded ? 'Hide' : 'Show';
+    },
+
+    updateReviewDockSummaries() {
+        const timeline = this.state.analysisResults.qualityTimeline;
+        const flagged = timeline?.segments?.filter(segment => Object.values(segment.channelsByFlag || {}).some(channels => channels.length)).length || 0;
+        const qualitySummary = document.getElementById('review-quality-summary');
+        const annotationSummary = document.getElementById('review-annotation-summary');
+        const historySummary = document.getElementById('review-history-summary');
+        if (qualitySummary) {
+            qualitySummary.textContent = this.state.qualityTimelineBusy ? '…' : timeline ? String(flagged) : '—';
+            qualitySummary.setAttribute('aria-label', this.state.qualityTimelineBusy ? 'Scanning recording' : timeline ? `${flagged} highlighted regions` : 'Not scanned');
+        }
+        if (annotationSummary) annotationSummary.textContent = String(this.state.annotations.length);
+        if (historySummary) historySummary.textContent = String(this.state.analysisHistory.length);
+    },
+
     bindAnalysisControls() {
         
         document.getElementById('spectrum-compute').addEventListener('click', () => this.computeSpectrum());
@@ -396,6 +465,7 @@ const App = {
             : 'No before-and-after comparison yet';
         document.getElementById('history-undo').disabled = !this.getLatestReversibleHistory();
         document.getElementById('history-restore-raw').disabled = !this.state.filteredData;
+        this.updateReviewDockSummaries();
     },
 
     formatHistoryValue(value) {
@@ -714,6 +784,7 @@ const App = {
 
     openAnnotationForm(range = null, defaults = {}) {
         if (!this.state.eegData) return;
+        this.setReviewPanel('annotations', { expand: true });
         const form = document.getElementById('annotation-form');
         form.reset();
         this.state.editingAnnotationId = null;
@@ -814,6 +885,7 @@ const App = {
     },
 
     editAnnotation(annotation) {
+        this.setReviewPanel('annotations', { expand: true });
         const form = document.getElementById('annotation-form');
         this.state.editingAnnotationId = annotation.id;
         document.getElementById('annotation-onset').value = annotation.onset.toFixed(3);
@@ -842,6 +914,7 @@ const App = {
         document.getElementById('annotation-count').textContent = visibleAnnotations.length === count
             ? `${count} ${count === 1 ? 'annotation' : 'annotations'}`
             : `${visibleAnnotations.length} of ${count} annotations`;
+        this.updateReviewDockSummaries();
         document.getElementById('previous-note').disabled = count === 0;
         document.getElementById('next-note').disabled = count === 0;
         list.replaceChildren();
@@ -1646,6 +1719,8 @@ const App = {
         this.state.editingAnnotationId = null;
         this.state.analysisHistory = [];
         this.state.historyUndoing = false;
+        this.state.reviewPanel = 'quality';
+        this.state.reviewDockExpanded = true;
         document.getElementById('montage-select').value = 'monopolar';
         this.state.currentMontage = 'monopolar';
         window.scrollTo(0, 0);
@@ -1702,6 +1777,7 @@ const App = {
         this.resetBandPowerResults();
         this.closeViewerContextMenu();
         this.renderQualityTimeline();
+        this.setReviewPanel('quality', { expand: true });
 
         document.getElementById('upload-section').classList.add('hidden');
         document.getElementById('dashboard').classList.add('visible');
@@ -2069,6 +2145,7 @@ const App = {
         button.disabled = true;
         button.textContent = 'Scanning…';
         status.textContent = 'Screening the complete recording across all channels';
+        this.updateReviewDockSummaries();
         await this.waitForPaint();
 
         try {
@@ -2096,10 +2173,12 @@ const App = {
             this.state.qualityTimelineBusy = false;
             button.disabled = false;
             button.textContent = originalText;
+            this.updateReviewDockSummaries();
         }
     },
 
     renderQualityTimeline() {
+        this.updateReviewDockSummaries();
         if (!this.state.eegData) return;
         const laneMap = {
             flat: document.getElementById('quality-lane-flat'),
@@ -2134,6 +2213,7 @@ const App = {
         document.getElementById('quality-timeline-end').textContent = `${duration.toFixed(1)} s`;
         this.renderQualityTimelineAnnotations();
         this.updateQualityTimelineViewport();
+        this.updateReviewDockSummaries();
     },
 
     renderQualityTimelineAnnotations() {
@@ -2821,6 +2901,8 @@ const App = {
         this.state.analysisResults = {};
         this.state.analysisHistory = [];
         this.state.historyUndoing = false;
+        this.state.reviewPanel = 'quality';
+        this.state.reviewDockExpanded = true;
         this.state.annotations = [];
         this.state.annotationFilter = 'all';
         this.state.editingAnnotationId = null;
@@ -2849,6 +2931,8 @@ const App = {
         this.resetBandPowerResults();
         this.resetImportProgress();
         this.renderAnnotations();
+        this.renderAnalysisHistory();
+        this.setReviewPanel('quality', { expand: true });
 
         // hide mobile elements
         document.getElementById('mobile-bottom-nav').classList.remove('visible');
