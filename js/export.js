@@ -613,5 +613,55 @@ const EEGExport = {
             annotations
         };
         return this.downloadFile(JSON.stringify(output, null, 2), `${this._safeBaseName(eegData.filename)}_annotations.json`, 'application/json');
+    },
+
+    exportAnnotatedSignalBundle(eegData, filteredData, annotation) {
+        if (!eegData || !annotation || Number(annotation.duration) <= 0) return false;
+        const startTime = Math.max(0, Number(annotation.onset) || 0);
+        const endTime = Math.min(eegData.duration, startTime + Number(annotation.duration));
+        const startSample = Math.max(0, Math.floor(startTime * eegData.sampleRate));
+        const endSample = Math.min(eegData.numSamples, Math.ceil(endTime * eegData.sampleRate));
+        if (endSample <= startSample) return false;
+
+        const affectedLabels = Array.isArray(annotation.channels) && annotation.channels.length
+            ? new Set(annotation.channels)
+            : null;
+        const channelIndices = eegData.channelLabels
+            .map((label, index) => ({ label, index }))
+            .filter(item => !affectedLabels || affectedLabels.has(item.label));
+        if (!channelIndices.length) return false;
+
+        const useFiltered = annotation.workspaceSnapshot?.signalState === 'filtered' && filteredData;
+        const sourceData = useFiltered ? filteredData : eegData.channelData;
+        const output = {
+            schemaVersion: 1,
+            application: 'NeuroScope',
+            exportedAt: new Date().toISOString(),
+            recording: {
+                filename: eegData.filename,
+                format: eegData.format,
+                sampleRate: eegData.sampleRate,
+                duration: eegData.duration
+            },
+            annotation,
+            exclusionPolicy: annotation.excludeFromAnalysis
+                ? 'Flagged as metadata only; NeuroScope did not remove samples from analyses'
+                : 'Not flagged for exclusion',
+            signal: {
+                source: useFiltered ? 'filtered' : 'raw',
+                startTime,
+                endTime,
+                channels: channelIndices.map(({ label, index }) => ({
+                    label,
+                    data: Array.from(sourceData[index].slice(startSample, endSample))
+                }))
+            }
+        };
+        const range = `${startTime.toFixed(3)}s-${endTime.toFixed(3)}s`;
+        return this.downloadFile(
+            JSON.stringify(output, null, 2),
+            `${this._safeBaseName(eegData.filename)}_${range}_annotated_signal.json`,
+            'application/json'
+        );
     }
 };
