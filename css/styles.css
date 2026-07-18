@@ -3037,76 +3037,76 @@ kbd {
     transform: none;
 }
 
-/* Deeper lower-workspace surfaces */
+/* Bright lower-workspace surfaces */
 .features-section {
     margin-top: 24px;
-    background: var(--navy-deep);
+    background: var(--surface-muted);
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 .features-heading {
-    color: #FFFFFF;
+    color: var(--text);
 }
 .feature-card {
-    background: var(--navy);
-    border-color: #284563;
+    background: #FFFFFF;
+    border-color: var(--border);
 }
 .feature-card:hover {
-    background: var(--navy-raised);
-    border-color: #3B5F88;
+    background: #F9FBFD;
+    border-color: #AFC1D4;
     box-shadow: none;
-    transform: translateY(-1px);
+    transform: none;
 }
 .feature-card h3 {
-    color: #FFFFFF;
+    color: var(--text);
 }
 .feature-card p {
-    color: #C5D4E7;
+    color: var(--text-secondary);
 }
 .feature-icon {
-    background: #1F416B;
+    background: var(--primary-bg-subtle);
 }
 
 .annotation-workbench {
-    background: var(--navy);
-    border-color: var(--navy);
+    background: #FFFFFF;
+    border-color: var(--border);
 }
 .annotation-header h3 {
-    color: #FFFFFF;
+    color: var(--text);
 }
 .annotation-header p,
 .annotation-empty {
-    color: #C4D3E8;
+    color: var(--text-secondary);
 }
 .annotation-count {
-    background: #214468;
-    color: #DCE8F8;
+    background: var(--surface-muted);
+    color: var(--text-secondary);
 }
 .annotation-header .btn-tiny {
-    background: #214468;
-    border-color: #355B82;
-    color: #E8F1FC;
+    background: #FFFFFF;
+    border-color: var(--border);
+    color: var(--text-secondary);
 }
 .annotation-row {
-    border-top-color: rgba(255, 255, 255, 0.14);
+    border-top-color: var(--border-light);
 }
 .annotation-content strong {
-    color: #FFFFFF;
+    color: var(--text);
 }
 .annotation-content p {
-    color: #CFDBEA;
+    color: var(--text-secondary);
 }
 .annotation-time {
-    background: #214D80;
-    color: #EAF2FF;
+    background: var(--primary-bg-subtle);
+    color: var(--primary-dark);
 }
 .annotation-edit {
-    color: #A8C8FF;
+    color: var(--primary-dark);
 }
 .annotation-remove {
-    color: #FF9EAA;
+    color: var(--danger);
 }
 .annotation-form {
-    background: #EDF2F8;
+    background: var(--surface-muted);
 }
 
 #tab-filter .filter-canvas-row,
