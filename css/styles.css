@@ -1148,22 +1148,23 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .band-results-surface {
     margin-top: 16px;
     padding: 20px;
-    background: var(--navy);
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
 }
 .band-results-heading {
     margin-bottom: 14px;
 }
 .band-results-heading h3 {
-    color: #FFFFFF;
+    color: var(--text);
 }
 .band-results-heading p {
     max-width: 72ch;
-    color: #C4D3E8;
+    color: var(--text-secondary);
 }
 .band-results-heading > span {
     flex: 0 0 auto;
-    color: #AFC8EE;
+    color: var(--text-secondary);
     font-size: 0.68rem;
     font-weight: 650;
 }
