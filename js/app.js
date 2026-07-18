@@ -15,6 +15,7 @@ const App = {
         analysisResults: {},
         filterPreviewData: null,
         activeFilter: null,
+        qualityTimelineBusy: false,
         annotations: [],
         annotationFilter: 'all',
         editingAnnotationId: null,
@@ -259,6 +260,7 @@ const App = {
 
         document.getElementById('stats-compute').addEventListener('click', () => this.computeStatistics());
         document.getElementById('quality-scan').addEventListener('click', () => this.computeSignalQuality());
+        document.getElementById('quality-timeline-scan').addEventListener('click', () => this.scanRecordingQuality());
         document.getElementById('quality-mark-flagged').addEventListener('click', () => {
             const flagged = this.state.analysisResults.quality?.filter(item => item.flags.length).map(item => item.index) || [];
             this.state.badChannels = Array.from(new Set([...this.state.badChannels, ...flagged])).sort((a, b) => a - b);
@@ -669,6 +671,7 @@ const App = {
                 : 'No annotations yet. Select a point or range, then choose Add annotation.';
             list.appendChild(empty);
             this.refreshSignalOverlay();
+            this.renderQualityTimelineAnnotations();
             return;
         }
 
@@ -759,6 +762,7 @@ const App = {
             list.appendChild(row);
         }
         this.refreshSignalOverlay();
+        this.renderQualityTimelineAnnotations();
     },
 
     jumpToAnnotation(direction) {
@@ -1500,10 +1504,12 @@ const App = {
         document.getElementById('quality-tbody').replaceChildren();
         document.getElementById('quality-summary').textContent = 'Quality screen not run.';
         document.getElementById('quality-mark-flagged').disabled = true;
+        document.getElementById('quality-timeline-status').textContent = 'Not scanned · annotations appear automatically';
         document.getElementById('bands-scope').value = 'visible';
         document.getElementById('bands-display').value = 'absolute';
         this.resetBandPowerResults();
         this.closeViewerContextMenu();
+        this.renderQualityTimeline();
 
         document.getElementById('upload-section').classList.add('hidden');
         document.getElementById('dashboard').classList.add('visible');
@@ -1839,6 +1845,7 @@ const App = {
         document.getElementById('viewer-overview-channel').textContent = overviewChannel === undefined
             ? 'No channel selected'
             : displayLabels[overviewChannel];
+        this.updateQualityTimelineViewport();
 
         // upd time display
         const precision = parseInt(document.getElementById('time-precision').value) || 1;
@@ -1851,6 +1858,130 @@ const App = {
         this.refreshSignalOverlay();
         this.updateWorkspaceStatus();
         this.updateExportEstimate();
+    },
+
+    async scanRecordingQuality() {
+        if (!this.state.eegData || this.state.qualityTimelineBusy) return;
+        const button = document.getElementById('quality-timeline-scan');
+        const status = document.getElementById('quality-timeline-status');
+        const originalText = button.textContent;
+        this.state.qualityTimelineBusy = true;
+        button.disabled = true;
+        button.textContent = 'Scanning…';
+        status.textContent = 'Screening the complete recording across all channels';
+        await this.waitForPaint();
+
+        try {
+            const data = this.state.filteredData || this.state.eegData.channelData;
+            const segments = EEGAnalysis.computeTimelineQuality(
+                data,
+                this.state.eegData.sampleRate,
+                this.state.eegData.duration
+            );
+            this.state.analysisResults.qualityTimeline = {
+                segments,
+                source: this.state.filteredData ? 'filtered' : 'raw',
+                scannedAt: new Date().toISOString()
+            };
+            this.renderQualityTimeline();
+            const flagged = segments.filter(segment => Object.values(segment.channelsByFlag).some(channels => channels.length)).length;
+            status.textContent = `${segments.length} regions screened · ${flagged} highlighted · ${this.state.filteredData ? 'filtered' : 'raw'} signal`;
+            this.showToast('Recording quality timeline updated', 'success');
+        } catch (error) {
+            console.error('Quality timeline scan failed', error);
+            status.textContent = 'The recording scan could not be completed';
+            this.showToast('The recording quality timeline could not be computed', 'error');
+        } finally {
+            this.state.qualityTimelineBusy = false;
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    },
+
+    renderQualityTimeline() {
+        if (!this.state.eegData) return;
+        const laneMap = {
+            flat: document.getElementById('quality-lane-flat'),
+            amplitude: document.getElementById('quality-lane-amplitude'),
+            clipping: document.getElementById('quality-lane-clipping'),
+            line_noise: document.getElementById('quality-lane-line-noise'),
+            muscle: document.getElementById('quality-lane-muscle')
+        };
+        Object.values(laneMap).forEach(track => track?.replaceChildren());
+        const timeline = this.state.analysisResults.qualityTimeline;
+        const duration = this.state.eegData.duration;
+
+        for (const segment of timeline?.segments || []) {
+            for (const [flag, channels] of Object.entries(segment.channelsByFlag)) {
+                if (!channels.length || !laneMap[flag]) continue;
+                const region = document.createElement('button');
+                region.type = 'button';
+                region.className = `quality-region quality-region-${flag.replace('_', '-')}`;
+                region.style.left = `${segment.startTime / duration * 100}%`;
+                region.style.width = `${Math.max(0.35, (segment.endTime - segment.startTime) / duration * 100)}%`;
+                const labels = channels.slice(0, 4).map(index => this.state.eegData.channelLabels[index]);
+                const remaining = channels.length - labels.length;
+                const channelText = `${labels.join(', ')}${remaining > 0 ? ` +${remaining}` : ''}`;
+                region.title = `${segment.startTime.toFixed(2)}–${segment.endTime.toFixed(2)} s · ${channelText}`;
+                region.setAttribute('aria-label', region.title);
+                region.addEventListener('click', () => this.focusTimelineRegion(segment.startTime, segment.endTime));
+                laneMap[flag].appendChild(region);
+            }
+        }
+
+        document.getElementById('quality-timeline-midpoint').textContent = `${(duration / 2).toFixed(1)} s`;
+        document.getElementById('quality-timeline-end').textContent = `${duration.toFixed(1)} s`;
+        this.renderQualityTimelineAnnotations();
+        this.updateQualityTimelineViewport();
+    },
+
+    renderQualityTimelineAnnotations() {
+        const track = document.getElementById('quality-lane-annotations');
+        if (!track) return;
+        track.replaceChildren();
+        if (!this.state.eegData) return;
+        const duration = this.state.eegData.duration;
+        for (const annotation of this.state.annotations) {
+            const region = document.createElement('button');
+            region.type = 'button';
+            region.className = `quality-region quality-region-annotation${annotation.excludeFromAnalysis ? ' is-excluded' : ''}`;
+            region.style.left = `${annotation.onset / duration * 100}%`;
+            region.style.width = `${Math.max(0.45, annotation.duration / duration * 100)}%`;
+            const end = annotation.onset + annotation.duration;
+            region.title = annotation.duration > 0
+                ? `${annotation.onset.toFixed(2)}–${end.toFixed(2)} s · ${annotation.note}`
+                : `${annotation.onset.toFixed(2)} s · ${annotation.note}`;
+            region.setAttribute('aria-label', region.title);
+            region.addEventListener('click', () => this.focusTimelineRegion(annotation.onset, end));
+            track.appendChild(region);
+        }
+        this.updateQualityTimelineViewport();
+    },
+
+    updateQualityTimelineViewport() {
+        if (!this.state.eegData) return;
+        const duration = this.state.eegData.duration;
+        document.querySelectorAll('.quality-lane-track').forEach(track => {
+            let viewport = track.querySelector('.quality-timeline-viewport');
+            if (!viewport) {
+                viewport = document.createElement('span');
+                viewport.className = 'quality-timeline-viewport';
+                viewport.setAttribute('aria-hidden', 'true');
+                track.appendChild(viewport);
+            }
+            viewport.style.left = `${this.state.timeOffset / duration * 100}%`;
+            viewport.style.width = `${Math.min(100, this.state.timeWindow / duration * 100)}%`;
+        });
+    },
+
+    focusTimelineRegion(startTime, endTime) {
+        if (!this.state.eegData) return;
+        this.state.viewerCursorTime = startTime;
+        this.state.viewerSelection = endTime > startTime ? { start: startTime, end: endTime } : null;
+        this.setTimeOffset(Math.max(0, startTime - this.state.timeWindow * 0.15));
+        this.updateViewerSelectionBar();
+        this.refreshSignalOverlay();
+        document.getElementById('viewer-interaction-canvas').focus({ preventScroll: true });
     },
 
     updateTimeOffsetRange() {
