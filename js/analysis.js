@@ -459,7 +459,7 @@ const EEGAnalysis = {
     computeSignalQuality(signal) {
         const stats = this.computeStatistics(signal);
         if (!signal.length) {
-            return { ...stats, flatRatio: 1, repeatedExtremeRatio: 0, flags: ['empty signal'] };
+            return { ...stats, flatRatio: 1, repeatedExtremeRatio: 0, flags: ['Empty signal'] };
         }
 
         const transitionThreshold = Math.max(0.01, (stats.std || 0) * 0.0001);
@@ -476,9 +476,9 @@ const EEGAnalysis = {
         const flatRatio = flatTransitions / Math.max(1, signal.length - 1);
         const repeatedExtremeRatio = repeatedExtremes / Math.max(1, signal.length - 1);
         const flags = [];
-        if (stats.peakToPeak < 1 || flatRatio > 0.98) flags.push('possible flat signal');
-        if (repeatedExtremeRatio > 0.01) flags.push('possible clipping');
-        if (stats.peakToPeak > 1000) flags.push('large amplitude range');
+        if (stats.peakToPeak < 1 || flatRatio > 0.98) flags.push('Possible flat signal');
+        if (repeatedExtremeRatio > 0.01) flags.push('Possible clipping');
+        if (stats.peakToPeak > 1000) flags.push('Large amplitude range');
 
         return { ...stats, flatRatio, repeatedExtremeRatio, flags };
     },
