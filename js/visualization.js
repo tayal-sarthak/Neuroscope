@@ -163,7 +163,7 @@ const EEGVisualization = {
         ctx.fillStyle = '#687A8F';
         ctx.font = '9px Inter, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(scaleBarAmplitude.toFixed(0) + 'uV', width - rightMargin + 8, topMargin + 10 + scaleBarHeight / 2 + 3);
+        ctx.fillText(scaleBarAmplitude.toFixed(0) + ' µV', width - rightMargin + 8, topMargin + 10 + scaleBarHeight / 2 + 3);
 
         this._updateChannelLabels(channels, channelLabels, channelHeight, topMargin);
     },
@@ -409,12 +409,12 @@ const EEGVisualization = {
         ctx.fillStyle = '#64748B';
         ctx.font = '11px Inter, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(`Channel: ${channelLabel}`, margin.left, 18);
+        ctx.fillText(`Channel · ${channelLabel}`, margin.left, 18);
 
         ctx.fillStyle = '#8A99AA';
         ctx.fillRect(width - 180, 8, 10, 10);
         ctx.fillStyle = '#64748B';
-        ctx.fillText('Original', width - 165, 17);
+        ctx.fillText('Raw', width - 165, 17);
 
         ctx.fillStyle = '#315AEF';
         ctx.fillRect(width - 90, 8, 10, 10);
@@ -1028,7 +1028,7 @@ const EEGVisualization = {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Power Spectral Density',
+                        text: 'Power spectral density',
                         font: { family: 'Inter', size: 14, weight: '600' },
                         color: '#14233A'
                     },
@@ -1046,7 +1046,7 @@ const EEGVisualization = {
                         grid: { color: '#E8EDF3' }
                     },
                     y: {
-                        title: { display: true, text: options.logScale ? 'Power (dB)' : 'Power (uV^2/Hz)', font: { family: 'Inter' } },
+                        title: { display: true, text: options.logScale ? 'Power (dB)' : 'Power (µV²/Hz)', font: { family: 'Inter' } },
                         grid: { color: '#E8EDF3' }
                     }
                 }
@@ -1090,7 +1090,7 @@ const EEGVisualization = {
                 plugins: {
                     title: {
                         display: true,
-                        text: displayType === 'relative' ? 'Relative Band Power (%)' : 'Absolute Band Power',
+                        text: displayType === 'relative' ? 'Relative band power by channel' : 'Absolute band power by channel',
                         font: { family: 'Inter', size: 14, weight: '600' },
                         color: '#14233A'
                     },
@@ -1102,7 +1102,7 @@ const EEGVisualization = {
                 scales: {
                     x: { grid: { color: '#E8EDF3' }, ticks: { font: { family: 'Inter', size: 10 } } },
                     y: {
-                        title: { display: true, text: displayType === 'relative' ? '%' : 'uV^2', font: { family: 'Inter' } },
+                        title: { display: true, text: displayType === 'relative' ? 'Share of band total (%)' : 'Power (µV²)', font: { family: 'Inter' } },
                         grid: { color: '#E8EDF3' }
                     }
                 }
@@ -1140,7 +1140,7 @@ const EEGVisualization = {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Average Band Distribution',
+                        text: 'Mean band distribution',
                         font: { family: 'Inter', size: 14, weight: '600' },
                         color: '#14233A'
                     },
