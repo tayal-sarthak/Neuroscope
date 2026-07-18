@@ -3114,7 +3114,8 @@ kbd {
 #tab-stats .stats-charts,
 #tab-export .export-grid {
     padding: 14px;
-    background: var(--navy);
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
 }
 #tab-filter .filter-canvas-row,
