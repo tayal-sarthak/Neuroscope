@@ -483,6 +483,79 @@ const EEGAnalysis = {
         return { ...stats, flatRatio, repeatedExtremeRatio, flags };
     },
 
+    computeTimelineQuality(channelData, sampleRate, duration, maxSegments = 120) {
+        if (!Array.isArray(channelData) || channelData.length === 0 || !channelData[0]?.length) return [];
+        const totalSamples = channelData[0].length;
+        const segmentCount = Math.min(maxSegments, Math.max(1, Math.ceil(duration / 6)));
+        const samplesPerSegment = Math.max(1, Math.ceil(totalSamples / segmentCount));
+        const segments = [];
+
+        for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++) {
+            const startSample = segmentIndex * samplesPerSegment;
+            const endSample = Math.min(totalSamples, startSample + samplesPerSegment);
+            if (endSample <= startSample) break;
+            const channelsByFlag = {
+                flat: [],
+                amplitude: [],
+                clipping: [],
+                line_noise: [],
+                muscle: []
+            };
+
+            channelData.forEach((signal, channelIndex) => {
+                const interval = signal.subarray(startSample, endSample);
+                const quality = this.computeSignalQuality(interval);
+                if (quality.flags.includes('Possible flat signal')) channelsByFlag.flat.push(channelIndex);
+                if (quality.flags.includes('Large amplitude range')) channelsByFlag.amplitude.push(channelIndex);
+                if (quality.flags.includes('Possible clipping')) channelsByFlag.clipping.push(channelIndex);
+
+                const lineNoiseRatio = Math.max(
+                    sampleRate > 102 ? this._toneToSignalRatio(interval, sampleRate, 50) : 0,
+                    sampleRate > 122 ? this._toneToSignalRatio(interval, sampleRate, 60) : 0
+                );
+                if (lineNoiseRatio > 0.22) channelsByFlag.line_noise.push(channelIndex);
+
+                let differenceEnergy = 0;
+                for (let i = 1; i < interval.length; i++) {
+                    const difference = interval[i] - interval[i - 1];
+                    differenceEnergy += difference * difference;
+                }
+                const differenceRms = Math.sqrt(differenceEnergy / Math.max(1, interval.length - 1));
+                const highFrequencyRatio = quality.std > 0 ? differenceRms / (quality.std * Math.SQRT2) : 0;
+                if (quality.peakToPeak > 20 && highFrequencyRatio > 0.68) channelsByFlag.muscle.push(channelIndex);
+            });
+
+            segments.push({
+                startTime: startSample / sampleRate,
+                endTime: Math.min(duration, endSample / sampleRate),
+                channelsByFlag
+            });
+        }
+        return segments;
+    },
+
+    _toneToSignalRatio(signal, sampleRate, frequency) {
+        if (!signal.length || frequency <= 0 || frequency >= sampleRate / 2) return 0;
+        let mean = 0;
+        for (let i = 0; i < signal.length; i++) mean += signal[i];
+        mean /= signal.length;
+
+        let re = 0;
+        let im = 0;
+        let energy = 0;
+        const omega = 2 * Math.PI * frequency / sampleRate;
+        for (let i = 0; i < signal.length; i++) {
+            const centered = signal[i] - mean;
+            re += centered * Math.cos(omega * i);
+            im -= centered * Math.sin(omega * i);
+            energy += centered * centered;
+        }
+        const signalRms = Math.sqrt(energy / signal.length);
+        if (signalRms === 0) return 0;
+        const toneAmplitude = 2 * Math.sqrt(re * re + im * im) / signal.length;
+        return toneAmplitude / Math.SQRT2 / signalRms;
+    },
+
     // hjorth params activity mobility complexity
     hjorthParameters(signal) {
         const n = signal.length;
