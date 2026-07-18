@@ -588,6 +588,14 @@ const App = {
     bindAnnotationControls() {
         const form = document.getElementById('annotation-form');
         const importInput = document.getElementById('annotation-import-input');
+        const syncBundleAvailability = () => {
+            const duration = Number(document.getElementById('annotation-duration').value);
+            const bundle = document.getElementById('annotation-export-bundle');
+            bundle.disabled = !Number.isFinite(duration) || duration <= 0;
+            if (bundle.disabled) bundle.checked = false;
+            bundle.closest('label')?.classList.toggle('is-disabled', bundle.disabled);
+        };
+        document.getElementById('annotation-duration').addEventListener('input', syncBundleAvailability);
         document.getElementById('annotation-import-btn').addEventListener('click', () => importInput.click());
         importInput.addEventListener('change', async () => {
             const file = importInput.files?.[0];

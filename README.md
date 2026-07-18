@@ -64,6 +64,9 @@ The Signal viewer is NeuroScope’s main review surface for multichannel EEG rec
 - Click to pin a time cursor or drag across the waveform to select a precise time range
 - Right-click a selected range to add an annotation, preclassify an artifact, set the Export center scope, or download the range as CSV; right-click elsewhere for point-specific review actions
 - Create point or duration annotations directly from the active cursor or selected range
+- Label eye blinks, muscle artifacts, bad electrodes, clinical events, uncertain regions, and general observations
+- Preserve exclusion flags, affected channels, montage, raw/filtered state, and applied-filter provenance with each annotation
+- Download an annotated signal range and its research note together as JSON
 - Edit, filter, import, and step between annotations with previous/next controls or N/P shortcuts
 - Export the current viewer range without re-entering start and end times
 - Channel selection and deselection with checkboxes in the sidebar
@@ -73,6 +76,8 @@ The Signal viewer is NeuroScope’s main review surface for multichannel EEG rec
 - Automatic grid rendering with time markers and channel separators
 - HiDPI (Retina) display support for crisp rendering
 - Real-time updates as filters are applied
+- Screen the complete recording on a clickable quality timeline for flat signal, large amplitude, clipping, line noise, possible muscle artifact, and existing annotations
+- Review before-and-after workflow history, undo supported state changes, restore raw signal, and export the provenance log as JSON
 
 Display controls remain in the sidebar while you review. The Signal viewer re-renders when the active state changes between raw and filtered data, while the status bar identifies which state is active.
 
@@ -139,6 +144,8 @@ The Export center shows an estimated output size before a download begins and pr
 ### Annotations
 
 Attach point- or range-linked annotations directly below the signal viewer. An annotation records timing, type, channel scope, and a free-text note. Annotations can be edited, filtered, imported from NeuroScope CSV or compatible BIDS events TSV columns, and traversed from the viewer. They are included in review JSON, annotation CSV/JSON, and BIDS events exports.
+
+Exclusion flags are currently provenance metadata: they are exported but do not automatically remove samples from analyses. Range annotations can also export the affected signal and annotation together in one JSON bundle.
 
 ## Signal Processing Details
 
