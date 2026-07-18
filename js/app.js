@@ -14,6 +14,7 @@ const App = {
         timeOffset: 0,
         analysisResults: {},
         filterPreviewData: null,
+        activeFilter: null,
         annotations: [],
         annotationFilter: 'all',
         editingAnnotationId: null,
@@ -474,6 +475,7 @@ const App = {
                 : [];
 
             const existing = this.state.annotations.find(item => item.id === this.state.editingAnnotationId);
+            const exportBundle = document.getElementById('annotation-export-bundle').checked;
             const annotation = {
                 id: existing?.id || window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
                 onset,
@@ -481,6 +483,8 @@ const App = {
                 type: document.getElementById('annotation-type').value,
                 channels,
                 note,
+                excludeFromAnalysis: document.getElementById('annotation-exclude').checked,
+                workspaceSnapshot: this.getCurrentWorkspaceSnapshot(),
                 createdAt: existing?.createdAt || new Date().toISOString(),
                 updatedAt: existing ? new Date().toISOString() : undefined
             };
@@ -497,8 +501,44 @@ const App = {
             document.getElementById('annotation-duration').value = '0';
             document.getElementById('annotation-submit').textContent = 'Save annotation';
             this.renderAnnotations();
-            this.showToast(edited ? 'Annotation updated' : 'Annotation saved', 'success');
+            if (exportBundle) {
+                const exported = EEGExport.exportAnnotatedSignalBundle(this.state.eegData, this.state.filteredData, annotation);
+                this.showToast(
+                    exported
+                        ? `${edited ? 'Annotation updated' : 'Annotation saved'} and signal bundle download started`
+                        : `${edited ? 'Annotation updated' : 'Annotation saved'}, but the signal bundle needs a non-zero time range`,
+                    exported ? 'success' : 'info'
+                );
+            } else {
+                this.showToast(edited ? 'Annotation updated' : 'Annotation saved', 'success');
+            }
         });
+    },
+
+    getCurrentWorkspaceSnapshot() {
+        return {
+            capturedAt: new Date().toISOString(),
+            signalState: this.state.filteredData ? 'filtered' : 'raw',
+            montage: document.getElementById('montage-select')?.value || 'monopolar',
+            filter: this.state.activeFilter ? { ...this.state.activeFilter } : null
+        };
+    },
+
+    formatWorkspaceSnapshot(snapshot = this.getCurrentWorkspaceSnapshot()) {
+        const montageLabels = {
+            monopolar: 'Monopolar',
+            average: 'Average reference',
+            bipolar: 'Bipolar'
+        };
+        const signal = snapshot.signalState === 'filtered' ? 'Filtered signal' : 'Raw signal';
+        const montage = montageLabels[snapshot.montage] || snapshot.montage;
+        const filter = snapshot.filter?.description || 'No applied filter';
+        return `${signal} · ${montage} · ${filter}`;
+    },
+
+    updateAnnotationStatePreview() {
+        const output = document.getElementById('annotation-state-preview');
+        if (output) output.textContent = this.formatWorkspaceSnapshot();
     },
 
     openAnnotationForm(range = null, defaults = {}) {
@@ -514,6 +554,12 @@ const App = {
         document.getElementById('annotation-duration').value = duration.toFixed(3);
         document.getElementById('annotation-type').value = defaults.type || 'observation';
         document.getElementById('annotation-note').value = defaults.note || '';
+        document.getElementById('annotation-exclude').checked = Boolean(defaults.excludeFromAnalysis);
+        const bundle = document.getElementById('annotation-export-bundle');
+        bundle.checked = false;
+        bundle.disabled = duration <= 0;
+        bundle.closest('label')?.classList.toggle('is-disabled', bundle.disabled);
+        this.updateAnnotationStatePreview();
         form.hidden = false;
         document.getElementById('annotation-note').focus();
     },
@@ -542,7 +588,8 @@ const App = {
                 const onset = Number(row[onsetIndex]);
                 const duration = durationIndex >= 0 ? Number(row[durationIndex] || 0) : 0;
                 const typeValue = typeIndex >= 0 ? row[typeIndex] : 'observation';
-                const type = ['observation', 'bad_artifact', 'clinical_event', 'signal_quality'].includes(typeValue) ? typeValue : 'observation';
+                const supportedTypes = ['eye_blink', 'muscle_artifact', 'bad_electrode', 'clinical_event', 'uncertain', 'observation', 'bad_artifact', 'signal_quality'];
+                const type = supportedTypes.includes(typeValue) ? typeValue : 'observation';
                 const note = noteIndex >= 0 ? row[noteIndex].trim() : typeValue.replace(/_/g, ' ');
                 if (!Number.isFinite(onset) || !Number.isFinite(duration) || onset < 0 || duration < 0 || onset + duration > this.state.eegData.duration || !note) {
                     skipped++;
@@ -565,6 +612,8 @@ const App = {
                     type,
                     channels,
                     note,
+                    excludeFromAnalysis: false,
+                    workspaceSnapshot: null,
                     createdAt: createdIndex >= 0 && row[createdIndex] ? row[createdIndex] : new Date().toISOString(),
                     importedFrom: file.name
                 });
@@ -587,6 +636,12 @@ const App = {
         document.getElementById('annotation-type').value = annotation.type;
         document.getElementById('annotation-channels').value = annotation.channels?.length ? 'selected' : '';
         document.getElementById('annotation-note').value = annotation.note;
+        document.getElementById('annotation-exclude').checked = Boolean(annotation.excludeFromAnalysis);
+        const bundle = document.getElementById('annotation-export-bundle');
+        bundle.checked = false;
+        bundle.disabled = annotation.duration <= 0;
+        bundle.closest('label')?.classList.toggle('is-disabled', bundle.disabled);
+        this.updateAnnotationStatePreview();
         document.getElementById('annotation-submit').textContent = 'Update annotation';
         form.hidden = false;
         form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -618,9 +673,13 @@ const App = {
         }
 
         const annotationTypeLabels = {
-            observation: 'Observation',
-            bad_artifact: 'Artifact / bad segment',
+            eye_blink: 'Eye blink',
+            muscle_artifact: 'Muscle artifact',
+            bad_electrode: 'Bad electrode',
             clinical_event: 'Clinical event',
+            uncertain: 'Uncertain',
+            observation: 'General observation',
+            bad_artifact: 'Other artifact / bad segment',
             signal_quality: 'Signal quality'
         };
         for (const annotation of visibleAnnotations) {
@@ -646,7 +705,22 @@ const App = {
             meta.textContent = (annotationTypeLabels[annotation.type] || annotation.type.replace(/_/g, ' ')) + channelText;
             const note = document.createElement('p');
             note.textContent = annotation.note;
+            const badges = document.createElement('div');
+            badges.className = 'annotation-badges';
+            if (annotation.excludeFromAnalysis) {
+                const exclusion = document.createElement('span');
+                exclusion.className = 'annotation-badge annotation-badge-warning';
+                exclusion.textContent = 'Exclusion flag';
+                badges.appendChild(exclusion);
+            }
+            if (annotation.workspaceSnapshot) {
+                const state = document.createElement('span');
+                state.className = 'annotation-badge';
+                state.textContent = this.formatWorkspaceSnapshot(annotation.workspaceSnapshot);
+                badges.appendChild(state);
+            }
             content.append(meta, note);
+            if (badges.childElementCount) content.appendChild(badges);
 
             const actions = document.createElement('div');
             actions.className = 'annotation-row-actions';
@@ -656,6 +730,19 @@ const App = {
             edit.textContent = 'Edit';
             edit.setAttribute('aria-label', `Edit annotation at ${annotation.onset.toFixed(2)} seconds`);
             edit.addEventListener('click', () => this.editAnnotation(annotation));
+
+            if (annotation.duration > 0) {
+                const exportBundle = document.createElement('button');
+                exportBundle.type = 'button';
+                exportBundle.className = 'annotation-export';
+                exportBundle.textContent = 'Export bundle';
+                exportBundle.setAttribute('aria-label', `Export annotated signal from ${annotation.onset.toFixed(2)} seconds`);
+                exportBundle.addEventListener('click', () => {
+                    const exported = EEGExport.exportAnnotatedSignalBundle(this.state.eegData, this.state.filteredData, annotation);
+                    this.showToast(exported ? 'Annotated signal bundle download started' : 'The annotated signal bundle could not be prepared', exported ? 'success' : 'error');
+                });
+                actions.appendChild(exportBundle);
+            }
 
             const remove = document.createElement('button');
             remove.type = 'button';
@@ -1308,6 +1395,7 @@ const App = {
 
             this.state.eegData = eegData;
             this.state.filteredData = null;
+            this.state.activeFilter = null;
             this.state.analysisResults = {};
             this.state.annotations = [];
             this.state.badChannels = [];
@@ -1338,6 +1426,7 @@ const App = {
             await this.waitForPaint();
             this.state.eegData = eegData;
             this.state.filteredData = null;
+            this.state.activeFilter = null;
             this.state.analysisResults = {};
             this.state.annotations = [];
             this.state.badChannels = [];
@@ -2043,6 +2132,14 @@ const App = {
                 else if (filterType === 'lowpass') desc = `Filtered · lowpass below ${params.high} Hz · order ${params.order}`;
                 else if (filterType === 'notch') desc = `Filtered · notch at ${params.low} Hz`;
 
+                this.state.activeFilter = {
+                    type: filterType,
+                    low: params.low,
+                    high: params.high,
+                    order: params.order,
+                    description: desc.replace(/^Filtered · /, '')
+                };
+
                 this.updateFilterStatus(desc);
 
                 const chIdx = parseInt(document.getElementById('filter-channel').value) || 0;
@@ -2084,6 +2181,7 @@ const App = {
     resetFilter() {
         this.state.filteredData = null;
         this.state.filterPreviewData = null;
+        this.state.activeFilter = null;
         this.updateFilterStatus(null);
         this.refreshSignalViewer();
 
@@ -2358,6 +2456,7 @@ const App = {
     resetToUpload() {
         this.state.eegData = null;
         this.state.filteredData = null;
+        this.state.activeFilter = null;
         this.state.analysisResults = {};
         this.state.annotations = [];
         this.state.annotationFilter = 'all';
