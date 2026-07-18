@@ -390,17 +390,21 @@
                     <div class="annotation-header">
                         <div>
                             <h3 id="annotation-heading">Annotations</h3>
-                            <p>Attach a review note to a point or range. Exports preserve its timing, type, and channel scope.</p>
+                            <p>Leave research notes directly on the signal with timing, labels, channel scope, and workspace provenance</p>
                         </div>
                         <div class="annotation-header-tools">
                             <button type="button" id="annotation-import-btn" class="btn-tiny">Import annotations</button>
                             <input type="file" id="annotation-import-input" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
                             <label for="annotation-filter" class="sr-only">Filter annotations</label>
                             <select id="annotation-filter" class="toolbar-select annotation-filter">
-                                <option value="all">All annotation types</option>
-                                <option value="observation">Observations</option>
-                                <option value="bad_artifact">Artifacts</option>
-                                <option value="clinical_event">Clinical events</option>
+                                <option value="all">All annotation labels</option>
+                                <option value="eye_blink">Eye blink</option>
+                                <option value="muscle_artifact">Muscle artifact</option>
+                                <option value="bad_electrode">Bad electrode</option>
+                                <option value="clinical_event">Clinical event</option>
+                                <option value="uncertain">Uncertain</option>
+                                <option value="observation">General observation</option>
+                                <option value="bad_artifact">Other artifact / bad segment</option>
                                 <option value="signal_quality">Signal quality</option>
                             </select>
                             <span id="annotation-count" class="annotation-count">0 annotations</span>
@@ -409,21 +413,37 @@
                     <form id="annotation-form" class="annotation-form" hidden>
                         <label>Onset (s)<input type="number" id="annotation-onset" min="0" step="0.001" required></label>
                         <label>Duration (s)<input type="number" id="annotation-duration" min="0" step="0.001" value="0" required></label>
-                        <label>Type
+                        <label>Label
                             <select id="annotation-type">
-                                <option value="observation">Observation</option>
-                                <option value="bad_artifact">Artifact / bad segment</option>
+                                <option value="eye_blink">Eye blink</option>
+                                <option value="muscle_artifact">Muscle artifact</option>
+                                <option value="bad_electrode">Bad electrode</option>
                                 <option value="clinical_event">Clinical event</option>
+                                <option value="uncertain">Uncertain</option>
+                                <option value="observation">General observation</option>
+                                <option value="bad_artifact">Other artifact / bad segment</option>
                                 <option value="signal_quality">Signal quality</option>
                             </select>
                         </label>
-                        <label>Channels
+                        <label>Affected channels
                             <select id="annotation-channels">
                                 <option value="">All channels</option>
-                                <option value="selected">Currently selected channels</option>
+                                <option value="selected">Channels selected in sidebar</option>
                             </select>
                         </label>
-                        <label class="annotation-note-field">Note<input type="text" id="annotation-note" maxlength="240" placeholder="Describe the observation, event, or concern" required></label>
+                        <label class="annotation-note-field">Research note<input type="text" id="annotation-note" maxlength="240" placeholder="Describe what you observed and why it matters" required></label>
+                        <label class="annotation-check-field">
+                            <input type="checkbox" id="annotation-exclude">
+                            <span><strong>Flag for analysis exclusion</strong><small>Stored as review metadata; current analyses do not omit this range automatically</small></span>
+                        </label>
+                        <div class="annotation-state-snapshot" aria-live="polite">
+                            <span>Workspace snapshot</span>
+                            <strong id="annotation-state-preview">Raw signal · Monopolar · No applied filter</strong>
+                        </div>
+                        <label class="annotation-check-field annotation-export-field">
+                            <input type="checkbox" id="annotation-export-bundle">
+                            <span><strong>Download signal bundle after saving</strong><small>Includes the selected signal range and this annotation in one JSON file</small></span>
+                        </label>
                         <div class="annotation-actions">
                             <button type="button" id="annotation-cancel" class="btn-ghost">Discard changes</button>
                             <button type="submit" id="annotation-submit" class="btn-primary">Save annotation</button>
