@@ -537,6 +537,7 @@ const EEGExport = {
                 invertPolarity: Boolean(state.invertPolarity)
             },
             annotations: state.annotations || [],
+            analysisHistory: state.analysisHistory || [],
             analysesAvailable: Object.keys(state.analysisResults || {})
         };
         return this.downloadFile(JSON.stringify(manifest, null, 2), `${this._safeBaseName(eegData.filename)}_session.json`, 'application/json');
@@ -669,6 +670,41 @@ const EEGExport = {
         return this.downloadFile(
             JSON.stringify(output, null, 2),
             `${this._safeBaseName(eegData.filename)}_${range}_annotated_signal.json`,
+            'application/json'
+        );
+    },
+
+    exportWorkflowHistory(eegData, history = []) {
+        if (!eegData || !history.length) return false;
+        const output = {
+            schemaVersion: 1,
+            application: 'NeuroScope',
+            exportedAt: new Date().toISOString(),
+            recording: {
+                filename: eegData.filename,
+                format: eegData.format,
+                sampleRate: eegData.sampleRate,
+                duration: eegData.duration,
+                channelLabels: eegData.channelLabels
+            },
+            notes: {
+                exclusionPolicy: 'Exclusion flags are provenance metadata and are not automatically removed from analyses',
+                mnePython: 'Script generation is not implemented in this version'
+            },
+            steps: history.map(({ id, timestamp, action, summary, before, after, reversible, undone }) => ({
+                id,
+                timestamp,
+                action,
+                summary,
+                before,
+                after,
+                reversible: Boolean(reversible),
+                undone: Boolean(undone)
+            }))
+        };
+        return this.downloadFile(
+            JSON.stringify(output, null, 2),
+            `${this._safeBaseName(eegData.filename)}_workflow.json`,
             'application/json'
         );
     }
