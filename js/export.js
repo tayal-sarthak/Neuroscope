@@ -543,7 +543,7 @@ const EEGExport = {
     },
 
     exportAnnotationsCSV(eegData, annotations) {
-        const rows = ['Onset_seconds,Duration_seconds,Type,Channels,Description,Created_at'];
+        const rows = ['Onset_seconds,Duration_seconds,Label,Channels,Description,Exclude_from_analysis,Signal_state,Montage,Filter,Created_at'];
         for (const annotation of annotations) {
             rows.push([
                 Number(annotation.onset ?? annotation.time ?? 0).toFixed(3),
@@ -551,6 +551,10 @@ const EEGExport = {
                 this._csvCell(annotation.type),
                 this._csvCell(annotation.channels?.join('|') || ''),
                 this._csvCell(annotation.note),
+                annotation.excludeFromAnalysis ? 'true' : 'false',
+                this._csvCell(annotation.workspaceSnapshot?.signalState || ''),
+                this._csvCell(annotation.workspaceSnapshot?.montage || ''),
+                this._csvCell(annotation.workspaceSnapshot?.filter?.description || ''),
                 this._csvCell(annotation.createdAt)
             ].join(','));
         }
@@ -558,7 +562,7 @@ const EEGExport = {
     },
 
     exportBIDSEventsTSV(eegData, annotations) {
-        const rows = ['onset\tduration\ttrial_type\tchannel\tdescription'];
+        const rows = ['onset\tduration\ttrial_type\tchannel\tdescription\texclude_from_analysis\tsignal_state\tmontage\tfilter'];
         const sorted = annotations.slice().sort((a, b) => (a.onset ?? a.time ?? 0) - (b.onset ?? b.time ?? 0));
         for (const annotation of sorted) {
             rows.push([
@@ -566,7 +570,11 @@ const EEGExport = {
                 Number(annotation.duration || 0).toFixed(3),
                 this._tsvCell(annotation.type),
                 this._tsvCell(annotation.channels?.join('|') || 'n/a'),
-                this._tsvCell(annotation.note)
+                this._tsvCell(annotation.note),
+                annotation.excludeFromAnalysis ? 'true' : 'false',
+                this._tsvCell(annotation.workspaceSnapshot?.signalState),
+                this._tsvCell(annotation.workspaceSnapshot?.montage),
+                this._tsvCell(annotation.workspaceSnapshot?.filter?.description)
             ].join('\t'));
         }
         return this.downloadFile(rows.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_events.tsv`, 'text/tab-separated-values;charset=utf-8');
