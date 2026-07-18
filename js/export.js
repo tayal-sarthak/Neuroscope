@@ -534,6 +534,7 @@ const EEGExport = {
                 montage: document.getElementById('montage-select')?.value || 'monopolar',
                 tracePalette: state.tracePalette || 'channel',
                 viewerGrid: state.viewerGrid || 'standard',
+                viewerDensity: state.viewerDensity || 'readable',
                 invertPolarity: Boolean(state.invertPolarity)
             },
             annotations: state.annotations || [],

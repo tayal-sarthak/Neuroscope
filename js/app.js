@@ -9,6 +9,8 @@ const App = {
         amplitudeScale: 1,
         tracePalette: 'channel',
         viewerGrid: 'standard',
+        viewerDensity: 'readable',
+        viewerFocusMode: false,
         invertPolarity: false,
         timeWindow: 10,
         timeOffset: 0,
@@ -39,6 +41,7 @@ const App = {
         this.loadHostedTelemetry();
         this.bindEvents();
         this.bindSidebarControls();
+        this.bindViewerDisplayControls();
         this.bindTabNavigation();
         this.bindReviewDock();
         this.bindAnalysisControls();
@@ -234,6 +237,80 @@ const App = {
             this.state.invertPolarity = event.target.checked;
             this.refreshSignalViewer();
         });
+    },
+
+    bindViewerDisplayControls() {
+        const densitySelect = document.getElementById('viewer-density');
+        const focusButton = document.getElementById('viewer-focus');
+
+        densitySelect.addEventListener('change', (event) => {
+            const density = event.target.value;
+            if (!['readable', 'compact', 'fit'].includes(density)) return;
+            this.state.viewerDensity = density;
+            this.state.viewerHover = null;
+            document.getElementById('viewer-hover-tooltip').hidden = true;
+            this.closeViewerContextMenu();
+            this.refreshSignalViewer();
+        });
+
+        focusButton.addEventListener('click', () => {
+            this.setViewerFocusMode(!this.state.viewerFocusMode);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape' || !this.state.viewerFocusMode) return;
+            this.setViewerFocusMode(false);
+        });
+    },
+
+    setViewerFocusMode(enabled, options = {}) {
+        this.state.viewerFocusMode = Boolean(enabled);
+        const dashboard = document.getElementById('dashboard');
+        const button = document.getElementById('viewer-focus');
+        dashboard.classList.toggle('is-viewer-focus', this.state.viewerFocusMode);
+        document.body.classList.toggle('viewer-focus-active', this.state.viewerFocusMode);
+        button.setAttribute('aria-pressed', String(this.state.viewerFocusMode));
+        button.querySelector('span').textContent = this.state.viewerFocusMode ? 'Exit focus' : 'Focus signal';
+        button.title = this.state.viewerFocusMode ? 'Return to the complete workspace' : 'Give the signal viewer the full workspace';
+        this.closeViewerContextMenu();
+
+        if (options.refresh === false || !this.state.isLoaded) return;
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => this.refreshSignalViewer());
+        });
+    },
+
+    getViewerCanvasSizing(channelCount) {
+        const isMobile = window.innerWidth <= 768;
+        let viewportHeight = isMobile ? 350 : 500;
+
+        if (this.state.viewerFocusMode) {
+            const main = document.getElementById('main-content');
+            const toolbar = document.querySelector('#tab-viewer > .viewer-toolbar');
+            const overview = document.querySelector('#tab-viewer > .viewer-overview');
+            const selectionBar = document.getElementById('viewer-selection-bar');
+            const selectionHeight = selectionBar.hidden ? 0 : selectionBar.offsetHeight + 10;
+            const reservedHeight = (toolbar?.offsetHeight || 0)
+                + (overview?.offsetHeight || 0)
+                + selectionHeight
+                + 84;
+            viewportHeight = Math.max(isMobile ? 280 : 340, Math.min(1000, (main?.clientHeight || window.innerHeight) - reservedHeight));
+        }
+
+        const rowHeight = this.state.viewerDensity === 'compact'
+            ? (isMobile ? 25 : 27)
+            : (isMobile ? 33 : 36);
+        const axesHeight = 45;
+        const contentHeight = axesHeight + Math.max(0, channelCount) * rowHeight;
+        const canvasHeight = this.state.viewerDensity === 'fit'
+            ? viewportHeight
+            : Math.max(viewportHeight, contentHeight);
+
+        return {
+            canvasHeight: Math.round(canvasHeight),
+            viewportHeight: Math.round(viewportHeight),
+            scrollable: canvasHeight > viewportHeight + 1
+        };
     },
 
     bindTabNavigation() {
@@ -1040,6 +1117,7 @@ const App = {
     bindViewerInteractions() {
         const overlay = document.getElementById('viewer-interaction-canvas');
         const overview = document.getElementById('viewer-overview-canvas');
+        const viewerScroll = document.getElementById('viewer-canvas-scroll');
         const tooltip = document.getElementById('viewer-hover-tooltip');
         const contextMenu = document.getElementById('viewer-context-menu');
 
@@ -1068,6 +1146,13 @@ const App = {
             event.preventDefault();
             const direction = event.key === 'ArrowLeft' ? -1 : 1;
             this.setTimeOffset(this.state.timeOffset + direction * this.state.timeWindow);
+        });
+
+        viewerScroll.addEventListener('scroll', () => {
+            this.state.viewerHover = null;
+            tooltip.hidden = true;
+            this.closeViewerContextMenu();
+            this.debounce('viewer-channel-scroll', () => this.refreshSignalOverlay(), 16);
         });
 
         overlay.addEventListener('pointerdown', (event) => {
@@ -1146,6 +1231,15 @@ const App = {
                 event.preventDefault();
                 const direction = event.key === 'ArrowLeft' ? -1 : 1;
                 this.setTimeOffset(this.state.timeOffset + direction * this.state.timeWindow * 0.1);
+            } else if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && viewerScroll.dataset.scrollable === 'true') {
+                event.preventDefault();
+                const direction = event.key === 'ArrowUp' ? -1 : 1;
+                const rowHeight = this.state.viewerDensity === 'compact' ? 27 : 36;
+                viewerScroll.scrollBy({ top: direction * rowHeight, behavior: 'auto' });
+            } else if ((event.key === 'PageUp' || event.key === 'PageDown') && viewerScroll.dataset.scrollable === 'true') {
+                event.preventDefault();
+                const direction = event.key === 'PageUp' ? -1 : 1;
+                viewerScroll.scrollBy({ top: direction * viewerScroll.clientHeight * 0.8, behavior: 'auto' });
             } else if (event.key.toLowerCase() === 'a') {
                 event.preventDefault();
                 this.openAnnotationForm();
@@ -1609,6 +1703,7 @@ const App = {
             this.state.timeWindow = windowSize;
             this.state.tracePalette = ['channel', 'blue', 'ink'].includes(workspace.tracePalette) ? workspace.tracePalette : 'channel';
             this.state.viewerGrid = ['standard', 'fine', 'off'].includes(workspace.viewerGrid) ? workspace.viewerGrid : 'standard';
+            this.state.viewerDensity = ['readable', 'compact', 'fit'].includes(workspace.viewerDensity) ? workspace.viewerDensity : 'readable';
             this.state.invertPolarity = Boolean(workspace.invertPolarity);
             document.getElementById('amplitude-scale').value = amplitude;
             document.getElementById('amplitude-value').textContent = `${amplitude.toFixed(1)}×`;
@@ -1616,6 +1711,7 @@ const App = {
             document.getElementById('time-window-value').textContent = `${windowSize} s`;
             document.getElementById('trace-palette').value = this.state.tracePalette;
             document.getElementById('viewer-grid').value = this.state.viewerGrid;
+            document.getElementById('viewer-density').value = this.state.viewerDensity;
             document.getElementById('invert-polarity').checked = this.state.invertPolarity;
             document.getElementById('montage-select').value = ['monopolar', 'bipolar', 'average'].includes(workspace.montage) ? workspace.montage : 'monopolar';
             this.state.currentMontage = document.getElementById('montage-select').value;
@@ -1721,6 +1817,9 @@ const App = {
         this.state.historyUndoing = false;
         this.state.reviewPanel = 'quality';
         this.state.reviewDockExpanded = true;
+        this.state.viewerDensity = 'readable';
+        document.getElementById('viewer-density').value = this.state.viewerDensity;
+        this.setViewerFocusMode(false, { refresh: false });
         document.getElementById('montage-select').value = 'monopolar';
         this.state.currentMontage = 'monopolar';
         window.scrollTo(0, 0);
@@ -2091,6 +2190,10 @@ const App = {
             labels: displayLabels,
             channels: displayChannels
         };
+        const viewerSizing = this.getViewerCanvasSizing(displayChannels.length);
+        const viewerScroll = document.getElementById('viewer-canvas-scroll');
+        viewerScroll.style.maxHeight = `${viewerSizing.viewportHeight}px`;
+        viewerScroll.dataset.scrollable = String(viewerSizing.scrollable);
 
         EEGVisualization.drawSignals(canvas, {
             channelData: displayData,
@@ -2106,8 +2209,18 @@ const App = {
             timeWindow: this.state.timeWindow,
             timeOffset: this.state.timeOffset,
             timePrecision: parseInt(document.getElementById('time-precision').value) || 1,
-            height: window.innerWidth <= 768 ? 350 : 500
+            height: viewerSizing.canvasHeight
         });
+        if (this.state.viewerDensity === 'fit') viewerScroll.scrollTop = 0;
+        const densityLabels = {
+            readable: 'Readable trace spacing',
+            compact: 'Compact trace spacing',
+            fit: 'All selected channels fitted'
+        };
+        const densityStatus = document.getElementById('viewer-density-status');
+        densityStatus.textContent = displayChannels.length === 0
+            ? `${densityLabels[this.state.viewerDensity]}. No channels selected.`
+            : `${densityLabels[this.state.viewerDensity]}. ${displayChannels.length} ${displayChannels.length === 1 ? 'channel' : 'channels'}${viewerSizing.scrollable ? '; scroll vertically to review every channel.' : ' visible together.'}`;
         const overviewChannel = displayChannels[0];
         EEGVisualization.drawSignalOverview(document.getElementById('viewer-overview-canvas'), {
             signal: overviewChannel === undefined ? null : displayData[overviewChannel],
@@ -2903,6 +3016,9 @@ const App = {
         this.state.historyUndoing = false;
         this.state.reviewPanel = 'quality';
         this.state.reviewDockExpanded = true;
+        this.state.viewerDensity = 'readable';
+        document.getElementById('viewer-density').value = this.state.viewerDensity;
+        this.setViewerFocusMode(false, { refresh: false });
         this.state.annotations = [];
         this.state.annotationFilter = 'all';
         this.state.editingAnnotationId = null;

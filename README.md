@@ -54,12 +54,13 @@ GDF, BrainVision, EEGLAB SET, CNT, and XDF files are rejected with conversion gu
 The Signal viewer is NeuroScope’s main review surface for multichannel EEG recordings. Inspect raw waveforms, move through time, and keep review decisions tied to exact points or ranges.
 
 **Key Features**
-- Multi-channel simultaneous display with independent vertical scaling per channel
+- Three trace-spacing modes: readable scrolling, compact scrolling, or fit every selected channel in one view
+- A reversible Focus signal view that gives the waveform the full workspace without changing review state
 - Real-time amplitude scaling (0.1x to 10x magnification)
 - Flexible time window control from 0.5 seconds through the complete recording
 - Scroll through the entire recording with the position slider
 - Navigate long recordings from a compact full-duration overview with viewport and annotation markers
-- Pan horizontally with a trackpad or Shift + mouse wheel, or use the left and right arrow keys
+- Pan horizontally with a trackpad or Shift + mouse wheel, use left and right arrow keys for time, and use up/down or Page Up/Page Down for scrollable channel sets
 - Hover over the waveform for exact time, channel, and amplitude readouts
 - Click to pin a time cursor or drag across the waveform to select a precise time range
 - Right-click a selected range to add an annotation, preclassify an artifact, set the Export center scope, or download the range as CSV; right-click elsewhere for point-specific review actions
@@ -80,7 +81,7 @@ The Signal viewer is NeuroScope’s main review surface for multichannel EEG rec
 - Screen the complete recording on a clickable quality timeline for flat signal, large amplitude, clipping, line noise, possible muscle artifact, and existing annotations
 - Review before-and-after workflow history, undo supported state changes, restore raw signal, and export the provenance log as JSON
 
-Display controls remain in the sidebar while you review. The Signal viewer re-renders when the active state changes between raw and filtered data, while the status bar identifies which state is active.
+Amplitude, time, palette, grid, and polarity controls remain in the sidebar. Montage, trace spacing, and Focus signal stay beside the waveform, while the status bar identifies whether the active signal is raw or filtered.
 
 ### Spectrum
 

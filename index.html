@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=20260718-2">
+    <link rel="stylesheet" href="css/styles.css?v=20260718-3">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -321,31 +321,51 @@
                     <p>Review waveforms, navigate time, select ranges, and attach annotations.</p>
                 </div>
                 <div class="viewer-toolbar">
-                    <button id="viewer-zoom-in" class="btn-tool" title="Zoom in time axis">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                    </button>
-                    <button id="viewer-zoom-out" class="btn-tool" title="Zoom out time axis">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                    </button>
-                    <button id="viewer-fit" class="btn-tool" title="Fit the complete recording in view">Fit recording</button>
-                    <div class="toolbar-separator"></div>
-                    <label class="toolbar-label" for="montage-select">Montage</label>
-                    <select id="montage-select" class="toolbar-select">
-                        <option value="monopolar">Monopolar</option>
-                        <option value="bipolar">Bipolar</option>
-                        <option value="average">Average reference</option>
-                    </select>
-                    <div class="toolbar-separator"></div>
-                    <span class="toolbar-time-display" id="viewer-time-range">0.0–10.0 s</span>
-                    <div class="note-navigation" aria-label="Annotation navigation">
-                        <button id="previous-note" class="btn-tool" title="Previous annotation (P)" disabled>Previous annotation</button>
-                        <button id="next-note" class="btn-tool" title="Next annotation (N)" disabled>Next annotation</button>
+                    <div class="viewer-toolbar-group viewer-navigation-tools" aria-label="Time navigation">
+                        <button id="viewer-zoom-in" class="btn-tool" title="Zoom in time axis">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                        </button>
+                        <button id="viewer-zoom-out" class="btn-tool" title="Zoom out time axis">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                        </button>
+                        <button id="viewer-fit" class="btn-tool" title="Fit the complete recording in view">Fit recording</button>
                     </div>
-                    <button id="add-annotation-btn" class="btn-tool btn-tool-accent" title="Add an annotation at the cursor or selected range">Add annotation</button>
+                    <div class="viewer-toolbar-group viewer-display-tools" aria-label="Signal display">
+                        <label class="toolbar-label" for="montage-select">Montage</label>
+                        <select id="montage-select" class="toolbar-select">
+                            <option value="monopolar">Monopolar</option>
+                            <option value="bipolar">Bipolar</option>
+                            <option value="average">Average reference</option>
+                        </select>
+                        <label class="toolbar-label" for="viewer-density">Trace spacing</label>
+                        <select id="viewer-density" class="toolbar-select" aria-describedby="viewer-density-status" title="Readable and compact modes scroll vertically when needed. Fit selected shows every selected channel together.">
+                            <option value="readable">Readable</option>
+                            <option value="compact">Compact</option>
+                            <option value="fit">Fit selected</option>
+                        </select>
+                        <output id="viewer-density-status" class="sr-only" aria-live="polite">Readable trace spacing</output>
+                        <button id="viewer-focus" class="btn-tool viewer-focus-toggle" type="button" aria-pressed="false" title="Give the signal viewer the full workspace">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/></svg>
+                            <span>Focus signal</span>
+                        </button>
+                    </div>
+                    <div class="viewer-toolbar-group viewer-review-tools" aria-label="Annotation navigation">
+                        <span class="toolbar-time-display" id="viewer-time-range">0.0–10.0 s</span>
+                        <div class="note-navigation">
+                            <button id="previous-note" class="btn-tool" title="Previous annotation (P)" disabled>Previous annotation</button>
+                            <button id="next-note" class="btn-tool" title="Next annotation (N)" disabled>Next annotation</button>
+                        </div>
+                        <button id="add-annotation-btn" class="btn-tool btn-tool-accent" title="Add an annotation at the cursor or selected range">Add annotation</button>
+                    </div>
                 </div>
                 <div class="canvas-container" id="viewer-canvas-container">
-                    <canvas id="viewer-canvas"></canvas>
-                    <canvas id="viewer-interaction-canvas" tabindex="0" aria-label="Interactive EEG signal plot. Click to pin a time, drag to select a range, right-click for annotation and export actions, or hold Shift while scrolling to move through the recording."></canvas>
+                    <div id="viewer-canvas-scroll" class="viewer-canvas-scroll">
+                        <div id="viewer-canvas-stage" class="viewer-canvas-stage">
+                            <canvas id="viewer-canvas"></canvas>
+                            <canvas id="viewer-interaction-canvas" tabindex="0" aria-label="Interactive EEG signal plot. Click to pin a time, drag to select a range, right-click for annotation and export actions, scroll vertically through channels in readable or compact spacing, or hold Shift while scrolling to move through the recording."></canvas>
+                            <div class="canvas-labels" id="viewer-labels"></div>
+                        </div>
+                    </div>
                     <div id="viewer-hover-tooltip" class="viewer-hover-tooltip" hidden></div>
                     <div id="viewer-context-menu" class="viewer-context-menu" role="menu" aria-label="Actions for the selected signal time" hidden>
                         <div class="viewer-context-heading">
@@ -369,7 +389,6 @@
                             <span>Clear time selection</span><kbd>Esc</kbd>
                         </button>
                     </div>
-                    <div class="canvas-labels" id="viewer-labels"></div>
                 </div>
                 <div class="viewer-overview">
                     <div class="viewer-overview-label"><span>Recording overview</span><strong id="viewer-overview-channel">—</strong></div>
@@ -1042,11 +1061,13 @@
         </div>
         <dl class="shortcut-list">
             <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move the visible window through the recording</dd></div>
+            <div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Move through channels when trace spacing is scrollable</dd></div>
+            <div><dt><kbd>Page Up</kbd> <kbd>Page Down</kbd></dt><dd>Move through one screen of channels</dd></div>
             <div><dt><kbd>+</kbd> <kbd>−</kbd></dt><dd>Shorten or lengthen the visible window</dd></div>
             <div><dt><kbd>A</kbd></dt><dd>Add an annotation at the cursor or selected range</dd></div>
             <div><dt>Right-click</dt><dd>Open annotation and export actions for the current point or range</dd></div>
             <div><dt><kbd>N</kbd> <kbd>P</kbd></dt><dd>Jump to the next or previous annotation</dd></div>
-            <div><dt><kbd>Esc</kbd></dt><dd>Clear the cursor or selected range</dd></div>
+            <div><dt><kbd>Esc</kbd></dt><dd>Clear the cursor or selected range and exit Focus signal</dd></div>
             <div><dt><kbd>Shift</kbd> + scroll</dt><dd>Move through time with a mouse or trackpad</dd></div>
             <div><dt><kbd>?</kbd></dt><dd>Open this shortcut reference</dd></div>
         </dl>
@@ -1056,7 +1077,7 @@
     <script src="js/parsers.js?v=20260718-1"></script>
     <script src="js/analysis.js?v=20260718-1"></script>
     <script src="js/visualization.js?v=20260718-1"></script>
-    <script src="js/export.js?v=20260718-1"></script>
-    <script src="js/app.js?v=20260718-2"></script>
+    <script src="js/export.js?v=20260718-2"></script>
+    <script src="js/app.js?v=20260718-3"></script>
 </body>
 </html>
