@@ -1,8 +1,12 @@
 # NeuroScope, an EEG Data Visualization/Analysis Platform for Researchers
 
-A local-first workspace for exploring, annotating, analyzing, and exporting EEG recordings. NeuroScope is designed first for EEG researchers and clinicians, while keeping the workflow approachable for students and general users. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
+NeuroScope is aimed at researchers who do not have access to expensive EEG software or an institutional license. There is no signup, subscription, or payment. Import a recording and begin reviewing it in the browser.
 
-For a screen-by-screen sitemap and exact workflow guide, see [APP_WALKTHROUGH.md](APP_WALKTHROUGH.md).
+NeuroScope has been used to complete more than 30,000 EEG analyses (Vercel).
+
+NeuroScope is a complete local workspace for exploring, reviewing, analyzing, and exporting EEG data. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
+
+For a screen-by-screen map and a complete walkthrough, see [APP_WALKTHROUGH.md](APP_WALKTHROUGH.md).
 
 ## Gallery
 These images were taken using patient CHB02_16.edf from the CHB-MIT database used on the filtering site, [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/), where the data can be found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel. 
@@ -32,12 +36,12 @@ To test the same data for yourself, here is the download: https://physionet.org/
 2. Drag and drop your EEG file onto the upload area, or click to browse
 3. Alternatively, click **"Explore with sample EEG data"** to load patient chb02_16.edf from the CHB-MIT Scalp EEG Database
 
-There are zero dependencies to install and zero build steps. Uploaded files can be opened directly from `index.html`. The bundled sample-data button uses `fetch`, so run the folder through any small static file server when testing that button locally, or use the hosted site.
+That is everything required on the hosted site. There are no dependencies to install and no build steps. Uploaded files can also be opened directly from `index.html`. The sample-data button uses `fetch`, so use the hosted site or a small static file server when testing that button locally.
 
 
 ## Supported File Formats
 
-NeuroScope currently has verified browser import paths for these formats:
+NeuroScope reads the following file formats directly in the browser:
 
 - **EDF** (European Data Format), the most widely used clinical EEG format
 - **BDF** (BioSemi Data Format), 24-bit resolution variant of EDF
@@ -45,28 +49,28 @@ NeuroScope currently has verified browser import paths for these formats:
 - **JSON**, flexible structure supporting multiple channel layouts
 - **TXT**, plain text with automatic separator detection
 
-GDF, BrainVision, EEGLAB SET, CNT, and XDF files are rejected with conversion guidance until their binary import paths are fully verified. NeuroScope never substitutes generated samples for an uploaded recording.
+GDF, BrainVision, EEGLAB SET, CNT, and XDF files are not directly imported. NeuroScope rejects these files and gives conversion guidance instead of substituting generated data for an uploaded recording.
 
 ## Analysis Tabs
 
 ### Signals
 
-The Signal viewer is NeuroScope’s main review surface for multichannel EEG recordings. Inspect raw waveforms, move through time, and keep review decisions tied to exact points or ranges.
+The Signal Viewer is the core of NeuroScope. It displays multichannel EEG recordings on an interactive canvas and keeps review notes connected to exact points or time ranges.
 
 **Key Features**
-- Three trace-spacing modes: readable scrolling, compact scrolling, or fit every selected channel in one view
-- A reversible Focus signal view that gives the waveform the full workspace without changing review state
+- Three trace-spacing modes: readable scrolling, compact scrolling, or every selected channel fitted into one view
+- A reversible Focus view that gives the signal more screen space without changing the review state
 - Real-time amplitude scaling (0.1x to 10x magnification)
 - Flexible time window control from 0.5 seconds through the complete recording
 - Scroll through the entire recording with the position slider
-- Navigate long recordings from a compact full-duration overview with viewport and annotation markers
+- Navigate long recordings from a complete-recording overview with viewport and annotation markers
 - Pan horizontally with a trackpad or Shift + mouse wheel, use left and right arrow keys for time, and use up/down or Page Up/Page Down for scrollable channel sets
 - Hover over the waveform for exact time, channel, and amplitude readouts
 - Click to pin a time cursor or drag across the waveform to select a precise time range
-- Right-click a selected range to add an annotation, preclassify an artifact, set the Export center scope, or download the range as CSV; right-click elsewhere for point-specific review actions
+- Right-click a selected range to add an annotation, classify an artifact, set the export scope, or download the range as CSV
 - Create point or duration annotations directly from the active cursor or selected range
 - Label eye blinks, muscle artifacts, bad electrodes, clinical events, uncertain regions, and general observations
-- Preserve exclusion flags, affected channels, montage, raw/filtered state, and applied-filter provenance with each annotation
+- Save exclusion flags, affected channels, montage, raw or filtered state, and applied-filter details with each annotation
 - Download an annotated signal range and its research note together as JSON
 - Edit, filter, import, and step between annotations with previous/next controls or N/P shortcuts
 - Export the current viewer range without re-entering start and end times
@@ -79,13 +83,13 @@ The Signal viewer is NeuroScope’s main review surface for multichannel EEG rec
 - Real-time updates as filters are applied
 - Use one collapsible Review dock for quality screening, annotations, and history instead of three stacked panels
 - Screen the complete recording on a clickable quality timeline for flat signal, large amplitude, clipping, line noise, possible muscle artifact, and existing annotations
-- Review before-and-after workflow history, undo supported state changes, restore raw signal, and export the provenance log as JSON
+- Review workflow history, undo supported state changes, restore the raw signal, and export the history as JSON
 
-Amplitude, time, palette, grid, and polarity controls remain in the sidebar. Montage, trace spacing, and Focus signal stay beside the waveform, while the status bar identifies whether the active signal is raw or filtered.
+Amplitude, time, color, grid, and polarity controls are in the sidebar. Montage, trace spacing, and Focus controls are beside the waveform. The status bar identifies whether the active signal is raw or filtered.
 
 ### Spectrum
 
-Estimate power spectral density with Welch or direct FFT methods. Compare up to the first eight selected channels on one chart and choose a linear or logarithmic power scale.
+Compute power spectral density with Welch or direct FFT methods. Compare up to eight selected channels on one chart and choose a linear or logarithmic power scale.
 
 ### Band power
 
@@ -97,32 +101,32 @@ Decompose signals into the five standard EEG frequency bands.
 - Beta (13 to 30 Hz)
 - Gamma (30 to 100 Hz)
 
-Compute either the visible signal window or complete recording, with the visible window as the safer review default. Each run records its exact interval, channel count, and raw/filtered source. View absolute power in µV² or relative band percentages with channel comparison and average-distribution charts, then download the computed table as CSV.
+Compute the visible signal window or the complete recording. Each result records the time interval, channel count, and whether the source was raw or filtered. View absolute power in µV² or relative band percentages, compare channels, and download the computed table as CSV.
 
 ### Filtering
 
-Design and apply digital filters to clean your EEG signals. Four filter types are available.
+Design and apply digital filters to EEG signals. Four filter types are available.
 
 - **Bandpass**, keep frequencies within a range
 - **Highpass**, remove slow drifts below a cutoff
 - **Lowpass**, remove high-frequency noise above a cutoff
 - **Notch**, suppress power line interference at 50 or 60 Hz
 
-The Filtering tab includes a channel selector, adjustable order (2nd through 8th), parameter validation against the Nyquist frequency, a raw-versus-filtered preview, and a frequency-response chart showing magnitude in dB on a logarithmic frequency axis.
+The Filtering tab includes a channel selector, adjustable order from 2nd through 8th, parameter validation against the Nyquist frequency, a raw-versus-filtered preview, and a frequency-response chart in dB.
 
-Choose **Preview channel** to inspect one channel, then **Apply to all channels** to make that result the active filtered signal. The workspace and filter status bars identify the current state. Choose **Restore raw signal** to remove the applied filtered result.
+Choose **Preview channel** to inspect one channel. Choose **Apply to all channels** to make the filtered result active. Choose **Restore raw signal** to return to the original data.
 
 ### Spectrogram
 
-Generate a time-frequency spectrogram using the Short-Time Fourier Transform. Choose the analysis channel, window size (128 to 1024 samples), maximum frequency, and color map (Viridis, Plasma, Hot, or Cool). The spectrogram renders as a full-width heatmap with a labeled colorbar.
+Generate a time-frequency spectrogram with the Short-Time Fourier Transform. Choose the channel, window size from 128 to 1024 samples, maximum frequency, and color map. The result appears as a heatmap with a labeled color scale.
 
 ### Statistics
 
-Compute comprehensive statistical measures for every channel, including mean, standard deviation, variance, RMS amplitude, min, max, peak-to-peak, skewness, kurtosis, and zero crossing count. A separate visible-window quality review screens for possible flat signal, repeated extremes, and unusually large ranges while clearly labeling results as manual-review prompts rather than automatic rejection. Download statistics and quality metrics as CSV files.
+Compute statistics for every channel, including mean, standard deviation, variance, RMS amplitude, minimum, maximum, peak-to-peak, skewness, kurtosis, and zero crossings. A separate visible-window quality screen checks for possible flat signal, repeated extremes, and unusually large ranges. These flags are review prompts, not automatic rejection decisions. Statistics and quality results can be downloaded as CSV files.
 
 ### Topography
 
-Visualize the spatial distribution of brain activity across the scalp using a topographic heat map. The map follows the 10-20 electrode placement system with inverse-distance-weighted interpolation. Choose from metrics such as total power, individual band powers, or RMS amplitude.
+Visualize the spatial distribution of EEG values across the scalp. The map uses recognized 10-20 electrode labels and inverse-distance-weighted interpolation. Choose total power, individual band power, or RMS amplitude.
 
 ### Export
 
@@ -141,17 +145,17 @@ Download your processed data and visualizations in multiple formats.
 - **Annotations JSON**, a machine-readable annotation sidecar
 - **Restorable review JSON**, recording provenance, selected and bad channels, view settings, and annotations without duplicating raw samples
 
-The Export center shows an estimated output size before a download begins and prevents multiple overlapping export jobs. The default scope is the initial visible window rather than the complete recording, which avoids unexpectedly generating files many times larger than the source EDF.
+The Export Center estimates output size before a download begins and prevents overlapping export jobs. The default scope is the visible window instead of the complete recording so a download does not unexpectedly become much larger than the source file.
 
 ### Annotations
 
-Attach point- or range-linked annotations directly below the signal viewer. An annotation records timing, type, channel scope, and a free-text note. Annotations can be edited, filtered, imported from NeuroScope CSV or compatible BIDS events TSV columns, and traversed from the viewer. They are included in review JSON, annotation CSV/JSON, and BIDS events exports.
+Add point or range annotations below the Signal Viewer. Each annotation records its time, type, affected channels, and note. Annotations can be edited, filtered, imported from NeuroScope CSV or compatible BIDS events TSV files, and opened from the signal display. They are included in review JSON, annotation CSV or JSON, and BIDS events exports.
 
-Exclusion flags are currently provenance metadata: they are exported but do not automatically remove samples from analyses. Range annotations can also export the affected signal and annotation together in one JSON bundle.
+An exclusion flag is saved as review metadata. It does not automatically remove samples from an analysis. A range annotation can also be exported with its affected signal in one JSON file.
 
 ## Signal Processing Details
 
-All signal processing runs entirely in the browser using custom JavaScript implementations.
+All signal processing runs in the browser using JavaScript implementations included with NeuroScope.
 
 - **FFT** uses an iterative Cooley-Tukey radix-2 algorithm with bit-reversal permutation
 - **Power Spectral Density** uses Welch estimation with overlapping Hann-windowed segments
@@ -180,7 +184,7 @@ APP_WALKTHROUGH.md       Screen map and end-to-end app guide
 - PDF reports are generated with jsPDF, also loaded from a CDN
 - The Inter typeface loads from Google Fonts for a modern look
 - All canvases support HiDPI (Retina) rendering for sharp output on high-resolution displays
-- The interface uses clinical ink, signal blue, teal review states, and a distinct colorblind-conscious channel palette
+- The interface uses a light clinical color scheme with separate colors for channels and review states
 - The sidebar remembers selected channels and display settings across tab switches
 
 ## Browser Compatibility
