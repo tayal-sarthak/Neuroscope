@@ -61,5 +61,10 @@ temp/
 # Repository-local private scratch material
 phonetest.py
 private/
+.impeccable/
+
+# Keep the public repository README only; ignore README files in subdirectories.
+**/[Rr][Ee][Aa][Dd][Mm][Ee].md
+!/README.md
 
 # EEG source recordings are intentionally not ignored; the sample EDF ships with NeuroScope.
