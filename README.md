@@ -1,8 +1,8 @@
 # NeuroScope, an EEG Data Visualization/Analysis Platform for Researchers
 
-NeuroScope is aimed at researchers who do not have access to expensive EEG software or an institutional license. There is no signup, subscription, or payment. Import a recording and begin reviewing it in the browser.
+NeuroScope is aimed at researchers who lack access to expensive EEG visualization software or an institutional license. There is no signup and no payment. Simply import a recording and begin reviewing and visualizing the data.
 
-NeuroScope has been used to complete more than 30,000 EEG analyses (Vercel).
+NeuroScope has been used to complete more than 30,000 EEG analyses (from Vercel).
 
 NeuroScope is a complete local workspace for exploring, reviewing, analyzing, and exporting EEG data. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
 

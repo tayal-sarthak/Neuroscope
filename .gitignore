@@ -62,6 +62,9 @@ temp/
 phonetest.py
 private/
 .impeccable/
+/APP_WALKTHROUGH.md
+/DESIGN.md
+/PRODUCT.md
 
 # Keep the public repository README only; ignore README files in subdirectories.
 **/[Rr][Ee][Aa][Dd][Mm][Ee].md
