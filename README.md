@@ -6,8 +6,6 @@ NeuroScope has been used to complete more than 30,000 EEG analyses (from Vercel)
 
 NeuroScope is a complete local workspace for exploring, reviewing, analyzing, and exporting EEG data. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
 
-For a screen-by-screen map and a complete walkthrough, see [APP_WALKTHROUGH.md](APP_WALKTHROUGH.md).
-
 ## Gallery
 These images were taken using patient CHB02_16.edf from the CHB-MIT database used on the filtering site, [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/), where the data can be found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel. 
 
@@ -175,7 +173,6 @@ js/
   export.js             Data and report export
   app.js                Application controller and state management
 README.md               This file
-APP_WALKTHROUGH.md       Screen map and end-to-end app guide
 ```
 
 ## Technical Notes
