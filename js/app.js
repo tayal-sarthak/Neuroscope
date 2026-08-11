@@ -38,7 +38,6 @@ const App = {
     },
 
     init() {
-        this.loadHostedTelemetry();
         this.bindEvents();
         this.bindSidebarControls();
         this.bindViewerDisplayControls();
@@ -97,14 +96,6 @@ const App = {
         screen.setAttribute('aria-hidden', 'true');
         screen.setAttribute('aria-busy', 'false');
         document.body.removeAttribute('aria-busy');
-    },
-
-    loadHostedTelemetry() {
-        if (!window.location.hostname.endsWith('.vercel.app')) return;
-        const script = document.createElement('script');
-        script.defer = true;
-        script.src = '/_vercel/insights/script.js';
-        document.head.appendChild(script);
     },
 
     createAnalysisImportId() {

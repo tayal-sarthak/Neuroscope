@@ -215,6 +215,8 @@ The Redis key initializes to the legacy baseline of `31,981` only when it does n
 
 No `package.json` or Redis client dependency is required. The Vercel Functions call Upstash's REST API with the credentials kept exclusively on the server. `.env.example` documents the variables for local `vercel dev` use; never commit real tokens.
 
+The app does not load Vercel Web Analytics or send custom Web Analytics events. Counter traffic uses only the two API functions described above.
+
 ## Browser Compatibility
 
 NeuroScope works in all modern browsers that support ES6, Canvas 2D, and the File API. For the best experience, use a recent version of Chrome, Firefox, Safari, or Edge.
