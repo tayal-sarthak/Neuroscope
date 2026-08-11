@@ -80,7 +80,7 @@ test('analysis endpoint rejects cross-origin browser requests before storage', a
         method: 'POST',
         headers: {
             origin: 'https://attacker.example',
-            host: 'neuroscopeeeg.vercel.app',
+            host: 'neuroscope.tech',
             'sec-fetch-site': 'cross-site'
         },
         body: { importId: '550e8400-e29b-41d4-a716-446655440000' }
@@ -97,8 +97,8 @@ test('analysis endpoint accepts a valid same-origin completion', async context =
     await analysisCompleteHandler({
         method: 'POST',
         headers: {
-            origin: 'https://neuroscopeeeg.vercel.app',
-            host: 'neuroscopeeeg.vercel.app',
+            origin: 'https://neuroscope.tech',
+            host: 'neuroscope.tech',
             'x-vercel-forwarded-for': '192.0.2.10'
         },
         body: { importId: '550e8400-e29b-41d4-a716-446655440000' }

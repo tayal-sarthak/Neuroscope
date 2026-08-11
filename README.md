@@ -7,7 +7,7 @@ NeuroScope has been used to analyze 31,981+ EEG recordings.
 NeuroScope is a complete local workspace for exploring, reviewing, analyzing, and exporting EEG data. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
 
 ## Gallery
-These images were taken using patient CHB02_16.edf from the CHB-MIT database used on the filtering site, [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/), where the data can be found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel. 
+These images were taken using patient CHB02_16.edf from the CHB-MIT database used on the filtering site, [neuroscope.tech](https://neuroscope.tech/), where the data can be found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel.
 
 To test the same data for yourself, here is the download: https://physionet.org/files/chbmit/1.0.0/chb02/chb02_16.edf?download
 
@@ -30,7 +30,7 @@ To test the same data for yourself, here is the download: https://physionet.org/
 ![Normal Dashboard](/images/normalDashboard.png)
 ## Getting Started
 
-1. Open [NeuroScopeEEG.vercel.app](https://NeuroscopeEEG.vercel.app/) in your browser (Chrome, Firefox, Safari, or Edge all work well)
+1. Open [neuroscope.tech](https://neuroscope.tech/) in your browser (Chrome, Firefox, Safari, or Edge all work well)
 2. Drag and drop your EEG file onto the upload area, or click to browse
 3. Alternatively, click **"Explore with sample EEG data"** to load patient chb02_16.edf from the CHB-MIT Scalp EEG Database
 
