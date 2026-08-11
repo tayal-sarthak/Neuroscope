@@ -2,7 +2,7 @@
 
 NeuroScope is aimed at researchers who lack access to expensive EEG visualization software or an institutional license. There is no signup and no payment. Simply import a recording and begin reviewing and visualizing the data.
 
-NeuroScope has been used to complete more than 30,000 EEG analyses (from Vercel).
+NeuroScope has been used to analyze 31,981+ EEG recordings.
 
 NeuroScope is a complete local workspace for exploring, reviewing, analyzing, and exporting EEG data. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
 
@@ -172,6 +172,11 @@ js/
   visualization.js      Canvas rendering and charts
   export.js             Data and report export
   app.js                Application controller and state management
+api/
+  analysis-complete.mjs Idempotent lifetime-counter increment endpoint
+  stats.mjs             Public lifetime-counter read endpoint
+lib/
+  analysis-counter.mjs  Atomic Upstash Redis counter operations
 README.md               This file
 ```
 
@@ -183,6 +188,32 @@ README.md               This file
 - All canvases support HiDPI (Retina) rendering for sharp output on high-resolution displays
 - The interface uses a light clinical color scheme with separate colors for channels and review states
 - The sidebar remembers selected channels and display settings across tab switches
+
+## Hosted Lifetime Counter
+
+The hosted app counts one analysis after a recording has parsed successfully and the workspace has finished opening. User-selected recordings and the bundled sample both count. Failed imports and individual actions such as computing a spectrum, applying a filter, or opening another analysis tab do not count separately.
+
+The browser sends only a newly generated random import ID to `POST /api/analysis-complete`. It does not send the recording, filename, patient metadata, channel labels, duration, or computed results. The request never blocks the EEG workspace and is retried once if the network response fails. Redis retains each random import ID for 24 hours so a retry cannot increment the counter twice.
+
+`GET /api/stats` returns the current total:
+
+```json
+{
+  "analyses": 31981
+}
+```
+
+The Redis key initializes to the legacy baseline of `31,981` only when it does not already exist. Initialization, duplicate detection, rate limiting, and incrementing are performed atomically. The API permits up to 60 new import IDs per client-address fingerprint per hour; only a keyed, opaque fingerprint is stored for the rate-limit window.
+
+### Vercel and Upstash setup
+
+1. Open the NeuroScope project in Vercel and install an Upstash Redis integration from the Vercel Marketplace.
+2. Create or select a Redis database and connect it to the project.
+3. Confirm that Vercel added `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to the environments that should run the counter. The API also accepts the older `KV_REST_API_URL` and `KV_REST_API_TOKEN` names.
+4. Redeploy the project so the functions receive the new environment variables.
+5. Open `/api/stats` on the deployment. A new database should return the baseline before the first new successful import increments it.
+
+No `package.json` or Redis client dependency is required. The Vercel Functions call Upstash's REST API with the credentials kept exclusively on the server. `.env.example` documents the variables for local `vercel dev` use; never commit real tokens.
 
 ## Browser Compatibility
 
