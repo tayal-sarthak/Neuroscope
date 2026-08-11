@@ -1465,12 +1465,12 @@ const App = {
         const annotateButton = document.getElementById('selection-annotate');
         if (selection) {
             const duration = selection.end - selection.start;
-            document.getElementById('viewer-selection-time').textContent = `${selection.start.toFixed(3)}–${selection.end.toFixed(3)} s`;
-            document.getElementById('viewer-selection-detail').textContent = `${duration.toFixed(3)} s · ${this.state.selectedChannels.length} selected ${this.state.selectedChannels.length === 1 ? 'channel' : 'channels'}`;
+            document.getElementById('viewer-selection-time').textContent = selection.start.toFixed(3) + '–' + selection.end.toFixed(3) + ' s';
+            document.getElementById('viewer-selection-detail').textContent = duration.toFixed(3) + ' s · ' + this.state.selectedChannels.length + ' selected ' + (this.state.selectedChannels.length === 1 ? 'channel' : 'channels');
             exportButton.disabled = false;
             annotateButton.textContent = 'Annotate range';
         } else {
-            document.getElementById('viewer-selection-time').textContent = `Cursor at ${cursor.toFixed(3)} s`;
+            document.getElementById('viewer-selection-time').textContent = 'Cursor at ' + cursor.toFixed(3) + ' s';
             document.getElementById('viewer-selection-detail').textContent = 'Pinned point · press A or choose Add annotation';
             exportButton.disabled = true;
             annotateButton.textContent = 'Add annotation';
@@ -1825,6 +1825,9 @@ const App = {
             const response = await fetch('chb02_16.edf');
             if (!response.ok) throw new Error('The sample file could not be fetched. Run NeuroScope from a local web server or use the hosted app.');
             const buffer = await response.arrayBuffer();
+            if (buffer.byteLength < 256 || String.fromCharCode(new Uint8Array(buffer)[0]) !== '0') {
+                throw new Error('Sample file integrity check failed: unexpected file format.');
+            }
             this.setImportProgress(64, 'Parsing EDF data records');
             await this.waitForPaint();
 
@@ -2034,11 +2037,11 @@ const App = {
         const total = this.state.eegData?.channelLabels.length || 0;
         const selected = this.state.selectedChannels.length;
         const count = document.getElementById('channel-selection-count');
-        if (count) count.textContent = `${selected} / ${total}`;
+        if (count) count.textContent = selected + ' / ' + total;
         const status = document.getElementById('status-channels');
         if (status) {
             const bad = this.state.badChannels.length;
-            status.textContent = bad ? `${selected} selected · ${bad} marked bad` : `${selected} selected`;
+            status.textContent = bad ? (selected + ' selected · ' + bad + ' marked bad') : (selected + ' selected');
         }
     },
 
