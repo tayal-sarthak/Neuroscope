@@ -1,4 +1,4 @@
-import { readAnalysisCount } from '../lib/analysis-counter.mjs';
+import { formatAnalysisCount, readAnalysisCount } from '../lib/analysis-counter.mjs';
 
 function sendJson(response, statusCode, payload, headers = {}) {
     response.statusCode = statusCode;
@@ -15,7 +15,10 @@ export default async function handler(request, response) {
 
     try {
         const analyses = await readAnalysisCount();
-        sendJson(response, 200, { analyses });
+        sendJson(response, 200, {
+            analyses,
+            display: formatAnalysisCount(analyses)
+        });
     } catch (error) {
         console.error('Analysis counter read failed:', error?.message || error);
         sendJson(response, 503, { error: 'The analysis counter is temporarily unavailable.' });

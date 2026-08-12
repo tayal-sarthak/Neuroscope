@@ -2,7 +2,7 @@
 
 NeuroScope is aimed at researchers who lack access to expensive EEG visualization software or an institutional license. There is no signup and no payment. Simply import a recording and begin reviewing and visualizing the data.
 
-NeuroScope has been used to analyze 31,981+ EEG recordings.
+[![EEG analyses](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fneuroscope.tech%2Fapi%2Fstats&query=%24.display&label=EEG%20analyses&color=0f766e&cacheSeconds=300)](https://neuroscope.tech/)
 
 NeuroScope is a complete local workspace for exploring, reviewing, analyzing, and exporting EEG data. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
 
@@ -191,19 +191,26 @@ README.md               This file
 
 ## Hosted Lifetime Counter
 
-The hosted app counts one analysis after a recording has parsed successfully and the workspace has finished opening. User-selected recordings and the bundled sample both count. Failed imports and individual actions such as computing a spectrum, applying a filter, or opening another analysis tab do not count separately.
+The hosted app increments the lifetime total after a scientific computation or review action completes successfully. Counted actions include spectrum, band-power, spectrogram, channel-statistics, signal-quality, recording-quality, and topographic computations; filter previews and applied filter or montage changes; annotations; and bad-channel review changes. Opening a recording, changing tabs, navigating or zooming the viewer, downloading an export, and failed operations do not count.
 
-The browser sends only a newly generated random import ID to `POST /api/analysis-complete`. It does not send the recording, filename, patient metadata, channel labels, duration, or computed results. The request never blocks the EEG workspace and is retried once if the network response fails. Redis retains each random import ID for 24 hours so a retry cannot increment the counter twice.
+The browser sends only a newly generated random action ID to `POST /api/analysis-complete`. It does not send the action type, recording, filename, patient metadata, channel labels, duration, or computed results. The request never blocks the EEG workspace and is retried once if the network response fails. Redis retains each random action ID for 24 hours so a retry cannot increment the counter twice.
 
 `GET /api/stats` returns the current total:
 
 ```json
 {
-  "analyses": 31981
+  "analyses": 31984,
+  "display": "31.9K+"
 }
 ```
 
-The Redis key initializes to the legacy baseline of `31,981` only when it does not already exist. Initialization, duplicate detection, rate limiting, and incrementing are performed atomically. The API permits up to 60 new import IDs per client-address fingerprint per hour; only a keyed, opaque fingerprint is stored for the rate-limit window.
+The exact integer remains available for programmatic checks, while GitHub badges should use `display` so the public label stays compact. The README badge above uses this URL and refreshes through Shields.io:
+
+```markdown
+![EEG analyses](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fneuroscope.tech%2Fapi%2Fstats&query=%24.display&label=EEG%20analyses&color=0f766e&cacheSeconds=300)
+```
+
+The Redis key initializes to the legacy baseline of `31,981` only when it does not already exist. Initialization, duplicate detection, rate limiting, and incrementing are performed atomically. The API permits up to 600 new action IDs per client-address fingerprint per hour; only a keyed, opaque fingerprint is stored for the rate-limit window.
 
 ### Vercel and Upstash setup
 
@@ -211,7 +218,7 @@ The Redis key initializes to the legacy baseline of `31,981` only when it does n
 2. Create or select a Redis database and connect it to the project.
 3. Confirm that Vercel added `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to the environments that should run the counter. The API also accepts the older `KV_REST_API_URL` and `KV_REST_API_TOKEN` names.
 4. Redeploy the project so the functions receive the new environment variables.
-5. Open `/api/stats` on the deployment. A new database should return the baseline before the first new successful import increments it.
+5. Open `/api/stats` on the deployment. A new database should return the baseline before the first completed analysis or review action increments it.
 
 No `package.json` or Redis client dependency is required. The Vercel Functions call Upstash's REST API with the credentials kept exclusively on the server. `.env.example` documents the variables for local `vercel dev` use; never commit real tokens.
 

@@ -1,9 +1,9 @@
 import {
-    countAnalysisImport,
+    countAnalysisAction,
     fingerprintClientAddress
 } from '../lib/analysis-counter.mjs';
 
-const IMPORT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ACTION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_BODY_BYTES = 1_024;
 
 function getHeader(request, name) {
@@ -50,11 +50,11 @@ async function readJsonBody(request) {
     return JSON.parse(text || '{}');
 }
 
-function getClientAddress(request, importId) {
+function getClientAddress(request, actionId) {
     const forwarded = getHeader(request, 'x-vercel-forwarded-for')
         || getHeader(request, 'x-forwarded-for')
         || getHeader(request, 'x-real-ip');
-    return forwarded ? String(forwarded).split(',')[0].trim() : `unavailable:${importId}`;
+    return forwarded ? String(forwarded).split(',')[0].trim() : `unavailable:${actionId}`;
 }
 
 export default async function handler(request, response) {
@@ -70,18 +70,18 @@ export default async function handler(request, response) {
 
     try {
         const body = await readJsonBody(request);
-        const importId = typeof body?.importId === 'string' ? body.importId : '';
-        if (!IMPORT_ID_PATTERN.test(importId)) {
-            sendJson(response, 400, { error: 'A valid import ID is required.' });
+        const actionId = typeof body?.actionId === 'string' ? body.actionId : '';
+        if (!ACTION_ID_PATTERN.test(actionId)) {
+            sendJson(response, 400, { error: 'A valid action ID is required.' });
             return;
         }
 
-        const clientFingerprint = fingerprintClientAddress(getClientAddress(request, importId));
-        const result = await countAnalysisImport(importId, clientFingerprint);
+        const clientFingerprint = fingerprintClientAddress(getClientAddress(request, actionId));
+        const result = await countAnalysisAction(actionId, clientFingerprint);
 
         if (result.rateLimited) {
             sendJson(response, 429, {
-                error: 'Too many completed imports were reported.',
+                error: 'Too many completed analysis actions were reported.',
                 analyses: result.analyses
             }, { 'Retry-After': '3600' });
             return;

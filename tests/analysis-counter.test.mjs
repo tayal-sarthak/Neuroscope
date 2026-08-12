@@ -4,7 +4,8 @@ import test from 'node:test';
 import analysisCompleteHandler from '../api/analysis-complete.mjs';
 import statsHandler from '../api/stats.mjs';
 import {
-    countAnalysisImport,
+    countAnalysisAction,
+    formatAnalysisCount,
     readAnalysisCount
 } from '../lib/analysis-counter.mjs';
 
@@ -49,14 +50,14 @@ test('readAnalysisCount initializes and reads the legacy baseline', async contex
     assert.equal(command[2], 1);
     assert.equal(command.at(-1), 31_981);
 });
-test('countAnalysisImport maps the atomic Redis result', async context => {
+test('countAnalysisAction maps the atomic Redis result', async context => {
     let command;
     context.mock.method(globalThis, 'fetch', async (_url, options) => {
         command = JSON.parse(options.body);
         return upstashResponse([1, 31_982, 0]);
     });
 
-    const result = await countAnalysisImport(
+    const result = await countAnalysisAction(
         '550e8400-e29b-41d4-a716-446655440000',
         'opaque-client-fingerprint'
     );
@@ -72,6 +73,14 @@ test('countAnalysisImport maps the atomic Redis result', async context => {
     assert.match(command[5], /opaque-client-fingerprint$/);
 });
 
+test('formatAnalysisCount produces compact, non-inflated public totals', () => {
+    assert.equal(formatAnalysisCount(999), '999');
+    assert.equal(formatAnalysisCount(1_000), '1K+');
+    assert.equal(formatAnalysisCount(31_984), '31.9K+');
+    assert.equal(formatAnalysisCount(1_234_567), '1.2M+');
+    assert.equal(formatAnalysisCount(1_000_000_000), '1B+');
+});
+
 test('analysis endpoint rejects cross-origin browser requests before storage', async context => {
     const fetchMock = context.mock.method(globalThis, 'fetch', async () => upstashResponse([1, 31_982, 0]));
     const response = mockResponse();
@@ -83,7 +92,7 @@ test('analysis endpoint rejects cross-origin browser requests before storage', a
             host: 'neuroscope.tech',
             'sec-fetch-site': 'cross-site'
         },
-        body: { importId: '550e8400-e29b-41d4-a716-446655440000' }
+        body: { actionId: '550e8400-e29b-41d4-a716-446655440000' }
     }, response);
 
     assert.equal(response.statusCode, 403);
@@ -101,7 +110,7 @@ test('analysis endpoint accepts a valid same-origin completion', async context =
             host: 'neuroscope.tech',
             'x-vercel-forwarded-for': '192.0.2.10'
         },
-        body: { importId: '550e8400-e29b-41d4-a716-446655440000' }
+        body: { actionId: '550e8400-e29b-41d4-a716-446655440000' }
     }, response);
 
     assert.equal(response.statusCode, 200);
@@ -113,12 +122,15 @@ test('analysis endpoint accepts a valid same-origin completion', async context =
     assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
-test('stats endpoint exposes only the current total', async context => {
+test('stats endpoint exposes exact and compact totals', async context => {
     context.mock.method(globalThis, 'fetch', async () => upstashResponse(32_147));
     const response = mockResponse();
 
     await statsHandler({ method: 'GET', headers: {} }, response);
 
     assert.equal(response.statusCode, 200);
-    assert.deepEqual(response.json(), { analyses: 32_147 });
+    assert.deepEqual(response.json(), {
+        analyses: 32_147,
+        display: '32.1K+'
+    });
 });

@@ -26,11 +26,11 @@ async function loadApp(overrides = {}) {
     return context.__testApp;
 }
 
-test('client creates a random, server-valid import ID', async () => {
+test('client creates a random, server-valid action ID', async () => {
     const app = await loadApp();
-    const importId = app.createAnalysisImportId();
+    const actionId = app.createAnalysisActionId();
 
-    assert.match(importId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    assert.match(actionId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 });
 test('client retry reuses the ID and sends no recording data', async () => {
     const requests = [];
@@ -41,15 +41,38 @@ test('client retry reuses the ID and sends no recording data', async () => {
             return { ok: true, status: 200 };
         }
     });
-    const importId = '550e8400-e29b-41d4-a716-446655440000';
+    const actionId = '550e8400-e29b-41d4-a716-446655440000';
 
-    await app.reportSuccessfulAnalysis(importId);
+    await app.reportCompletedAnalysis(actionId);
 
     assert.equal(requests.length, 2);
     for (const request of requests) {
         assert.equal(request.url, '/api/analysis-complete');
         assert.equal(request.options.method, 'POST');
-        assert.deepEqual(JSON.parse(request.options.body), { importId });
+        assert.deepEqual(JSON.parse(request.options.body), { actionId });
         assert.equal(request.options.keepalive, true);
     }
+});
+
+test('workflow history counts completed actions but not recording imports', async () => {
+    const app = await loadApp();
+    app.state.eegData = {};
+    app.renderAnalysisHistory = () => {};
+    let reports = 0;
+    app.recordCompletedAnalysis = () => { reports++; };
+
+    app.recordHistory('recording', 'Opened recording', 'None', 'Raw');
+    app.recordHistory('spectrum', 'Computed PSD', 'None', 'Welch PSD');
+    app.recordHistory('annotation', 'Added annotation', 'None', 'Saved');
+
+    assert.equal(reports, 2);
+});
+
+test('recording loaders do not report an analysis completion', async () => {
+    const source = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
+    const loadFileSource = source.slice(source.indexOf('    async loadFile(file)'), source.indexOf('    async loadSampleData()'));
+    const loadSampleSource = source.slice(source.indexOf('    async loadSampleData()'), source.indexOf('    initializeDashboard()'));
+
+    assert.doesNotMatch(loadFileSource, /recordCompletedAnalysis|reportCompletedAnalysis/);
+    assert.doesNotMatch(loadSampleSource, /recordCompletedAnalysis|reportCompletedAnalysis/);
 });

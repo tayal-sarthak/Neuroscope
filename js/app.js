@@ -98,7 +98,7 @@ const App = {
         document.body.removeAttribute('aria-busy');
     },
 
-    createAnalysisImportId() {
+    createAnalysisActionId() {
         const cryptoApi = window.crypto;
         if (typeof cryptoApi?.randomUUID === 'function') return cryptoApi.randomUUID();
 
@@ -116,9 +116,9 @@ const App = {
         return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
     },
 
-    async reportSuccessfulAnalysis(importId) {
-        if (!importId || window.location.protocol === 'file:') return;
-        const requestBody = JSON.stringify({ importId });
+    async reportCompletedAnalysis(actionId) {
+        if (!actionId || window.location.protocol === 'file:') return;
+        const requestBody = JSON.stringify({ actionId });
 
         for (let attempt = 0; attempt < 2; attempt++) {
             let shouldRetry = false;
@@ -139,6 +139,10 @@ const App = {
             if (!shouldRetry || attempt === 1) return;
             await new Promise(resolve => setTimeout(resolve, 750));
         }
+    },
+
+    recordCompletedAnalysis() {
+        void this.reportCompletedAnalysis(this.createAnalysisActionId());
     },
 
 
@@ -536,6 +540,7 @@ const App = {
             undone: false
         });
         this.renderAnalysisHistory();
+        if (action !== 'recording') this.recordCompletedAnalysis();
     },
 
     renderAnalysisHistory() {
@@ -989,6 +994,7 @@ const App = {
 
             this.state.annotations.sort((a, b) => a.onset - b.onset);
             this.renderAnnotations();
+            if (imported > 0) this.recordCompletedAnalysis();
             this.showToast(`Imported ${imported} ${imported === 1 ? 'annotation' : 'annotations'}${skipped ? ` · skipped ${skipped}` : ''}`, imported ? 'success' : 'info');
         } catch (error) {
             this.showToast(`Annotations could not be imported: ${error.message}`, 'error');
@@ -1122,6 +1128,13 @@ const App = {
             remove.addEventListener('click', () => {
                 this.state.annotations = this.state.annotations.filter(item => item.id !== annotation.id);
                 this.renderAnnotations();
+                this.recordHistory(
+                    'annotation',
+                    `Deleted annotation at ${annotation.onset.toFixed(2)} seconds`,
+                    'Annotation saved',
+                    'Annotation deleted',
+                    null
+                );
             });
 
             actions.append(edit, remove);
@@ -1780,7 +1793,6 @@ const App = {
 
     async loadFile(file) {
         if (!this.beginImport('Opening recording', `${file.name} · remains in this browser`)) return;
-        const importId = this.createAnalysisImportId();
         this.setImportProgress(14, 'Reading the file and checking its format');
         await this.waitForPaint();
 
@@ -1797,7 +1809,6 @@ const App = {
             this.state.badChannels = [];
             this.initializeDashboard();
             await this.completeImport();
-            void this.reportSuccessfulAnalysis(importId);
 
             this.showToast(`Opened ${eegData.channelLabels.length} ${eegData.channelLabels.length === 1 ? 'channel' : 'channels'} from ${file.name}`, 'success');
         } catch (err) {
@@ -1808,7 +1819,6 @@ const App = {
 
     async loadSampleData() {
         if (!this.beginImport('Opening sample recording', 'chb02_16.edf · CHB-MIT · remains in this browser')) return;
-        const importId = this.createAnalysisImportId();
         this.setImportProgress(12, 'Reading the bundled sample file');
         await this.waitForPaint();
 
@@ -1830,7 +1840,6 @@ const App = {
             this.state.badChannels = [];
             this.initializeDashboard();
             await this.completeImport();
-            void this.reportSuccessfulAnalysis(importId);
 
             this.showToast(`Opened the CHB-MIT sample with ${eegData.channelLabels.length} channels`, 'success');
         } catch (err) {
@@ -2543,6 +2552,7 @@ const App = {
             document.getElementById('bands-export').disabled = false;
             this.renderBandPowerSummary();
             this.renderBandPowerCharts();
+            this.recordCompletedAnalysis();
             this.showToast(`Band power computed for ${channels.length} ${channels.length === 1 ? 'channel' : 'channels'}`, 'success');
         } catch (error) {
             this.resetBandPowerResults();
@@ -2663,6 +2673,7 @@ const App = {
 
         this.drawFilterResponse(filterType, params, sampleRate);
 
+        this.recordCompletedAnalysis();
         this.showToast('Filter preview updated for the selected channel', 'info');
     },
 
@@ -2895,6 +2906,7 @@ const App = {
             minVal, maxVal, colormap
         );
 
+        this.recordCompletedAnalysis();
         this.showToast('Spectrogram computed', 'success');
     },
 
@@ -2950,6 +2962,7 @@ const App = {
             '#10B981'
         );
 
+        this.recordCompletedAnalysis();
         this.showToast('Channel statistics computed', 'success');
     },
 
@@ -2992,6 +3005,7 @@ const App = {
         document.getElementById('quality-table-wrap').hidden = false;
         document.getElementById('quality-summary').textContent = `${results.length} ${results.length === 1 ? 'channel' : 'channels'} screened from ${this.state.timeOffset.toFixed(2)}–${Math.min(this.state.eegData.duration, this.state.timeOffset + this.state.timeWindow).toFixed(2)} s · ${flagged} flagged for manual review`;
         document.getElementById('quality-mark-flagged').disabled = flagged === 0;
+        this.recordCompletedAnalysis();
         this.showToast('Visible-window quality screen complete', 'success');
     },
 
@@ -3040,6 +3054,7 @@ const App = {
             maxVal
         );
 
+        this.recordCompletedAnalysis();
         this.showToast('Scalp map computed', 'success');
     },
 
