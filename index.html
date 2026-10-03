@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuroScope: Local EEG Review and Analysis</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%2310243E'/%3E%3Cpath d='M4 16Q8 8 12 16T20 16T28 16' fill='none' stroke='%2376A7FF' stroke-width='2.5'/%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2310243E'/%3E%3Cpath d='M5 9h5l2-4 2.6 8.5 2.5-6.5 2 2H27M5 16h8.5l2-4.5 2.6 7.8 2.3-5.8 1.6 2.5H27M5 23h4l2.6 4 2.6-8.5 2.6 6.5 2-2H27' fill='none' stroke='%2376A7FF' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=20260718-3">
+    <link rel="stylesheet" href="css/styles.css?v=20261003-2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -17,14 +17,9 @@
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen" role="status" aria-live="polite" aria-busy="true" aria-describedby="loader-subtitle loader-stage">
         <div class="loader-content">
-            <div class="brain-pulse">
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                    <circle cx="40" cy="40" r="36" stroke="#76A7FF" stroke-width="2" opacity="0.28"/>
-                    <circle cx="40" cy="40" r="28" stroke="#76A7FF" stroke-width="2" opacity="0.48"/>
-                    <circle cx="40" cy="40" r="20" stroke="#76A7FF" stroke-width="2.5" opacity="0.72"/>
-                    <path d="M10 40 Q20 25, 30 40 Q40 55, 50 40 Q60 25, 70 40" stroke="#76A7FF" stroke-width="3" fill="none" class="wave-path"/>
-                </svg>
-            </div>
+            <svg class="loader-mark" width="40" height="40" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+                <path d="M1 4.5h4l1.5-3 2 6.5 2-5 1.5 1.5H21M1 11h6.5l1.5-3.5 2 6 1.8-4.5 1.2 2H21M1 17.5h3l2 3 2-6.5 2 5 1.5-1.5H21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
             <h2 class="loader-title" id="loader-title">Opening NeuroScope</h2>
             <p class="loader-subtitle" id="loader-subtitle">Preparing your local EEG workspace</p>
             <div class="loader-progress-row">
@@ -41,58 +36,32 @@
     <header class="main-header" id="main-header">
         <div class="header-left">
             <button class="mobile-sidebar-toggle" id="mobile-sidebar-toggle" title="Show or hide recording controls" aria-label="Show or hide recording controls">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <div class="logo" id="logo-btn">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                    <circle cx="16" cy="16" r="14" stroke="#4A90D9" stroke-width="2"/>
-                    <path d="M4 16 Q8 8, 12 16 Q16 24, 20 16 Q24 8, 28 16" stroke="#4A90D9" stroke-width="2.5" fill="none"/>
+                <svg class="logo-mark" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+                    <path d="M1 4.5h4l1.5-3 2 6.5 2-5 1.5 1.5H21M1 11h6.5l1.5-3.5 2 6 1.8-4.5 1.2 2H21M1 17.5h3l2 3 2-6.5 2 5 1.5-1.5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 <span class="logo-text">NeuroScope</span>
             </div>
         </div>
-        <nav class="header-nav" id="main-nav">
-            <button data-tab="viewer" class="nav-btn active" title="Review EEG signals and annotations">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                <span>Signals</span>
-            </button>
-            <button data-tab="spectrum" class="nav-btn" title="Compute a power spectrum">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="3" height="9"/><rect x="9" y="4" width="3" height="17"/><rect x="15" y="8" width="3" height="13"/><rect x="21" y="2" width="3" height="19"/></svg>
-                <span>Spectrum</span>
-            </button>
-            <button data-tab="bands" class="nav-btn" title="Compare EEG band power">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2 A10 10 0 0 1 22 12 L12 12 Z"/></svg>
-                <span>Band power</span>
-            </button>
-            <button data-tab="filter" class="nav-btn" title="Preview and apply digital filters">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                <span>Filtering</span>
-            </button>
-            <button data-tab="timefreq" class="nav-btn" title="Compute a time-frequency spectrogram">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-                <span>Spectrogram</span>
-            </button>
-            <button data-tab="stats" class="nav-btn" title="Compute channel statistics and quality checks">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <span>Statistics</span>
-            </button>
-            <button data-tab="topo" class="nav-btn" title="Map a metric across the scalp">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2 C12 2 8 8 8 12 C8 16 12 22 12 22"/><path d="M12 2 C12 2 16 8 16 12 C16 16 12 22 12 22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-                <span>Topography</span>
-            </button>
-            <button data-tab="export" class="nav-btn" title="Configure and download exports">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span>Export</span>
-            </button>
+        <nav class="header-nav" id="main-nav" aria-label="Workspace">
+            <button data-tab="viewer" class="nav-btn active" title="Review EEG signals and annotations">Signals</button>
+            <button data-tab="hfo" class="nav-btn" title="Detect and review high-frequency oscillations">HFO review</button>
+            <button data-tab="spectrum" class="nav-btn" title="Compute a power spectrum">Spectrum</button>
+            <button data-tab="bands" class="nav-btn" title="Compare EEG band power">Band power</button>
+            <button data-tab="filter" class="nav-btn" title="Preview and apply digital filters">Filtering</button>
+            <button data-tab="timefreq" class="nav-btn" title="Compute a time-frequency spectrogram">Spectrogram</button>
+            <button data-tab="stats" class="nav-btn" title="Compute channel statistics and quality checks">Statistics</button>
+            <button data-tab="topo" class="nav-btn" title="Map a metric across the scalp">Topography</button>
+            <button data-tab="export" class="nav-btn" title="Configure and download exports">Export</button>
         </nav>
         <div class="header-right">
             <button id="keyboard-help-btn" class="shortcut-btn" title="Keyboard shortcuts" aria-label="Show keyboard shortcuts">?</button>
             <button id="new-file-btn" class="btn-header" title="Open a different recording">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                <span>Open File</span>
+                <span>Open file</span>
             </button>
             <div class="file-badge" id="file-badge">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
                 <span id="file-name-display">sample.edf</span>
             </div>
         </div>
@@ -108,114 +77,53 @@
 
     <!-- Upload Section -->
     <section id="upload-section" class="upload-section">
-        <div class="upload-hero">
-            <div class="hero-bg-pattern"></div>
-            <div class="hero-content">
-                <div class="hero-icon">
-                    <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                        <circle cx="32" cy="32" r="30" stroke="#4A90D9" stroke-width="2" opacity="0.2"/>
-                        <circle cx="32" cy="32" r="22" stroke="#4A90D9" stroke-width="2" opacity="0.4"/>
-                        <path d="M8 32 Q14 18, 22 32 Q30 46, 38 32 Q46 18, 56 32" stroke="#4A90D9" stroke-width="3" fill="none"/>
-                    </svg>
-                </div>
-                <h1 class="hero-title">Review EEG recordings locally</h1>
-                <p class="hero-desc">Inspect signals, annotate events, run common analyses, and export review-ready results without uploading the recording.</p>
-            </div>
-        </div>
+        <div class="intake">
+            <div class="intake-main">
+                <h1 class="intake-title">Open an EEG recording</h1>
+                <p class="intake-lede">NeuroScope reads the file in this browser. The signal never leaves your computer, and there is no account to create.</p>
 
-        <div class="upload-container">
-            <div class="upload-area" id="drop-zone">
-                <div class="upload-icon-area">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
+                <div class="upload-area" id="drop-zone" role="button" tabindex="0" aria-describedby="format-line">
+                    <svg class="upload-glyph" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+                    <div class="upload-copy">
+                        <p class="upload-title">Drop a recording here, or <span class="upload-link">choose a file</span></p>
+                        <p class="format-line" id="format-line">EDF, BDF, CSV, TSV, JSON, or TXT</p>
+                    </div>
+                    <input type="file" id="file-input" accept=".edf,.bdf,.csv,.tsv,.json,.txt" aria-label="Choose an EEG recording" hidden>
+                    <div class="upload-progress" id="upload-progress">
+                        <div class="upload-progress-bar" id="upload-progress-bar" role="progressbar" aria-label="File import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+                        <span id="upload-progress-text">Reading recording</span>
+                    </div>
                 </div>
-                <h2 class="upload-title">Open an EEG recording</h2>
-                <p class="upload-subtitle">Drop a supported file here, or click to choose one.</p>
-                <input type="file" id="file-input" accept=".edf,.bdf,.csv,.tsv,.json,.txt" aria-label="Choose an EEG recording" hidden>
-                <div class="format-badges">
-                    <span class="badge">EDF</span>
-                    <span class="badge">BDF</span>
-                    <span class="badge">CSV</span>
-                    <span class="badge">TSV</span>
-                    <span class="badge">JSON</span>
-                    <span class="badge">TXT</span>
-                </div>
-                <p class="format-note">Only the formats listed above are opened. Unsupported files are rejected with conversion guidance; NeuroScope never substitutes generated data.</p>
-                <div class="upload-progress" id="upload-progress">
-                    <div class="upload-progress-bar" id="upload-progress-bar" role="progressbar" aria-label="File import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
-                    <span id="upload-progress-text">Reading recording</span>
-                </div>
+                <p class="format-note">Other formats are rejected with conversion guidance. NeuroScope never substitutes generated data for a file it cannot read.</p>
+
+                <button id="sample-data-btn" class="btn-sample" type="button">
+                    <span class="btn-sample-copy">
+                        <strong>Open the sample recording</strong>
+                        <span>chb02_16.edf · 23 channels · 256 Hz · 16 min</span>
+                    </span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                </button>
+                <p class="sample-data-attribution">
+                    From the <a href="https://physionet.org/content/chbmit/1.0.0/" target="_blank" rel="noopener">CHB-MIT Scalp EEG Database</a> on PhysioNet, licensed under <a href="https://opendatacommons.org/licenses/by/1-0/" target="_blank" rel="noopener">ODC-By v1.0</a>.
+                    Shoeb, A.H. (2009). <em>Application of Machine Learning to Epileptic Seizure Onset Detection and Treatment</em>. PhD Thesis, MIT.
+                    Goldberger, A.L., et al. (2000). Circulation 101(23):e215–e220.
+                </p>
             </div>
 
-            <div class="upload-divider">
-                <span>or</span>
-            </div>
-
-            <button id="sample-data-btn" class="btn-sample">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                <span>Open the CHB-MIT sample recording</span>
-            </button>
-            <p class="sample-data-attribution">
-                Sample file <strong>chb02_16.edf</strong> from the <a href="https://physionet.org/content/chbmit/1.0.0/" target="_blank" rel="noopener">CHB-MIT Scalp EEG Database</a> on PhysioNet.
-                Licensed under <a href="https://opendatacommons.org/licenses/by/1-0/" target="_blank" rel="noopener">ODC-By v1.0</a>.
-                Shoeb, A.H. (2009). <em>Application of Machine Learning to Epileptic Seizure Onset Detection and Treatment</em>. PhD Thesis, MIT.
-                Goldberger, A.L., et al. (2000). Circulation 101(23):e215–e220.
-            </p>
-            <div class="privacy-note" role="note">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-                <span><strong>Processed locally:</strong> NeuroScope reads the recording in this browser and does not send its signal data to a NeuroScope server.</span>
-            </div>
-        </div>
-
-        <div class="features-section">
-            <h2 class="features-heading">Built around the EEG review workflow</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                    </div>
-                    <h3>Signal review</h3>
-                    <p>Navigate channels and time, inspect amplitudes, select ranges, and attach annotations</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><rect x="3" y="12" width="3" height="9"/><rect x="9" y="4" width="3" height="17"/><rect x="15" y="8" width="3" height="13"/><rect x="21" y="2" width="3" height="19"/></svg>
-                    </div>
-                    <h3>Power spectrum</h3>
-                    <p>Estimate power spectral density for selected channels with Welch or direct FFT methods</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2 A10 10 0 0 1 22 12 L12 12 Z"/></svg>
-                    </div>
-                    <h3>Band power</h3>
-                    <p>Compare absolute or relative delta–gamma power across the channels in a run</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                    </div>
-                    <h3>Digital filtering</h3>
-                    <p>Preview and apply zero-phase bandpass, highpass, lowpass, or notch filters</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-                    </div>
-                    <h3>Spectrogram</h3>
-                    <p>Inspect how spectral power changes over time in a selected channel</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2 C12 2 8 8 8 12 C8 16 12 22 12 22"/><path d="M12 2 C12 2 16 8 16 12 C16 16 12 22 12 22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-                    </div>
-                    <h3>Scalp topography</h3>
-                    <p>Map power or RMS values across recognized 10–20 channel labels</p>
-                </div>
-            </div>
+            <aside class="intake-aside" aria-labelledby="capabilities-heading">
+                <h2 id="capabilities-heading" class="intake-aside-title">In the workspace</h2>
+                <dl class="capability-list">
+                    <div><dt>Signal review</dt><dd>Montages, channel status, annotations, a recording quality timeline, and range exports</dd></div>
+                    <div><dt>HFO review</dt><dd>Detector candidates you accept or reject, plus events you mark by hand</dd></div>
+                    <div><dt>Power spectrum</dt><dd>Welch or direct FFT density for up to eight channels</dd></div>
+                    <div><dt>Band power</dt><dd>Absolute or relative delta–gamma power per channel</dd></div>
+                    <div><dt>Filtering</dt><dd>Zero-phase bandpass, highpass, lowpass, and notch filters</dd></div>
+                    <div><dt>Spectrogram</dt><dd>Short-time spectral power for one channel</dd></div>
+                    <div><dt>Statistics</dt><dd>Descriptive measures and a visible-window quality screen</dd></div>
+                    <div><dt>Topography</dt><dd>Power or RMS mapped across recognized 10–20 labels</dd></div>
+                    <div><dt>Export</dt><dd>CSV, JSON, BIDS sidecars, figures, and restorable review sessions</dd></div>
+                </dl>
+            </aside>
         </div>
     </section>
 
@@ -351,14 +259,22 @@
                     </div>
                     <div class="viewer-toolbar-group viewer-review-tools" aria-label="Annotation navigation">
                         <span class="toolbar-time-display" id="viewer-time-range">0.0–10.0 s</span>
-                        <div class="note-navigation">
-                            <button id="previous-note" class="btn-tool" title="Previous annotation (P)" disabled>Previous annotation</button>
-                            <button id="next-note" class="btn-tool" title="Next annotation (N)" disabled>Next annotation</button>
+                        <div class="note-navigation" role="group" aria-label="Annotation navigation">
+                            <button id="previous-note" class="btn-tool" title="Previous annotation (P)" aria-label="Previous annotation" disabled>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                            </button>
+                            <button id="next-note" class="btn-tool" title="Next annotation (N)" aria-label="Next annotation" disabled>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                            </button>
                         </div>
                         <button id="add-annotation-btn" class="btn-tool btn-tool-accent" title="Add an annotation at the cursor or selected range">Add annotation</button>
                     </div>
                 </div>
                 <div class="canvas-container" id="viewer-canvas-container">
+                    <div id="viewer-coverage" class="viewer-coverage" data-state="complete">
+                        <p id="viewer-coverage-text" class="viewer-coverage-text">No channels displayed</p>
+                        <button type="button" id="viewer-coverage-action" class="viewer-coverage-action" hidden>Fit all channels</button>
+                    </div>
                     <div id="viewer-canvas-scroll" class="viewer-canvas-scroll">
                         <div id="viewer-canvas-stage" class="viewer-canvas-stage">
                             <canvas id="viewer-canvas"></canvas>
@@ -535,6 +451,309 @@
                 </section>
             </div>
 
+            <!-- HFO Review Tab -->
+            <div id="tab-hfo" class="tab-content">
+                <div class="tab-header">
+                    <h2>HFO review</h2>
+                    <p>The detector proposes candidates; you decide. Drag across a trace to mark an event it missed.</p>
+                </div>
+
+                <section class="hfo-setup analysis-controls" aria-label="Detector settings">
+                    <div class="control-group inline">
+                        <label for="hfo-detector">Detector</label>
+                        <select id="hfo-detector" class="toolbar-select"></select>
+                    </div>
+                    <div class="control-group inline">
+                        <label for="hfo-band">Band</label>
+                        <select id="hfo-band" class="toolbar-select">
+                            <option value="ripple">Ripple</option>
+                            <option value="fast_ripple">Fast ripple</option>
+                            <option value="ripple_fr">Ripple + fast ripple</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="control-group inline">
+                        <label for="hfo-band-low">From (Hz)</label>
+                        <input type="number" id="hfo-band-low" class="toolbar-input" min="1" step="1">
+                    </div>
+                    <div class="control-group inline">
+                        <label for="hfo-band-high">To (Hz)</label>
+                        <input type="number" id="hfo-band-high" class="toolbar-input" min="2" step="1">
+                    </div>
+                    <div class="control-group inline">
+                        <label for="hfo-electrodes">Electrodes</label>
+                        <select id="hfo-electrodes" class="toolbar-select">
+                            <option value="scalp">Scalp</option>
+                            <option value="intracranial">Intracranial</option>
+                        </select>
+                    </div>
+                    <div class="control-group inline">
+                        <label for="hfo-state">State</label>
+                        <select id="hfo-state" class="toolbar-select" title="Sleep stage changes HFO rates; it is recorded with the run and in the methods text">
+                            <option value="unknown">Not specified</option>
+                            <option value="nrem">NREM sleep</option>
+                            <option value="rem">REM sleep</option>
+                            <option value="wake">Awake</option>
+                            <option value="mixed">Mixed</option>
+                        </select>
+                    </div>
+                    <div class="control-group inline">
+                        <label for="hfo-channel-scope">Channels</label>
+                        <select id="hfo-channel-scope" class="toolbar-select">
+                            <option value="selected">Selected in sidebar</option>
+                            <option value="all">All channels</option>
+                        </select>
+                    </div>
+                    <button type="button" id="hfo-settings-toggle" class="btn-ghost hfo-settings-toggle" aria-expanded="false" aria-controls="hfo-settings">Detector settings</button>
+                    <button type="button" id="hfo-run" class="btn-primary">Run detection</button>
+                    <p id="hfo-band-note" class="hfo-band-note" aria-live="polite"></p>
+                </section>
+
+                <section id="hfo-settings" class="hfo-settings" aria-labelledby="hfo-settings-heading" hidden>
+                    <div class="hfo-settings-head">
+                        <h3 id="hfo-settings-heading">Detector settings</h3>
+                        <button type="button" id="hfo-settings-reset" class="btn-tiny">Restore defaults</button>
+                    </div>
+                    <div id="hfo-consensus-members" class="hfo-consensus-members" hidden></div>
+                    <div id="hfo-settings-fields" class="hfo-settings-fields">
+                    </div>
+                    <div class="hfo-settings-line">
+                        <div class="hfo-field">
+                            <label for="hfo-line">Line noise</label>
+                            <select id="hfo-line" class="toolbar-select">
+                                <option value="auto">Detect from recording</option>
+                                <option value="60">60 Hz</option>
+                                <option value="50">50 Hz</option>
+                                <option value="off">Do not notch</option>
+                            </select>
+                        </div>
+                        <p id="hfo-line-detail" class="hfo-line-detail"></p>
+                    </div>
+                    <p id="hfo-settings-citation" class="hfo-settings-citation"></p>
+                    <p id="hfo-screening" class="hfo-screening" hidden></p>
+                </section>
+
+                <div id="hfo-run-status" class="hfo-run-status" hidden>
+                    <div class="hfo-run-status-text"><strong id="hfo-run-status-title">Detecting</strong><span id="hfo-run-status-detail"></span></div>
+                    <div class="hfo-run-progress" role="progressbar" aria-label="HFO detection progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="hfo-run-progress"><span id="hfo-run-progress-bar"></span></div>
+                </div>
+
+                <div class="hfo-workspace">
+                    <div class="hfo-main">
+                        <div class="hfo-review-toolbar">
+                            <div class="hfo-toolbar-group" role="group" aria-label="Review window">
+                                <button type="button" id="hfo-page-back" class="btn-tool" title="Previous window (←)" aria-label="Previous window">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                                </button>
+                                <span id="hfo-time-range" class="toolbar-time-display">0.000–1.000 s</span>
+                                <button type="button" id="hfo-page-forward" class="btn-tool" title="Next window (→)" aria-label="Next window">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                                </button>
+                            </div>
+                            <div class="hfo-toolbar-group">
+                                <label class="toolbar-label" for="hfo-window">Window</label>
+                                <select id="hfo-window" class="toolbar-select">
+                                    <option value="0.5">0.5 s</option>
+                                    <option value="1" selected>1 s</option>
+                                    <option value="2">2 s</option>
+                                    <option value="5">5 s</option>
+                                    <option value="10">10 s</option>
+                                </select>
+                                <label class="toolbar-label" for="hfo-display">Trace</label>
+                                <select id="hfo-display" class="toolbar-select">
+                                    <option value="filtered">Band-passed</option>
+                                    <option value="raw">Raw</option>
+                                </select>
+                                <label class="toolbar-label" for="hfo-scale">Scale</label>
+                                <select id="hfo-scale" class="toolbar-select" title="Per-channel scaling divides each trace by its own background so events that stand out are visible on every channel">
+                                    <option value="channel">Per channel</option>
+                                    <option value="shared">Same µV for all</option>
+                                </select>
+                            </div>
+                            <div class="hfo-toolbar-group" role="group" aria-label="Trace gain">
+                                <button type="button" id="hfo-gain-down" class="btn-tool" title="Lower gain (-)" aria-label="Lower gain">−</button>
+                                <output id="hfo-gain-value" class="hfo-gain-value">1×</output>
+                                <button type="button" id="hfo-gain-up" class="btn-tool" title="Raise gain (+)" aria-label="Raise gain">+</button>
+                            </div>
+                            <label class="hfo-toggle" title="Show candidates the detector set aside, with the reason">
+                                <input type="checkbox" id="hfo-show-screened">
+                                <span>Near-misses</span>
+                            </label>
+                        </div>
+                        <div class="canvas-container hfo-canvas-container" id="hfo-canvas-container">
+                            <canvas id="hfo-axis-canvas" class="hfo-axis-canvas" aria-hidden="true"></canvas>
+                            <div id="hfo-canvas-scroll" class="hfo-canvas-scroll">
+                                <div class="hfo-canvas-stage">
+                                    <canvas id="hfo-canvas"></canvas>
+                                    <canvas id="hfo-interaction-canvas" tabindex="0" aria-label="HFO review plot. Click an event to select it, drag across a trace to mark a missed event, J and K move between events, Y accepts, N rejects."></canvas>
+                                </div>
+                            </div>
+                            <div id="hfo-hover-tooltip" class="viewer-hover-tooltip" hidden></div>
+                        </div>
+                        <div class="hfo-raster">
+                            <div class="viewer-overview-label"><span>Events across the recording</span><strong id="hfo-raster-summary">—</strong></div>
+                            <canvas id="hfo-raster-canvas" tabindex="0" aria-label="Event positions across the recording. Click or drag to move the review window."></canvas>
+                        </div>
+                    </div>
+
+                    <aside class="hfo-inspector" aria-labelledby="hfo-inspector-heading">
+                        <h3 id="hfo-inspector-heading" class="sr-only">Selected event</h3>
+                        <div id="hfo-inspector-empty" class="hfo-inspector-empty">
+                            <p><strong>No event selected</strong></p>
+                            <p>Run detection, then press <kbd>J</kbd> to step to the first candidate. You can also drag across any trace to mark an event yourself.</p>
+                        </div>
+                        <div id="hfo-inspector-body" class="hfo-inspector-body" hidden>
+                            <div class="hfo-event-head">
+                                <div>
+                                    <strong id="hfo-event-channel">—</strong>
+                                    <span id="hfo-event-time">—</span>
+                                </div>
+                                <span id="hfo-event-status" class="hfo-status" data-status="pending">To review</span>
+                            </div>
+                            <div id="hfo-decision" class="hfo-decision" role="group" aria-label="Review decision">
+                                <button type="button" id="hfo-accept" class="hfo-decision-btn" data-decision="accepted">Accept <kbd>Y</kbd></button>
+                                <button type="button" id="hfo-reject" class="hfo-decision-btn" data-decision="rejected">Reject <kbd>N</kbd></button>
+                            </div>
+                            <div id="hfo-manual-tools" class="hfo-manual-tools" hidden>
+                                <label for="hfo-event-label">Label</label>
+                                <select id="hfo-event-label" class="toolbar-select">
+                                    <option value="hfo">HFO</option>
+                                    <option value="artifact">Artifact</option>
+                                    <option value="uncertain">Uncertain</option>
+                                </select>
+                                <button type="button" id="hfo-delete" class="btn-ghost hfo-delete">Delete mark</button>
+                            </div>
+                            <div id="hfo-screened-tools" class="hfo-screened-tools" hidden>
+                                <p id="hfo-screened-reason"></p>
+                                <button type="button" id="hfo-promote" class="hfo-decision-btn" data-decision="accepted">Mark as HFO <kbd>M</kbd></button>
+                            </div>
+                            <section id="hfo-why" class="hfo-why" aria-labelledby="hfo-why-heading">
+                                <h4 id="hfo-why-heading">Why it was flagged</h4>
+                                <ul id="hfo-criteria" class="hfo-criteria"></ul>
+                            </section>
+                            <figure class="hfo-detail">
+                                <canvas id="hfo-detail-canvas"></canvas>
+                                <figcaption>An isolated blob inside the band suggests an oscillation. A tall vertical streak suggests a filtered sharp transient.</figcaption>
+                            </figure>
+                            <dl id="hfo-features" class="hfo-features"></dl>
+                        </div>
+                        <p class="hfo-keys">
+                            <span><kbd>J</kbd><kbd>K</kbd> step</span>
+                            <span><kbd>Y</kbd> accept</span>
+                            <span><kbd>N</kbd> reject</span>
+                            <span><kbd>U</kbd> undecide</span>
+                            <span><kbd>M</kbd> mark near-miss</span>
+                            <span><kbd>Del</kbd> delete mark</span>
+                            <span><kbd>Ctrl</kbd><kbd>Z</kbd> undo</span>
+                        </p>
+                    </aside>
+                </div>
+
+                <section class="hfo-events" aria-labelledby="hfo-events-heading">
+                    <div class="hfo-events-bar">
+                        <h3 id="hfo-events-heading" class="sr-only">Events and channel rates</h3>
+                        <div class="hfo-view-switch" role="group" aria-label="List">
+                            <button type="button" class="hfo-view-btn active" data-hfo-view="events" aria-pressed="true">Events</button>
+                            <button type="button" class="hfo-view-btn" data-hfo-view="channels" aria-pressed="false">Channel rates</button>
+                            <button type="button" class="hfo-view-btn" data-hfo-view="agreement" aria-pressed="false">Compare markings</button>
+                        </div>
+                        <div id="hfo-filter" class="hfo-filter" role="group" aria-label="Show events">
+                            <button type="button" class="hfo-filter-btn active" data-hfo-filter="all" aria-pressed="true">All <span data-hfo-count="all">0</span></button>
+                            <button type="button" class="hfo-filter-btn" data-hfo-filter="pending" aria-pressed="false">To review <span data-hfo-count="pending">0</span></button>
+                            <button type="button" class="hfo-filter-btn" data-hfo-filter="accepted" aria-pressed="false">Accepted <span data-hfo-count="accepted">0</span></button>
+                            <button type="button" class="hfo-filter-btn" data-hfo-filter="rejected" aria-pressed="false">Rejected <span data-hfo-count="rejected">0</span></button>
+                            <button type="button" class="hfo-filter-btn" data-hfo-filter="reviewer" aria-pressed="false">Hand-marked <span data-hfo-count="reviewer">0</span></button>
+                        </div>
+                        <div class="review-panel-actions">
+                            <span id="hfo-class-group" class="hfo-order-group">
+                                <label class="toolbar-label" for="hfo-class-filter">Class</label>
+                                <select id="hfo-class-filter" class="toolbar-select" title="Advisory classes from published rules; they never remove events">
+                                    <option value="all">All classes</option>
+                                    <option value="hfo">HFO</option>
+                                    <option value="spike_hfo">HFO on spike</option>
+                                    <option value="false_ripple">Possible false ripple</option>
+                                    <option value="artifact">Possible artifact</option>
+                                    <option value="cooccurrence">Ripple + fast ripple</option>
+                                </select>
+                            </span>
+                            <span id="hfo-order-group" class="hfo-order-group">
+                                <label class="toolbar-label" for="hfo-order">Order</label>
+                                <select id="hfo-order" class="toolbar-select">
+                                    <option value="time">By time</option>
+                                    <option value="strength">Strongest first</option>
+                                    <option value="channel">By channel</option>
+                                </select>
+                            </span>
+                            <button type="button" id="hfo-methods-toggle" class="btn-ghost" aria-expanded="false" aria-controls="hfo-methods" disabled>Methods text</button>
+                            <button type="button" id="hfo-undo" class="btn-ghost" disabled>Undo</button>
+                            <button type="button" id="hfo-export-csv" class="btn-secondary" disabled>Download events CSV</button>
+                            <button type="button" id="hfo-channel-export" class="btn-secondary" hidden>Download channel rates CSV</button>
+                        </div>
+                    </div>
+                    <section id="hfo-methods" class="hfo-methods" aria-labelledby="hfo-methods-heading" hidden>
+                        <div class="hfo-methods-head">
+                            <h4 id="hfo-methods-heading">Methods text for this run</h4>
+                            <button type="button" id="hfo-methods-copy" class="btn-tiny">Copy</button>
+                        </div>
+                        <p id="hfo-methods-text" class="hfo-methods-text"></p>
+                        <p class="hfo-methods-note">Covers the items HFO studies are asked to report (Höller et al. 2015): detector and threshold, band and filter, channels, time analysed, state, number of reviewers, and ripples and fast ripples separately. Edit it before publishing; NeuroScope does not know your electrode type or clinical context.</p>
+                    </section>
+                    <p id="hfo-channel-filter-note" class="hfo-channel-filter-note" hidden>Showing events on <strong id="hfo-channel-filter-label"></strong> only. <button type="button" id="hfo-channel-clear" class="btn-tiny">Show all channels</button></p>
+                    <div id="hfo-channels-panel" class="hfo-table-wrap" hidden>
+                        <table class="stats-table hfo-table hfo-channel-table">
+                            <thead>
+                                <tr><th scope="col">Channel</th><th scope="col">Candidates</th><th scope="col">Accepted / rejected / to review</th><th scope="col">Hand-marked</th><th scope="col">Reviewed</th><th scope="col">Confirmed rate (95% interval)</th><th scope="col">Candidate rate</th><th scope="col">Spikes (Janca)</th></tr>
+                            </thead>
+                            <tbody id="hfo-channel-tbody"></tbody>
+                        </table>
+                        <p id="hfo-channel-empty" class="hfo-table-empty">Channel rates appear after detection or once you mark an event.</p>
+                        <p id="hfo-channel-caption" class="hfo-channel-caption"></p>
+                    </div>
+                    <section id="hfo-agreement-panel" class="hfo-agreement" aria-labelledby="hfo-agreement-heading" hidden>
+                        <h4 id="hfo-agreement-heading" class="sr-only">Compare two sets of markings</h4>
+                        <div class="hfo-agreement-controls">
+                            <div class="control-group inline">
+                                <label for="hfo-compare-reference">Reference</label>
+                                <select id="hfo-compare-reference" class="toolbar-select"></select>
+                            </div>
+                            <div class="control-group inline">
+                                <label for="hfo-compare-comparison">Compared with</label>
+                                <select id="hfo-compare-comparison" class="toolbar-select"></select>
+                            </div>
+                            <div class="control-group inline">
+                                <label for="hfo-compare-rule">Match when</label>
+                                <select id="hfo-compare-rule" class="toolbar-select">
+                                    <option value="overlap">Events overlap at all</option>
+                                    <option value="iou">Overlap ≥ 20% of their union</option>
+                                    <option value="centre">Centres within 50 ms</option>
+                                </select>
+                            </div>
+                            <button type="button" id="hfo-import-markings" class="btn-ghost">Import markings</button>
+                            <input type="file" id="hfo-import-markings-input" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" hidden>
+                        </div>
+                        <p id="hfo-import-note" class="hfo-import-note"></p>
+                        <dl id="hfo-agreement-metrics" class="hfo-agreement-metrics"></dl>
+                        <p id="hfo-agreement-context" class="hfo-channel-caption"></p>
+                        <div class="hfo-table-wrap">
+                            <table class="stats-table hfo-table">
+                                <thead><tr><th scope="col">Channel</th><th scope="col">Reference</th><th scope="col">Compared</th><th scope="col">Matched</th><th scope="col">F1</th></tr></thead>
+                                <tbody id="hfo-agreement-tbody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <div id="hfo-events-panel" class="hfo-table-wrap">
+                        <table class="stats-table hfo-table">
+                            <thead>
+                                <tr><th scope="col">Time (s)</th><th scope="col">Channel</th><th scope="col">Duration</th><th scope="col">Peak frequency</th><th scope="col">Amplitude</th><th scope="col">Cycles</th><th scope="col">Class</th><th scope="col">Source</th><th scope="col">Decision</th></tr>
+                            </thead>
+                            <tbody id="hfo-tbody"></tbody>
+                        </table>
+                        <p id="hfo-table-empty" class="hfo-table-empty">Events appear here after detection, along with any you mark by hand.</p>
+                    </div>
+                </section>
+                <p class="hfo-footnote">Research use only; not validated for clinical decisions. In the only randomised trial, HFO-guided surgery was not non-inferior to spike-guided surgery (Zweiphenning et al. 2022).</p>
+            </div>
+
             <!-- Spectrum Tab -->
             <div id="tab-spectrum" class="tab-content">
                 <div class="tab-header">
@@ -630,12 +849,11 @@
                     </section>
                     <section class="band-results-surface" aria-labelledby="band-results-heading">
                         <div class="band-results-heading">
-                            <div><h3 id="band-results-heading">Channel comparison</h3><p>Compare bands by channel, then use the distribution chart to review their mean proportions.</p></div>
-                            <span>Computed locally</span>
+                            <div><h3 id="band-results-heading">Channel comparison</h3><p>Band power for each channel in the run, and the mean share of each band.</p></div>
                         </div>
                         <div class="band-chart-grid">
-                            <figure class="chart-container band-chart-panel"><figcaption>Band power by channel</figcaption><canvas id="bands-bar-chart"></canvas></figure>
-                            <figure class="chart-container band-chart-panel band-distribution-panel"><figcaption>Mean band distribution</figcaption><canvas id="bands-pie-chart"></canvas></figure>
+                            <figure class="chart-container band-chart-panel"><canvas id="bands-bar-chart" aria-label="Band power by channel"></canvas></figure>
+                            <figure class="chart-container band-chart-panel band-distribution-panel"><canvas id="bands-pie-chart" aria-label="Mean band distribution"></canvas></figure>
                         </div>
                     </section>
                 </div>
@@ -838,14 +1056,11 @@
             <!-- Export Tab -->
             <div id="tab-export" class="tab-content">
                 <div class="tab-header">
-                    <h2>Export center</h2>
-                    <p>Define the data scope once, then download signals, analyses, figures, or review sidecars.</p>
+                    <h2>Export</h2>
+                    <p>Set the data scope once; every signal-data download below uses it.</p>
                 </div>
                 <section class="export-setup" aria-labelledby="export-setup-heading">
-                    <div class="export-setup-copy">
-                        <h3 id="export-setup-heading">Signal-data scope</h3>
-                        <p>These settings apply to Signal CSV, Data JSON, Filtered CSV, and MATLAB JSON.</p>
-                    </div>
+                    <h3 id="export-setup-heading" class="sr-only">Signal-data scope</h3>
                     <div class="control-group inline">
                         <label for="export-channel-scope">Channels</label>
                         <select id="export-channel-scope" class="toolbar-select">
@@ -869,6 +1084,7 @@
                         <label for="export-end-time">End (s)</label>
                         <input type="number" id="export-end-time" class="toolbar-input" value="10" min="0" step="0.1">
                     </div>
+                    <button type="button" class="btn-ghost export-use-range" id="export-use-viewer-range" title="Copy the selected range, or the visible window when nothing is selected">Use viewer range</button>
                     <div class="control-group inline">
                         <label for="export-precision">Precision</label>
                         <select id="export-precision" class="toolbar-select">
@@ -879,135 +1095,121 @@
                     </div>
                     <output id="export-size-estimate" class="export-size-estimate" aria-live="polite">Estimate unavailable</output>
                 </section>
-                <div class="export-grid">
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="8 12 8 16 12 16"/><path d="M16 8 L8 16"/></svg>
-                        </div>
-                        <h3>Signal CSV</h3>
-                        <p>Download samples for the channels, signal state, time range, and precision configured above.</p>
-                        <button class="btn-export" id="export-csv">Download signal CSV</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                        </div>
-                        <h3>Data JSON</h3>
-                        <p>Download the scoped samples with recording metadata and available analysis results.</p>
-                        <button class="btn-export" id="export-json">Download data JSON</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        </div>
-                        <h3>Signal-view PNG</h3>
-                        <p>Download the current signal plot exactly as it is rendered in the viewer.</p>
-                        <button class="btn-export" id="export-png">Download signal PNG</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        </div>
-                        <h3>Analysis report PDF</h3>
-                        <p>Build a report from recording metadata and the analysis results computed in this session.</p>
-                        <button class="btn-export" id="export-pdf">Download report PDF</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                        </div>
-                        <h3>Filtered-signal CSV</h3>
-                        <p>Download the configured scope from the filtered signal. Available after applying a filter.</p>
-                        <button class="btn-export" id="export-filtered-csv">Download filtered CSV</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                        </div>
-                        <h3>Spectrum CSV</h3>
-                        <p>Download the frequency and power spectral density values from the latest spectrum run.</p>
-                        <button class="btn-export" id="export-spectrum-csv">Download spectrum CSV</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-                        </div>
-                        <h3>Signal-view SVG</h3>
-                        <p>Download the current signal plot as a scalable vector graphic for figures or presentations.</p>
-                        <button class="btn-export" id="export-svg">Download signal SVG</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        </div>
-                        <h3>Use signal-view range</h3>
-                        <p>Copy the selected range—or the visible window when nothing is selected—into the time scope above.</p>
-                        <button class="btn-export" id="export-use-viewer-range">Use signal-view range</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2 A10 10 0 0 1 22 12 L12 12 Z"/></svg>
-                        </div>
-                        <h3>Band-power CSV</h3>
-                        <p>Download the values for the channels included in the latest band-power run.</p>
-                        <button class="btn-export" id="export-band-power-csv">Download band-power CSV</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        </div>
-                        <h3>Active-plot PNG</h3>
-                        <p>Download the current tab’s visualization at a chosen resolution scale.</p>
-                        <select id="export-dpi" class="toolbar-select" aria-label="Active plot export resolution" style="width:100%; margin-bottom:8px;">
-                            <option value="2">Standard, 2x resolution</option>
-                            <option value="3" selected>High, 3x resolution</option>
-                            <option value="4">Ultra, 4x resolution</option>
-                        </select>
-                        <button class="btn-export" id="export-hires-png">Download active plot PNG</button>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        </div>
-                        <h3>MATLAB-compatible JSON</h3>
-                        <p>Download scoped data and available analyses in a structure suited to MATLAB or Python scripts.</p>
-                        <button class="btn-export" id="export-matlab-json">Download MATLAB JSON</button>
-                    </div>
-                    <div class="export-card export-card-featured">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5M8 17h3"/></svg>
-                        </div>
-                        <h3>Review session JSON</h3>
-                        <p>Save or restore the view, channel status, and annotations without copying raw signal samples.</p>
-                        <input type="file" id="import-session-input" accept=".json,application/json" hidden>
-                        <div class="export-card-actions">
-                            <button class="btn-export" id="export-session-json">Save review session</button>
-                            <button class="btn-export btn-export-secondary" id="import-session-json">Restore review session</button>
-                        </div>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8M8 12h5"/></svg>
-                        </div>
-                        <h3>Annotation files</h3>
-                        <p>Download time-linked annotations for review handoff or downstream event analysis.</p>
-                        <div class="export-card-actions">
-                            <button class="btn-export" id="export-annotations-csv">Download annotations CSV</button>
-                            <button class="btn-export btn-export-secondary" id="export-bids-events">Download BIDS events TSV</button>
-                        </div>
-                    </div>
-                    <div class="export-card">
-                        <div class="export-icon">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/><circle cx="18" cy="17" r="3" fill="white"/><path d="m16.7 17 1 1 1.8-2"/></svg>
-                        </div>
-                        <h3>Research review files</h3>
-                        <p>Download channel status, quality-screen metrics, or machine-readable annotations for reproducible handoff.</p>
-                        <div class="export-card-actions export-card-actions-stack">
-                            <button class="btn-export" id="export-bids-channels">Download BIDS channels TSV</button>
-                            <button class="btn-export btn-export-secondary" id="export-quality-csv">Download quality-screen CSV</button>
-                            <button class="btn-export btn-export-secondary" id="export-annotations-json">Download annotations JSON</button>
-                        </div>
-                    </div>
+
+                <div class="export-groups">
+                    <section class="export-group" aria-labelledby="export-group-signal">
+                        <h3 id="export-group-signal">Signal data <span>Uses the scope above</span></h3>
+                        <ul class="export-list">
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Signal CSV</strong><span>One column per channel, one row per sample.</span></div>
+                                <span class="export-format">CSV</span>
+                                <button class="btn-export" id="export-csv">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Filtered-signal CSV</strong><span>The same layout, taken from the filtered signal. Available after a filter is applied.</span></div>
+                                <span class="export-format">CSV</span>
+                                <button class="btn-export" id="export-filtered-csv">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Data JSON</strong><span>Scoped samples with recording metadata and the analyses computed so far.</span></div>
+                                <span class="export-format">JSON</span>
+                                <button class="btn-export" id="export-json">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>MATLAB-compatible JSON</strong><span>Scoped data and analyses in a structure suited to MATLAB or Python scripts.</span></div>
+                                <span class="export-format">JSON</span>
+                                <button class="btn-export" id="export-matlab-json">Download</button>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section class="export-group" aria-labelledby="export-group-figures">
+                        <h3 id="export-group-figures">Figures</h3>
+                        <ul class="export-list">
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Signal view</strong><span>The signal plot exactly as it is rendered in the viewer.</span></div>
+                                <span class="export-format">PNG</span>
+                                <button class="btn-export" id="export-png">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Signal view, vector</strong><span>A scalable copy of the signal plot for papers and slides.</span></div>
+                                <span class="export-format">SVG</span>
+                                <button class="btn-export" id="export-svg">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Active plot</strong><span>The visualization on the tab you used last, at a higher resolution.</span></div>
+                                <select id="export-dpi" class="toolbar-select export-row-select" aria-label="Active plot export resolution">
+                                    <option value="2">2× resolution</option>
+                                    <option value="3" selected>3× resolution</option>
+                                    <option value="4">4× resolution</option>
+                                </select>
+                                <button class="btn-export" id="export-hires-png">Download</button>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section class="export-group" aria-labelledby="export-group-results">
+                        <h3 id="export-group-results">Analysis results</h3>
+                        <ul class="export-list">
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Spectrum</strong><span>Frequency and power density values from the latest spectrum run.</span></div>
+                                <span class="export-format">CSV</span>
+                                <button class="btn-export" id="export-spectrum-csv">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Band power</strong><span>Per-channel values from the latest band-power run.</span></div>
+                                <span class="export-format">CSV</span>
+                                <button class="btn-export" id="export-band-power-csv">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Quality screen</strong><span>Per-channel metrics from the latest visible-window quality screen.</span></div>
+                                <span class="export-format">CSV</span>
+                                <button class="btn-export" id="export-quality-csv">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>HFO events</strong><span>Detector candidates and hand-marked events with review decisions and detector settings.</span></div>
+                                <span class="export-format">CSV</span>
+                                <button class="btn-export" id="export-hfo-csv">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Analysis report</strong><span>Recording metadata and the analysis results computed in this session.</span></div>
+                                <span class="export-format">PDF</span>
+                                <button class="btn-export" id="export-pdf">Download</button>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section class="export-group" aria-labelledby="export-group-review">
+                        <h3 id="export-group-review">Review files</h3>
+                        <ul class="export-list">
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Annotations</strong><span>Time-linked annotations for review handoff or downstream event analysis.</span></div>
+                                <span class="export-format">CSV</span>
+                                <button class="btn-export" id="export-annotations-csv">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Annotations, machine-readable</strong><span>Annotations with their workspace snapshots.</span></div>
+                                <span class="export-format">JSON</span>
+                                <button class="btn-export" id="export-annotations-json">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>BIDS events</strong><span>Annotations and accepted HFO events as a BIDS events sidecar.</span></div>
+                                <span class="export-format">TSV</span>
+                                <button class="btn-export" id="export-bids-events">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>BIDS channels</strong><span>Channel names with good or bad status.</span></div>
+                                <span class="export-format">TSV</span>
+                                <button class="btn-export" id="export-bids-channels">Download</button>
+                            </li>
+                            <li class="export-row">
+                                <div class="export-row-copy"><strong>Review session</strong><span>View settings, channel status, annotations, and HFO review decisions, without signal samples. Restore it later on the same recording.</span></div>
+                                <input type="file" id="import-session-input" accept=".json,application/json" hidden>
+                                <button class="btn-export btn-export-secondary" id="import-session-json">Restore</button>
+                                <button class="btn-export" id="export-session-json">Save</button>
+                            </li>
+                        </ul>
+                    </section>
                 </div>
             </div>
         </main>
@@ -1042,6 +1244,7 @@
 
     <!-- Mobile more menu popup -->
     <div class="mobile-more-menu" id="mobile-more-menu">
+        <button data-tab="hfo" class="mobile-more-item">HFO review</button>
         <button data-tab="timefreq" class="mobile-more-item">Spectrogram</button>
         <button data-tab="stats" class="mobile-more-item">Statistics</button>
         <button data-tab="topo" class="mobile-more-item">Topography</button>
@@ -1055,7 +1258,7 @@
         <div class="dialog-heading">
             <div>
                 <h2 id="keyboard-help-title">Keyboard shortcuts</h2>
-                <p>These shortcuts work while the signal plot has keyboard focus.</p>
+                <p>Signal shortcuts work while the plot has keyboard focus; HFO review shortcuts work anywhere on that tab.</p>
             </div>
             <button type="button" id="keyboard-help-close" class="dialog-close" aria-label="Close keyboard shortcuts">×</button>
         </div>
@@ -1064,20 +1267,24 @@
             <div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Move through channels when trace spacing is scrollable</dd></div>
             <div><dt><kbd>Page Up</kbd> <kbd>Page Down</kbd></dt><dd>Move through one screen of channels</dd></div>
             <div><dt><kbd>+</kbd> <kbd>−</kbd></dt><dd>Shorten or lengthen the visible window</dd></div>
+            <div><dt><kbd>F</kbd></dt><dd>Fit every displayed channel in view, or return to the previous spacing</dd></div>
             <div><dt><kbd>A</kbd></dt><dd>Add an annotation at the cursor or selected range</dd></div>
             <div><dt>Right-click</dt><dd>Open annotation and export actions for the current point or range</dd></div>
             <div><dt><kbd>N</kbd> <kbd>P</kbd></dt><dd>Jump to the next or previous annotation</dd></div>
             <div><dt><kbd>Esc</kbd></dt><dd>Clear the cursor or selected range and exit Focus signal</dd></div>
             <div><dt><kbd>Shift</kbd> + scroll</dt><dd>Move through time with a mouse or trackpad</dd></div>
+            <div><dt><kbd>J</kbd> <kbd>K</kbd> <kbd>Y</kbd> <kbd>N</kbd></dt><dd>In HFO review: step between events, then accept or reject them</dd></div>
             <div><dt><kbd>?</kbd></dt><dd>Open this shortcut reference</dd></div>
         </dl>
     </dialog>
 
     <!-- Scripts -->
-    <script src="js/parsers.js?v=20260718-1"></script>
-    <script src="js/analysis.js?v=20260718-1"></script>
-    <script src="js/visualization.js?v=20260718-1"></script>
-    <script src="js/export.js?v=20260718-2"></script>
-    <script src="js/app.js?v=20260811-3"></script>
+    <script src="js/parsers.js?v=20261003-2"></script>
+    <script src="js/analysis.js?v=20261003-2"></script>
+    <script src="js/hfo.js?v=20261003-2"></script>
+    <script src="js/visualization.js?v=20261003-2"></script>
+    <script src="js/export.js?v=20261003-2"></script>
+    <script src="js/app.js?v=20261003-2"></script>
+    <script src="js/hfo-review.js?v=20261003-2"></script>
 </body>
 </html>

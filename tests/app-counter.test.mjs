@@ -76,3 +76,47 @@ test('recording loaders do not report an analysis completion', async () => {
     assert.doesNotMatch(loadFileSource, /recordCompletedAnalysis|reportCompletedAnalysis/);
     assert.doesNotMatch(loadSampleSource, /recordCompletedAnalysis|reportCompletedAnalysis/);
 });
+
+test('real clicks are batched into counted requests and capped per request', async () => {
+    const requests = [];
+    const app = await loadApp({
+        fetch: async (url, options) => {
+            requests.push(JSON.parse(options.body));
+            return { ok: true, status: 200 };
+        }
+    });
+
+    for (let i = 0; i < 3; i++) app.recordClick();
+    assert.equal(requests.length, 0);
+    app.flushClicks();
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].count, 3);
+
+    for (let i = 0; i < 250; i++) app.recordClick();
+    app.flushClicks();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepEqual(requests.slice(1).map(body => body.count), [100, 100, 50]);
+    assert.ok(requests.every(body => Object.keys(body).every(key => key === 'actionId' || key === 'count')));
+    assert.equal(new Set(requests.map(body => body.actionId)).size, requests.length);
+});
+
+test('only trusted clicks are counted', async () => {
+    const listeners = {};
+    const app = await loadApp({
+        document: {
+            addEventListener(name, fn) { listeners[name] = fn; },
+            visibilityState: 'visible'
+        },
+        window: {
+            crypto: webcrypto,
+            location: { protocol: 'https:' },
+            addEventListener() {}
+        }
+    });
+    app.bindInteractionCounter();
+    listeners.click({ isTrusted: false });
+    assert.equal(app.pendingClicks, 0);
+    listeners.click({ isTrusted: true });
+    assert.equal(app.pendingClicks, 1);
+    clearTimeout(app.clickFlushTimer);
+});

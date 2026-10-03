@@ -1,6 +1,7 @@
 import {
     countAnalysisAction,
-    fingerprintClientAddress
+    fingerprintClientAddress,
+    isValidActionCount
 } from '../lib/analysis-counter.mjs';
 
 const ACTION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -75,13 +76,18 @@ export default async function handler(request, response) {
             sendJson(response, 400, { error: 'A valid action ID is required.' });
             return;
         }
+        const count = body?.count === undefined ? 1 : body.count;
+        if (!isValidActionCount(count)) {
+            sendJson(response, 400, { error: 'The action count must be a whole number from 1 to 100.' });
+            return;
+        }
 
         const clientFingerprint = fingerprintClientAddress(getClientAddress(request, actionId));
-        const result = await countAnalysisAction(actionId, clientFingerprint);
+        const result = await countAnalysisAction(actionId, clientFingerprint, count);
 
         if (result.rateLimited) {
             sendJson(response, 429, {
-                error: 'Too many completed analysis actions were reported.',
+                error: 'Too many actions were reported from this client in the past hour.',
                 analyses: result.analyses
             }, { 'Retry-After': '3600' });
             return;

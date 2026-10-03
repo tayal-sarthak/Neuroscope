@@ -134,3 +134,41 @@ test('stats endpoint exposes exact and compact totals', async context => {
         display: '32.1K+'
     });
 });
+
+test('countAnalysisAction adds a batched count atomically and validates it', async context => {
+    let command;
+    context.mock.method(globalThis, 'fetch', async (_url, options) => {
+        command = JSON.parse(options.body);
+        return upstashResponse([1, 32_007, 0]);
+    });
+
+    const result = await countAnalysisAction('550e8400-e29b-41d4-a716-446655440000', 'fingerprint', 25);
+    assert.equal(result.analyses, 32_007);
+    assert.equal(command.at(-1), 25);
+    assert.match(command[1], /INCRBY', KEYS\[1\], amount/);
+    await assert.rejects(() => countAnalysisAction('550e8400-e29b-41d4-a716-446655440000', 'fingerprint', 0));
+    await assert.rejects(() => countAnalysisAction('550e8400-e29b-41d4-a716-446655440000', 'fingerprint', 101));
+});
+
+test('analysis endpoint rejects invalid click counts before storage', async context => {
+    const fetchMock = context.mock.method(globalThis, 'fetch', async () => upstashResponse([1, 31_990, 0]));
+    for (const count of [0, 101, 1.5, '3', null]) {
+        const response = mockResponse();
+        await analysisCompleteHandler({
+            method: 'POST',
+            headers: { origin: 'https://neuroscope.tech', host: 'neuroscope.tech' },
+            body: { actionId: '550e8400-e29b-41d4-a716-446655440000', count }
+        }, response);
+        assert.equal(response.statusCode, 400, `count ${count}`);
+    }
+    assert.equal(fetchMock.mock.callCount(), 0);
+
+    const response = mockResponse();
+    await analysisCompleteHandler({
+        method: 'POST',
+        headers: { origin: 'https://neuroscope.tech', host: 'neuroscope.tech', 'x-vercel-forwarded-for': '192.0.2.10' },
+        body: { actionId: '550e8400-e29b-41d4-a716-446655440000', count: 40 }
+    }, response);
+    assert.equal(response.statusCode, 200);
+    assert.equal(JSON.parse(fetchMock.mock.calls[0].arguments[1].body).at(-1), 40);
+});

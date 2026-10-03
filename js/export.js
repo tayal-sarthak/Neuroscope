@@ -145,6 +145,9 @@ const EEGExport = {
         if (analysisResults.bandPowers) {
             output.bandPowers = analysisResults.bandPowers;
         }
+        if (analysisResults.hfo) {
+            output.hfo = analysisResults.hfo;
+        }
 
         const jsonStr = JSON.stringify(output, null, 2);
         return this.downloadFile(jsonStr, `${this._safeBaseName(eegData.filename)}_export.json`, 'application/json');
@@ -505,12 +508,17 @@ const EEGExport = {
             };
         }
 
+        if (analysisResults.hfo) {
+            output.analysis = output.analysis || {};
+            output.analysis.hfo = analysisResults.hfo;
+        }
+
         const jsonStr = JSON.stringify(output, null, 2);
         const baseName = this._safeBaseName(eegData.filename);
         return this.downloadFile(jsonStr, `${baseName}_matlab.json`, 'application/json');
     },
 
-    exportSessionManifest(eegData, state) {
+    exportSessionManifest(eegData, state, extras = {}) {
         const manifest = {
             schemaVersion: 1,
             exportedAt: new Date().toISOString(),
@@ -538,6 +546,7 @@ const EEGExport = {
                 invertPolarity: Boolean(state.invertPolarity)
             },
             annotations: state.annotations || [],
+            hfoReview: extras.hfoReview || null,
             analysisHistory: state.analysisHistory || [],
             analysesAvailable: Object.keys(state.analysisResults || {})
         };
@@ -563,12 +572,13 @@ const EEGExport = {
         return this.downloadFile(rows.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_annotations.csv`, 'text/csv;charset=utf-8');
     },
 
-    exportBIDSEventsTSV(eegData, annotations) {
-        const rows = ['onset\tduration\ttrial_type\tchannel\tdescription\texclude_from_analysis\tsignal_state\tmontage\tfilter'];
-        const sorted = annotations.slice().sort((a, b) => (a.onset ?? a.time ?? 0) - (b.onset ?? b.time ?? 0));
-        for (const annotation of sorted) {
-            rows.push([
-                Number(annotation.onset ?? annotation.time ?? 0).toFixed(3),
+    exportBIDSEventsTSV(eegData, annotations, hfoEvents = [], hfoRun = null) {
+        const header = 'onset\tduration\ttrial_type\tchannel\tdescription\texclude_from_analysis\tsignal_state\tmontage\tfilter';
+        const rows = [];
+        for (const annotation of annotations) {
+            const onset = Number(annotation.onset ?? annotation.time ?? 0);
+            rows.push([onset, [
+                onset.toFixed(3),
                 Number(annotation.duration || 0).toFixed(3),
                 this._tsvCell(annotation.type),
                 this._tsvCell(annotation.channels?.join('|') || 'n/a'),
@@ -577,9 +587,143 @@ const EEGExport = {
                 this._tsvCell(annotation.workspaceSnapshot?.signalState),
                 this._tsvCell(annotation.workspaceSnapshot?.montage),
                 this._tsvCell(annotation.workspaceSnapshot?.filter?.description)
-            ].join('\t'));
+            ].join('\t')]);
         }
-        return this.downloadFile(rows.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_events.tsv`, 'text/tab-separated-values;charset=utf-8');
+        for (const event of hfoEvents) {
+            if (event.source !== 'reviewer' && event.status !== 'accepted') continue;
+            rows.push([event.onset, [
+                event.onset.toFixed(4),
+                (event.offset - event.onset).toFixed(4),
+                this._tsvCell(this.hfoTrialType(event, hfoRun)),
+                this._tsvCell(event.channel),
+                this._tsvCell(event.source === 'reviewer'
+                    ? `Marked by hand during NeuroScope HFO review (${event.label})`
+                    : `${hfoRun?.detectorLabel || 'Detector'} candidate accepted on review`),
+                event.source === 'reviewer' && event.label === 'artifact' ? 'true' : 'false',
+                'raw',
+                'as recorded',
+                this._tsvCell(`band-pass ${event.band.low}-${event.band.high} Hz`)
+            ].join('\t')]);
+        }
+        rows.sort((a, b) => a[0] - b[0]);
+        return this.downloadFile([header, ...rows.map(row => row[1])].join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_events.tsv`, 'text/tab-separated-values;charset=utf-8');
+    },
+
+    hfoTrialType(event, run) {
+        if (event.source === 'reviewer' && event.label === 'artifact') return 'artifact';
+        if (event.source === 'reviewer' && event.label === 'uncertain') return 'hfo_uncertain';
+        const fromRun = event.source === 'detector' && run && event.runId === run.id;
+        const preset = event.band?.key === 'ripple' ? { low: 80, high: 250 }
+            : event.band?.key === 'fast_ripple' ? { low: 250, high: 500 } : null;
+        if (event.features?.flags?.includes('band-limited') || (fromRun && run.bandLimited)
+            || (preset && (event.band.low > preset.low || event.band.high < preset.high))) return 'hfo_band_limited';
+        if (event.features?.classification?.cooccurrence === 'ripple_and_fast_ripple') return event.band?.key === 'fast_ripple' ? 'fast_ripple_with_ripple' : 'ripple_with_fast_ripple';
+        if (event.band?.key === 'ripple') return 'ripple';
+        if (event.band?.key === 'fast_ripple') return 'fast_ripple';
+        return 'hfo';
+    },
+
+    exportHFOEventsCSV(eegData, events, run) {
+        const columns = [
+            'event_id', 'channel', 'onset_s', 'offset_s', 'duration_ms', 'source', 'decision', 'label', 'trial_type',
+            'band_low_hz', 'band_high_hz', 'peak_frequency_hz', 'cycles', 'peak_amplitude_uv', 'filtered_peak_to_peak_uv',
+            'raw_peak_to_peak_uv', 'above_background_sd', 'snr', 'flags', 'detector', 'detector_settings',
+            'electrodes', 'line_notches_hz', 'sample_rate_hz', 'reviewed_at',
+            'found_by', 'agreement', 'checks', 'promoted_from', 'recording_state',
+            'class', 'spike_associated', 'spike_lag_ms', 'cooccurrence', 'artifact_hints', 'spectral_entropy', 'cycle_fano'
+        ];
+        const number = (value, digits) => Number.isFinite(value) ? value.toFixed(digits) : '';
+        const describeParams = params => Object.entries(params || {}).map(([key, value]) => `${key}=${value}`).join(';');
+        let settings = run ? describeParams(run.params) : '';
+        if (run?.consensus?.members?.length) {
+            settings += `;${run.consensus.members.map(member => `${member.detector}:{${describeParams(member.params)}}`).join(';')}`;
+        }
+        const formatCheck = item => {
+            const value = Number.isFinite(item.value) ? (Math.abs(item.value) >= 100 ? item.value.toFixed(0) : item.value.toFixed(2)) : 'n/a';
+            return `${item.label}=${value}${item.unit ? ` ${item.unit}` : ''} [${item.pass ? 'pass' : 'fail'}]`;
+        };
+        const rows = [columns.join(',')];
+        for (const event of events.slice().sort((a, b) => a.onset - b.onset)) {
+            const features = event.features || {};
+            const fromRun = event.source === 'detector' && run && event.runId === run.id;
+            rows.push([
+                this._csvCell(event.id),
+                this._csvCell(event.channel),
+                event.onset.toFixed(4),
+                event.offset.toFixed(4),
+                ((event.offset - event.onset) * 1000).toFixed(1),
+                event.source,
+                event.source === 'reviewer' ? 'marked' : event.status,
+                event.label,
+                this._csvCell(this.hfoTrialType(event, run)),
+                event.band.low,
+                event.band.high,
+                number(features.peakFrequency, 1),
+                number(features.cycles, 1),
+                number(features.peakAmplitude, 3),
+                number(features.peakToPeak, 3),
+                number(features.rawPeakToPeak, 2),
+                number(features.backgroundRatio, 2),
+                number(features.snr, 2),
+                this._csvCell((features.flags || []).join('|')),
+                this._csvCell(fromRun ? run.detectorLabel : event.source === 'reviewer' ? 'manual' : ''),
+                this._csvCell(fromRun ? settings : ''),
+                this._csvCell(fromRun ? run.electrodes : ''),
+                this._csvCell(fromRun ? (run.notches || []).join('|') : ''),
+                eegData.sampleRate,
+                this._csvCell(event.reviewedAt || ''),
+                this._csvCell((features.foundBy || []).join('|')),
+                Number.isFinite(features.agreement) ? features.agreement : '',
+                this._csvCell((features.criteria || []).map(formatCheck).join(' | ')),
+                this._csvCell(event.promotedFrom ? event.promotedFrom.reason : ''),
+                this._csvCell(run?.recordingState || 'unknown'),
+                this._csvCell(features.classification?.primary || ''),
+                features.classification?.spike ? String(Boolean(features.classification.spike.associated)) : '',
+                Number.isFinite(features.classification?.spike?.lagMs) ? features.classification.spike.lagMs : '',
+                this._csvCell(features.classification?.cooccurrence || ''),
+                this._csvCell((features.classification?.artifacts || []).map(item => `${item.kind}: ${item.reason}`).join('|')),
+                number(features.spectralEntropy, 3),
+                number(features.cycleFano, 3)
+            ].join(','));
+        }
+        return this.downloadFile(rows.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_hfo_events.csv`, 'text/csv;charset=utf-8');
+    },
+
+    exportHFOChannelSummaryCSV(eegData, rows, run) {
+        const header = [
+            'channel', 'channel_index', 'analysed_min', 'candidates', 'accepted', 'rejected', 'to_review', 'hand_marked_hfo',
+            'hand_marked_artifact', 'confirmed', 'confirmed_rate_per_min', 'confirmed_rate_low95', 'confirmed_rate_high95',
+            'candidate_rate_per_min', 'reviewed_share', 'detector', 'band_low_hz', 'band_high_hz', 'band_limited', 'recording_state',
+            'spike_rate_per_min', 'spike_hfo_candidates'
+        ];
+        const lines = [header.join(',')];
+        for (const row of rows) {
+            lines.push([
+                this._csvCell(row.channel),
+                row.channelIndex,
+                row.minutes.toFixed(2),
+                row.candidates,
+                row.accepted,
+                row.rejected,
+                row.pending,
+                row.marked,
+                row.artifact,
+                row.confirmed,
+                row.confirmedRate.toFixed(4),
+                row.confirmedLow.toFixed(4),
+                row.confirmedHigh.toFixed(4),
+                row.candidateRate.toFixed(4),
+                row.reviewedShare === null ? '' : row.reviewedShare.toFixed(3),
+                this._csvCell(run?.detectorLabel || ''),
+                run?.band?.low ?? '',
+                run?.band?.high ?? '',
+                run?.bandLimited ? 'true' : 'false',
+                this._csvCell(run?.recordingState || 'unknown'),
+                Number.isFinite(row.spikeRate) ? row.spikeRate.toFixed(3) : '',
+                row.spikeCandidates ?? ''
+            ].join(','));
+        }
+        return this.downloadFile(lines.join('\n') + '\n', `${this._safeBaseName(eegData.filename)}_hfo_channel_rates.csv`, 'text/csv;charset=utf-8');
     },
 
     exportBIDSChannelsTSV(eegData, badChannels = []) {

@@ -61,6 +61,7 @@ temp/
 # Repository-local private scratch material
 phonetest.py
 private/
+/deleted/
 /.*/
 
 # Keep the public repository README only; ignore every other Markdown document.

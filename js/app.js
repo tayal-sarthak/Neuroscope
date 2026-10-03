@@ -10,6 +10,8 @@ const App = {
         tracePalette: 'channel',
         viewerGrid: 'standard',
         viewerDensity: 'readable',
+        viewerDensityBeforeFit: null,
+        viewerViewportHeight: null,
         viewerFocusMode: false,
         invertPolarity: false,
         timeWindow: 10,
@@ -38,6 +40,7 @@ const App = {
     },
 
     init() {
+        this.bindInteractionCounter();
         this.bindEvents();
         this.bindSidebarControls();
         this.bindViewerDisplayControls();
@@ -51,6 +54,7 @@ const App = {
         this.bindHistoryControls();
         this.bindViewerInteractions();
         this.bindKeyboardHelp();
+        this.bindHFOControls();
         this.finishInitialLoad();
     },
 
@@ -116,9 +120,9 @@ const App = {
         return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
     },
 
-    async reportCompletedAnalysis(actionId) {
+    async reportCompletedAnalysis(actionId, count = 1) {
         if (!actionId || window.location.protocol === 'file:') return;
-        const requestBody = JSON.stringify({ actionId });
+        const requestBody = JSON.stringify(count === 1 ? { actionId } : { actionId, count });
 
         for (let attempt = 0; attempt < 2; attempt++) {
             let shouldRetry = false;
@@ -145,6 +149,44 @@ const App = {
         void this.reportCompletedAnalysis(this.createAnalysisActionId());
     },
 
+    // every real click also counts; clicks are batched so a busy session sends a few small requests
+    clickBatchLimit: 100,
+    clickFlushDelayMs: 4000,
+    pendingClicks: 0,
+    clickFlushTimer: null,
+
+    bindInteractionCounter() {
+        document.addEventListener('click', (event) => {
+            if (event.isTrusted) this.recordClick();
+        }, { capture: true, passive: true });
+        const flushOnExit = () => this.flushClicks();
+        window.addEventListener('pagehide', flushOnExit);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') flushOnExit();
+        });
+    },
+
+    recordClick() {
+        this.pendingClicks++;
+        if (this.pendingClicks >= this.clickBatchLimit) {
+            this.flushClicks();
+            return;
+        }
+        if (this.clickFlushTimer === null) {
+            this.clickFlushTimer = setTimeout(() => this.flushClicks(), this.clickFlushDelayMs);
+        }
+    },
+
+    flushClicks() {
+        clearTimeout(this.clickFlushTimer);
+        this.clickFlushTimer = null;
+        while (this.pendingClicks > 0) {
+            const count = Math.min(this.pendingClicks, this.clickBatchLimit);
+            this.pendingClicks -= count;
+            void this.reportCompletedAnalysis(this.createAnalysisActionId(), count);
+        }
+    },
+
 
     bindEvents() {
         const dropZone = document.getElementById('drop-zone');
@@ -154,6 +196,11 @@ const App = {
         const logoBtn = document.getElementById('logo-btn');
 
         dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            fileInput.click();
+        });
 
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
@@ -282,13 +329,11 @@ const App = {
         const focusButton = document.getElementById('viewer-focus');
 
         densitySelect.addEventListener('change', (event) => {
-            const density = event.target.value;
-            if (!['readable', 'compact', 'fit'].includes(density)) return;
-            this.state.viewerDensity = density;
-            this.state.viewerHover = null;
-            document.getElementById('viewer-hover-tooltip').hidden = true;
-            this.closeViewerContextMenu();
-            this.refreshSignalViewer();
+            this.setViewerDensity(event.target.value);
+        });
+
+        document.getElementById('viewer-coverage-action').addEventListener('click', () => {
+            this.toggleViewerChannelFit();
         });
 
         focusButton.addEventListener('click', () => {
@@ -318,6 +363,100 @@ const App = {
         });
     },
 
+    setViewerDensity(density, options = {}) {
+        if (!['readable', 'compact', 'fit'].includes(density)) return;
+        this.state.viewerDensity = density;
+        this.state.viewerDensityBeforeFit = density === 'fit' ? (options.returnTo || null) : null;
+        document.getElementById('viewer-density').value = density;
+        this.state.viewerHover = null;
+        document.getElementById('viewer-hover-tooltip').hidden = true;
+        this.closeViewerContextMenu();
+        this.refreshSignalViewer();
+    },
+
+    toggleViewerChannelFit() {
+        if (!this.state.eegData) return;
+        if (this.state.viewerDensity === 'fit') {
+            this.setViewerDensity(this.state.viewerDensityBeforeFit || 'readable');
+        } else {
+            this.setViewerDensity('fit', { returnTo: this.state.viewerDensity });
+        }
+    },
+
+    updateViewerCoverage() {
+        const strip = document.getElementById('viewer-coverage');
+        const text = document.getElementById('viewer-coverage-text');
+        const action = document.getElementById('viewer-coverage-action');
+        const display = this.state.viewerDisplay;
+        if (!strip || !display || !this.state.eegData) return;
+
+        const total = display.channels.length;
+        const recordedTotal = this.state.eegData.channelLabels.length;
+        const deselected = this.state.currentMontage === 'bipolar' ? 0 : recordedTotal - this.state.selectedChannels.length;
+        const densityNames = { readable: 'readable', compact: 'compact' };
+        const parts = [];
+        let state = 'complete';
+        action.hidden = true;
+
+        if (total === 0) {
+            state = 'empty';
+            parts.push(['strong', 'No channels displayed'], ['span', 'Select channels in the sidebar']);
+        } else {
+            const scroll = document.getElementById('viewer-canvas-scroll');
+            const canvas = document.getElementById('viewer-canvas');
+            const canvasHeight = parseFloat(canvas.style.height) || canvas.clientHeight;
+            const geometry = EEGVisualization.getSignalPlotGeometry(1, canvasHeight);
+            const rowHeight = geometry.height / total;
+            const viewportHeight = Math.min(canvasHeight, this.state.viewerViewportHeight || scroll.clientHeight);
+            const viewTop = Math.min(scroll.scrollTop, Math.max(0, canvasHeight - viewportHeight));
+            const viewBottom = viewTop + viewportHeight;
+            let first = -1;
+            let last = -1;
+            for (let row = 0; row < total; row++) {
+                const top = geometry.top + row * rowHeight;
+                const overlap = Math.min(top + rowHeight, viewBottom) - Math.max(top, viewTop);
+                if (overlap >= rowHeight * 0.6) {
+                    if (first < 0) first = row;
+                    last = row;
+                }
+            }
+            const shown = first < 0 ? 0 : last - first + 1;
+            const label = row => display.labels[display.channels[row]];
+
+            if (shown < total) {
+                state = 'partial';
+                const above = Math.max(0, first);
+                const below = total - 1 - Math.max(last, first);
+                const where = [above ? `${above} above` : '', below ? `${below} below` : ''].filter(Boolean).join(' · ');
+                parts.push(
+                    ['strong', shown ? `Channels ${first + 1}–${last + 1} of ${total} in view` : `0 of ${total} channels in view`],
+                    ['span', shown ? `${label(first)} to ${label(last)} · ${where}` : where]
+                );
+                action.textContent = `Fit all ${total}`;
+                action.setAttribute('aria-label', `Fit all ${total} channels in view`);
+                action.hidden = false;
+            } else {
+                const scope = deselected > 0 ? `All ${total} selected channels in view` : `All ${total} channels in view`;
+                parts.push(['strong', scope]);
+                if (deselected > 0) parts.push(['span', `${deselected} deselected in the sidebar`]);
+                if (this.state.viewerDensity === 'fit' && this.state.viewerDensityBeforeFit) {
+                    state = 'fitted';
+                    const previous = densityNames[this.state.viewerDensityBeforeFit] || 'readable';
+                    action.textContent = `Return to ${previous} spacing`;
+                    action.removeAttribute('aria-label');
+                    action.hidden = false;
+                }
+            }
+        }
+
+        strip.dataset.state = state;
+        text.replaceChildren(...parts.map(([tag, value]) => {
+            const element = document.createElement(tag);
+            element.textContent = value;
+            return element;
+        }));
+    },
+
     getViewerCanvasSizing(channelCount) {
         const isMobile = window.innerWidth <= 768;
         let viewportHeight = isMobile ? 350 : 500;
@@ -326,10 +465,12 @@ const App = {
             const main = document.getElementById('main-content');
             const toolbar = document.querySelector('#tab-viewer > .viewer-toolbar');
             const overview = document.querySelector('#tab-viewer > .viewer-overview');
+            const coverage = document.getElementById('viewer-coverage');
             const selectionBar = document.getElementById('viewer-selection-bar');
             const selectionHeight = selectionBar.hidden ? 0 : selectionBar.offsetHeight + 10;
             const reservedHeight = (toolbar?.offsetHeight || 0)
                 + (overview?.offsetHeight || 0)
+                + (coverage?.offsetHeight || 0)
                 + selectionHeight
                 + 84;
             viewportHeight = Math.max(isMobile ? 280 : 340, Math.min(1000, (main?.clientHeight || window.innerHeight) - reservedHeight));
@@ -755,7 +896,7 @@ const App = {
 
     updateMobileNav(tab) {
         const primaryTabs = ['viewer', 'spectrum', 'bands', 'filter'];
-        const moreTabs = ['timefreq', 'stats', 'topo', 'export'];
+        const moreTabs = ['hfo', 'timefreq', 'stats', 'topo', 'export'];
 
         document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
             const btnTab = btn.getAttribute('data-tab');
@@ -1199,6 +1340,7 @@ const App = {
             this.state.viewerHover = null;
             tooltip.hidden = true;
             this.closeViewerContextMenu();
+            this.updateViewerCoverage();
             this.debounce('viewer-channel-scroll', () => this.refreshSignalOverlay(), 16);
         });
 
@@ -1296,6 +1438,9 @@ const App = {
             } else if (event.key.toLowerCase() === 'p') {
                 event.preventDefault();
                 this.jumpToAnnotation(-1);
+            } else if (event.key.toLowerCase() === 'f' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+                event.preventDefault();
+                this.toggleViewerChannelFit();
             } else if (event.key === '+' || event.key === '=') {
                 event.preventDefault();
                 document.getElementById('viewer-zoom-in').click();
@@ -1625,7 +1770,7 @@ const App = {
 
         document.getElementById('export-session-json').addEventListener('click', event => {
             if (!this.state.eegData) return;
-            this.runExport(event.currentTarget, () => EEGExport.exportSessionManifest(this.state.eegData, this.state), 'Review session download started');
+            this.runExport(event.currentTarget, () => EEGExport.exportSessionManifest(this.state.eegData, this.state, { hfoReview: this.getHFOSessionData() }), 'Review session download started');
         });
         const sessionInput = document.getElementById('import-session-input');
         document.getElementById('import-session-json').addEventListener('click', () => sessionInput.click());
@@ -1645,11 +1790,20 @@ const App = {
         });
 
         document.getElementById('export-bids-events').addEventListener('click', event => {
-            if (!this.state.eegData || this.state.annotations.length === 0) {
-                this.showToast('Add at least one point or range annotation before downloading BIDS events.', 'info');
+            const hfoEvents = (this.state.hfo?.events || []).filter(item => item.source === 'reviewer' || item.status === 'accepted');
+            if (!this.state.eegData || (this.state.annotations.length === 0 && hfoEvents.length === 0)) {
+                this.showToast('Add an annotation or accept an HFO event before downloading BIDS events.', 'info');
                 return;
             }
-            this.runExport(event.currentTarget, () => EEGExport.exportBIDSEventsTSV(this.state.eegData, this.state.annotations), 'BIDS events TSV download started');
+            this.runExport(event.currentTarget, () => EEGExport.exportBIDSEventsTSV(this.state.eegData, this.state.annotations, hfoEvents, this.state.hfo?.run), 'BIDS events TSV download started');
+        });
+
+        document.getElementById('export-hfo-csv').addEventListener('click', event => {
+            if (!this.state.eegData || !this.state.hfo?.events.length) {
+                this.showToast('Run HFO detection or mark an event before downloading HFO events.', 'info');
+                return;
+            }
+            this.runExport(event.currentTarget, () => EEGExport.exportHFOEventsCSV(this.state.eegData, this.state.hfo.events, this.state.hfo.run), 'HFO events CSV download started');
         });
 
         document.getElementById('export-bids-channels').addEventListener('click', event => {
@@ -1727,13 +1881,19 @@ const App = {
             if (!labelsMatch || Number(recording.sampleRate) !== Number(current.sampleRate)) {
                 throw new Error('The channel labels or sampling rate do not match the open recording.');
             }
+            if ((recording.filename && recording.filename !== current.filename)
+                || (recording.numSamples !== undefined && Number(recording.numSamples) !== current.numSamples)
+                || (recording.duration !== undefined && Math.abs(Number(recording.duration) - current.duration) > 1 / current.sampleRate)) {
+                throw new Error('This review session belongs to a different recording. Open its original recording first.');
+            }
 
             const workspace = manifest.workspace;
-            const selected = (workspace.selectedChannels || []).map(item => Number(item.index)).filter(index => Number.isInteger(index) && index >= 0 && index < current.channelLabels.length);
-            const bad = (workspace.badChannels || []).map(item => Number(item.index)).filter(index => Number.isInteger(index) && index >= 0 && index < current.channelLabels.length);
+            const selected = (Array.isArray(workspace.selectedChannels) ? workspace.selectedChannels : []).map(item => Number(item?.index ?? NaN)).filter(index => Number.isInteger(index) && index >= 0 && index < current.channelLabels.length);
+            const bad = (Array.isArray(workspace.badChannels) ? workspace.badChannels : []).map(item => Number(item?.index ?? NaN)).filter(index => Number.isInteger(index) && index >= 0 && index < current.channelLabels.length);
             this.state.selectedChannels = selected.length ? Array.from(new Set(selected)).sort((a, b) => a - b) : [];
             this.state.badChannels = Array.from(new Set(bad)).sort((a, b) => a - b);
             this.state.annotations = manifest.annotations.filter(annotation => {
+                if (!annotation || typeof annotation !== 'object') return false;
                 const onset = Number(annotation.onset);
                 const duration = Number(annotation.duration || 0);
                 return Number.isFinite(onset) && Number.isFinite(duration) && onset >= 0 && duration >= 0 && onset + duration <= current.duration;
@@ -1744,6 +1904,12 @@ const App = {
                 duration: Number(annotation.duration || 0)
             })).sort((a, b) => a.onset - b.onset);
 
+            this.state.filteredData = null;
+            this.state.filterPreviewData = null;
+            this.state.activeFilter = null;
+            this.updateFilterStatus(null);
+            delete this.state.analysisResults.qualityTimeline;
+
             const amplitude = Math.max(0.1, Math.min(10, Number(workspace.amplitudeScale) || 1));
             const windowSize = Math.max(0.5, Math.min(current.duration, Number(workspace.timeWindow) || 10));
             this.state.amplitudeScale = amplitude;
@@ -1751,6 +1917,7 @@ const App = {
             this.state.tracePalette = ['channel', 'blue', 'ink'].includes(workspace.tracePalette) ? workspace.tracePalette : 'channel';
             this.state.viewerGrid = ['standard', 'fine', 'off'].includes(workspace.viewerGrid) ? workspace.viewerGrid : 'standard';
             this.state.viewerDensity = ['readable', 'compact', 'fit'].includes(workspace.viewerDensity) ? workspace.viewerDensity : 'readable';
+            this.state.viewerDensityBeforeFit = null;
             this.state.invertPolarity = Boolean(workspace.invertPolarity);
             document.getElementById('amplitude-scale').value = amplitude;
             document.getElementById('amplitude-value').textContent = `${amplitude.toFixed(1)}×`;
@@ -1771,11 +1938,13 @@ const App = {
             this.syncBadChannelUI();
             this.renderAnnotations();
             this.renderAnalysisHistory();
+            const hfoEvents = this.restoreHFOSession(manifest.hfoReview);
             this.refreshSignalViewer();
             const filteredNotice = workspace.processingState === 'filtered'
                 ? ' Filtered samples are not stored in review sessions, so the raw signal remains active.'
                 : '';
-            this.showToast(`Review restored: ${this.state.annotations.length} ${this.state.annotations.length === 1 ? 'annotation' : 'annotations'} and ${this.state.badChannels.length} ${this.state.badChannels.length === 1 ? 'bad channel' : 'bad channels'}.${filteredNotice}`, 'success');
+            const hfoNotice = hfoEvents ? ` and ${hfoEvents} HFO ${hfoEvents === 1 ? 'event' : 'events'}` : '';
+            this.showToast(`Review restored: ${this.state.annotations.length} ${this.state.annotations.length === 1 ? 'annotation' : 'annotations'}, ${this.state.badChannels.length} ${this.state.badChannels.length === 1 ? 'bad channel' : 'bad channels'}${hfoNotice}.${filteredNotice}`, 'success');
         } catch (error) {
             this.showToast(`Review session could not be restored: ${error.message}`, 'error');
         }
@@ -1865,6 +2034,7 @@ const App = {
         this.state.reviewPanel = 'quality';
         this.state.reviewDockExpanded = true;
         this.state.viewerDensity = 'readable';
+        this.state.viewerDensityBeforeFit = null;
         document.getElementById('viewer-density').value = this.state.viewerDensity;
         this.setViewerFocusMode(false, { refresh: false });
         document.getElementById('montage-select').value = 'monopolar';
@@ -1893,6 +2063,7 @@ const App = {
         this.populateChannelDropdown('timefreq-channel', data.channelLabels);
 
         this.populateChannelDropdown('filter-channel', data.channelLabels);
+        this.resetHFOForRecording();
 
         // time controls
         const maxTime = Math.max(0, data.duration - 0.5);
@@ -1927,6 +2098,7 @@ const App = {
 
         document.getElementById('upload-section').classList.add('hidden');
         document.getElementById('dashboard').classList.add('visible');
+        document.body.classList.add('has-recording');
 
         document.getElementById('mobile-bottom-nav').classList.add('visible');
 
@@ -2181,6 +2353,8 @@ const App = {
         this.closeMobileSidebar();
         if (tab === 'viewer' && this.state.isLoaded) {
             requestAnimationFrame(() => this.refreshSignalViewer());
+        } else if (tab === 'hfo' && this.state.isLoaded) {
+            requestAnimationFrame(() => this.refreshHFOView());
         }
     },
 
@@ -2240,6 +2414,7 @@ const App = {
         const viewerSizing = this.getViewerCanvasSizing(displayChannels.length);
         const viewerScroll = document.getElementById('viewer-canvas-scroll');
         viewerScroll.style.maxHeight = `${viewerSizing.viewportHeight}px`;
+        this.state.viewerViewportHeight = viewerSizing.viewportHeight;
         viewerScroll.dataset.scrollable = String(viewerSizing.scrollable);
 
         EEGVisualization.drawSignals(canvas, {
@@ -2259,6 +2434,7 @@ const App = {
             height: viewerSizing.canvasHeight
         });
         if (this.state.viewerDensity === 'fit') viewerScroll.scrollTop = 0;
+        this.updateViewerCoverage();
         const densityLabels = {
             readable: 'Readable trace spacing',
             compact: 'Compact trace spacing',
@@ -2294,6 +2470,7 @@ const App = {
         this.refreshSignalOverlay();
         this.updateWorkspaceStatus();
         this.updateExportEstimate();
+        if (this.state.activeTab === 'hfo') this.refreshHFOView();
     },
 
     async scanRecordingQuality() {
@@ -3070,6 +3247,7 @@ const App = {
         this.state.reviewPanel = 'quality';
         this.state.reviewDockExpanded = true;
         this.state.viewerDensity = 'readable';
+        this.state.viewerDensityBeforeFit = null;
         document.getElementById('viewer-density').value = this.state.viewerDensity;
         this.setViewerFocusMode(false, { refresh: false });
         this.state.annotations = [];
@@ -3085,10 +3263,12 @@ const App = {
         this.state.isLoaded = false;
         this.state.selectedChannels = [];
         this.state.badChannels = [];
+        this.resetHFOForRecording();
         window.scrollTo(0, 0);
 
         document.getElementById('upload-section').classList.remove('hidden');
         document.getElementById('dashboard').classList.remove('visible');
+        document.body.classList.remove('has-recording');
         document.getElementById('main-nav').classList.remove('visible');
         document.getElementById('file-badge').classList.remove('visible');
         document.getElementById('new-file-btn').classList.remove('visible');
@@ -3116,6 +3296,7 @@ const App = {
     refreshCurrentView() {
         switch (this.state.activeTab) {
             case 'viewer': this.refreshSignalViewer(); break;
+            case 'hfo': this.refreshHFOView(); break;
         }
     },
 

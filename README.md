@@ -4,7 +4,7 @@ NeuroScope is aimed at researchers who lack access to expensive EEG visualizatio
 
 [![EEG analyses](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fneuroscope.tech%2Fapi%2Fstats&query=%24.display&label=EEG%20analyses&color=0f766e&cacheSeconds=300)](https://neuroscope.tech/)
 
-NeuroScope is a complete local workspace for exploring, reviewing, analyzing, and exporting EEG data. Open the HTML file in any modern browser and start working immediately. Version 1.2.1
+NeuroScope is a complete local workspace for exploring, reviewing, analyzing, and exporting EEG data. Open the HTML file in any modern browser and start working immediately. Version 1.3.0
 
 ## Gallery
 These images were taken using patient CHB02_16.edf from the CHB-MIT database used on the filtering site, [neuroscope.tech](https://neuroscope.tech/), where the data can be found precisely here: https://physionet.org/content/chbmit/1.0.0/chb02/#files-panel.
@@ -57,6 +57,7 @@ The Signal Viewer is the core of NeuroScope. It displays multichannel EEG record
 
 **Key Features**
 - Three trace-spacing modes: readable scrolling, compact scrolling, or every selected channel fitted into one view
+- A channel-coverage strip above the plot that always states which channels are in view (for example, "Channels 1–17 of 23 in view · 6 below") and offers **Fit all** when some are scrolled out of sight; press **F** to fit every channel or return to the previous spacing
 - A reversible Focus view that gives the signal more screen space without changing the review state
 - Real-time amplitude scaling (0.1x to 10x magnification)
 - Flexible time window control from 0.5 seconds through the complete recording
@@ -84,6 +85,63 @@ The Signal Viewer is the core of NeuroScope. It displays multichannel EEG record
 - Review workflow history, undo supported state changes, restore the raw signal, and export the history as JSON
 
 Amplitude, time, color, grid, and polarity controls are in the sidebar. Montage, trace spacing, and Focus controls are beside the waveform. The status bar identifies whether the active signal is raw or filtered.
+
+### HFO review
+
+Detect candidate high-frequency oscillations (HFOs), then accept, reject, or hand-mark them. The detector proposes; the reviewer decides. Every event keeps its decision, its measurements, and the settings that produced it.
+
+HFO review is for research use only and is not validated for clinical decisions. In the only randomised trial of HFO-guided epilepsy surgery, it was not non-inferior to spike-guided surgery (Zweiphenning et al. 2022). Physiological ripples are common in healthy cortex, detectors disagree with each other by orders of magnitude, and experts agree only modestly on single events. The tab therefore states its assumptions next to every result.
+
+These implementations adapt the cited methods; they are not exact reproductions of the published detectors. In particular, the Zurich implementation substitutes a Butterworth filter and quiet-signal baseline for the published FIR filter and entropy baseline. The automated tests check synthetic bursts and review/export behavior; NeuroScope's detector accuracy has not been validated against expert-labelled recordings. Detection currently runs on the main thread and yields between channels, so long recordings can still pause the interface while a channel is processed. HFO overlays are shown in the HFO review tab; they are not shown in Signals.
+
+**Detectors** (all parameters are editable under **Detector settings**, and each shows its default):
+
+- **Hilbert + spectral check (Zurich)**, the default: zero-phase band-pass, Hilbert envelope, a per-epoch threshold at the 99.5th percentile of a quiet-signal baseline, 20–200 ms duration, at least four oscillation peaks, and the Burnos 2014 spectral check that rejects candidates without a spectral peak separated from lower frequencies. Scalp recordings also apply the Cserpan 2021 amplitude ceiling (20 µV) and signal-to-noise test. Burnos et al. 2014; Fedele et al. 2017; Cserpan et al. 2021.
+- **Short-time energy (Staba)**: 3 ms RMS above mean + 5 SD per 600 s epoch, longer than 6 ms, with at least six rectified peaks above mean + 3 SD, as defaulted in RIPPLELAB and PyHFO. Staba et al. 2002.
+- **Sub-band RMS (von Ellenrieder)**: 10 Hz sub-bands, RMS over four cycles against a slowly adapting background, with wideband/narrowband and minimum-RMS checks. Designed for scalp EEG at modest sampling rates. von Ellenrieder et al. 2012.
+- **Hilbert envelope (Crépon)**: envelope above mean + 5 SD for at least 10 ms, as in RIPPLELAB. Crépon et al. 2010.
+- **Short line-length (Gardner)**: first-differenced signal, 5 ms line length above the 97.5th percentile of each 3-minute epoch for at least 12 ms, as in RIPPLELAB. Sensitive by design. Gardner et al. 2007.
+- **Baseline entropy + gamma (MNI)**: baseline found from wavelet-entropy segments, threshold at a high percentile of a gamma distribution fitted to the baseline energy, or an iterative percentile when too little baseline exists. Zelmann et al. 2012.
+- **Cycle and frequency dominance (CS)**: sub-band amplitude, cycle-count and dominance features scored against gamma-distributed bounds, using the constants published with epycom. Cimbálník et al. 2018.
+- **Spike-ripple (Chu)**: 100–300 Hz ripples kept only when a spike coincides with them. It needs at least 750 Hz sampling and is disabled below that. Chu et al. 2017.
+- **Consensus**: runs the chosen detectors and keeps the moments when at least *k* of them are active at once. Each event records which detectors agreed and what each measured.
+
+Detectors that cannot run on the loaded recording are labelled in the menu and cannot be started.
+
+**Bands and classes.** Ripple, fast ripple, a custom band, or ripple and fast ripple run separately. A ripple overlapped by a fast ripple on the same channel is labelled ripple + fast ripple (Fedele et al. 2017). Spikes are detected on each channel (Janča et al. 2015). Each candidate gets an advisory class: HFO, spike-associated, possible filtered transient ("false ripple"), or artifact (clipping, common-mode, line noise, muscle). Classes guide review; they never remove candidates.
+
+**Sampling-rate rules.** The usable band ends at 0.4 × the sampling rate, where anti-alias filters usually begin to roll off. Ripples (80–250 Hz) need 625 Hz for the full band, and 1000 Hz or more is recommended. Below that the band is clipped and labelled band-limited. At 256 Hz, as in the CHB-MIT sample, only 80–102 Hz remains, so candidates are explicitly exploratory fast activity, not ripples. Detection is disabled when less than 20 Hz of band would remain. Fast ripples (250–500 Hz) need 1250 Hz, and 2000 Hz is recommended.
+
+**Line noise.** NeuroScope detects 50 or 60 Hz line noise from harmonic peaks. It notches harmonics, and their aliases, that fall inside the band and are actually present. Candidates whose peak sits on a present line harmonic are flagged.
+
+**Warnings.** The setup note also covers:
+- an unknown or awake recording state;
+- recordings shorter than 10 minutes;
+- EDF files whose header does not document the acquisition filter.
+
+Channels that duplicate another channel, or its inverse, are skipped so that events are not counted twice.
+
+**Reviewing.**
+- Candidates appear as dashed boxes on a short-time-base view of the band-passed (or raw) traces. Scale each channel to its own background, or use one µV scale for all channels.
+- Press **J**/**K** to step between events. **Y** accepts and **N** rejects, both advancing to the next candidate. **U** returns an event to review, and **Ctrl/Cmd+Z** undoes the last step.
+- Drag across a trace to mark an event the detector missed. Drag across several rows to mark the same span on each channel. Hand-marked events stay until you delete them; drag their edges to adjust them, and label them HFO, artifact, or uncertain.
+- The inspector shows the selected event as raw, band-passed, and a z-scored Morlet time–frequency map. An isolated blob suggests a real oscillation; a broadband vertical streak suggests a filtered sharp transient (Bénar et al. 2010).
+- Candidates near a sharp transient, on a present line harmonic, or seen simultaneously on most channels are flagged for a closer look, not rejected automatically.
+- Order the list by time, strength, or channel. The order also drives J/K.
+- **Near-misses** shows candidates that failed a criterion, with the rule they failed. Press **M** to promote one to a candidate.
+- **Channel rates** lists events per minute for each channel, with Poisson 95% intervals and spike rates.
+- **Compare markings** scores agreement between two sets of markings, one-to-one per channel:
+  - **Sets you can compare:** your review, the detector candidates, the events each consensus member found, or markings imported from a NeuroScope CSV, a BIDS events TSV, or any CSV with channel and onset columns.
+  - **Scores:** F1, sensitivity and precision with Wilson intervals, two kappa variants with their parameters, and channel-rate correlation.
+- **Methods text** drafts a methods paragraph for the run, covering the items HFO studies are asked to report.
+
+**Exports.**
+- HFO events CSV: decisions, labels, classes, spike association, measured features, flags, which detectors agreed, full detector settings, notches, and timestamps.
+- Channel rates CSV: per-channel counts, rates with intervals, and spike rates.
+- BIDS events TSV: accepted and hand-marked events, with a `channel` column.
+- Review sessions: the run and every decision, so a review can be restored later.
+- Sessions also restore electrode type, line-noise mode, detector parameters, and the review view. Restore checks the recording filename, sample count, duration, labels, and sampling rate when present; these metadata checks are not a signal-content fingerprint. Restoring a session clears any active filter because the session does not contain filtered samples.
+- Data JSON and MATLAB-compatible JSON retain HFO channel statistics by channel index, with labels alongside them, so repeated electrode names do not overwrite measurements.
 
 ### Spectrum
 
@@ -137,13 +195,15 @@ Download your processed data and visualizations in multiple formats.
 - **Spectrum CSV**, frequency and power columns
 - **Statistics CSV**, all computed measures
 - **Annotations CSV**, point and duration observations with channel associations
-- **BIDS events TSV**, onset, duration, trial type, channel, and description fields
+- **HFO events CSV**, every detector candidate and hand-marked event with decisions, classes, measurements, flags, and detector settings
+- **HFO channel rates CSV**, per-channel event counts, rates per minute with 95% intervals, and spike rates
+- **BIDS events TSV**, onset, duration, trial type, channel, and description fields for annotations plus accepted and hand-marked HFO events
 - **BIDS channels TSV**, EEG channel names, units, and manually reviewed good/bad status
 - **Quality review CSV**, visible-window screening metrics and review flags
 - **Annotations JSON**, a machine-readable annotation sidecar
-- **Restorable review JSON**, recording provenance, selected and bad channels, view settings, and annotations without duplicating raw samples
+- **Restorable review JSON**, recording provenance, selected and bad channels, view settings, annotations, and HFO review decisions without duplicating raw samples
 
-The Export Center estimates output size before a download begins and prevents overlapping export jobs. The default scope is the visible window instead of the complete recording so a download does not unexpectedly become much larger than the source file.
+Exports are grouped into signal data, figures, analysis results, and review files. The Export tab estimates output size before a download begins and prevents overlapping export jobs. The default scope is the visible window instead of the complete recording so a download does not unexpectedly become much larger than the source file.
 
 ### Annotations
 
@@ -159,6 +219,7 @@ All signal processing runs in the browser using JavaScript implementations inclu
 - **Power Spectral Density** uses Welch estimation with overlapping Hann-windowed segments
 - **Filters** are cascaded biquad (second-order section) Butterworth IIR filters with forward-backward zero-phase filtering
 - **Spectrogram** computes an overlapping Short-Time Fourier Transform with configurable window and overlap
+- **HFO detection** designs a true Butterworth band-pass (low-pass prototype, band-pass transform, prewarped bilinear transform), runs it forward and backward with reflected padding, and computes the analytic-signal envelope in overlapping FFT blocks so long recordings stay within bounded memory
 
 ## Project Structure
 
@@ -170,13 +231,16 @@ js/
   parsers.js            EEG file format parsers
   analysis.js           Signal processing engine
   visualization.js      Canvas rendering and charts
+  hfo.js                HFO detectors, band rules, line-noise handling, and event features
   export.js             Data and report export
   app.js                Application controller and state management
+  hfo-review.js         HFO review tab: detection runs, decisions, hand marks, drawing
 api/
   analysis-complete.mjs Idempotent lifetime-counter increment endpoint
   stats.mjs             Public lifetime-counter read endpoint
 lib/
   analysis-counter.mjs  Atomic Upstash Redis counter operations
+tests/                  node --test tests/*.test.mjs
 README.md               This file
 ```
 
@@ -191,9 +255,9 @@ README.md               This file
 
 ## Hosted Lifetime Counter
 
-The hosted app increments the lifetime total after a scientific computation or review action completes successfully. Counted actions include spectrum, band-power, spectrogram, channel-statistics, signal-quality, recording-quality, and topographic computations; filter previews and applied filter or montage changes; annotations; and bad-channel review changes. Opening a recording, changing tabs, navigating or zooming the viewer, downloading an export, and failed operations do not count.
+The hosted app increments the lifetime total for every click in the workspace, and again whenever a scientific computation or review action completes. Completed actions include spectrum, band-power, spectrogram, channel-statistics, signal-quality, recording-quality, HFO-detection, and topographic computations; filter previews and applied filter or montage changes; annotations; and bad-channel review changes. Opening a recording and failed operations do not count as completed actions, although the clicks that start them do. Clicks generated by scripts rather than by a person are ignored.
 
-The browser sends only a newly generated random action ID to `POST /api/analysis-complete`. It does not send the action type, recording, filename, patient metadata, channel labels, duration, or computed results. The request never blocks the EEG workspace and is retried once if the network response fails. Redis retains each random action ID for 24 hours so a retry cannot increment the counter twice.
+The browser sends `POST /api/analysis-complete` with a newly generated random action ID and, for batched clicks, a `count` from 1 to 100. Clicks are batched for a few seconds, or until the page is hidden, so a busy session sends a handful of small requests rather than one per click. Nothing else is sent: no action type, recording, filename, patient metadata, channel labels, duration, or computed results. The request never blocks the EEG workspace and is retried once if the network response fails. Redis retains each random action ID for 24 hours so a retry cannot count the same batch twice.
 
 `GET /api/stats` returns the current total:
 
@@ -210,7 +274,7 @@ The exact integer remains available for programmatic checks, while GitHub badges
 ![EEG analyses](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fneuroscope.tech%2Fapi%2Fstats&query=%24.display&label=EEG%20analyses&color=0f766e&cacheSeconds=300)
 ```
 
-The Redis key initializes to the legacy baseline of `31,981` only when it does not already exist. Initialization, duplicate detection, rate limiting, and incrementing are performed atomically. The API permits up to 600 new action IDs per client-address fingerprint per hour; only a keyed, opaque fingerprint is stored for the rate-limit window.
+The Redis key initializes to the legacy baseline of `31,981` only when it does not already exist. Initialization, duplicate detection, rate limiting, and incrementing are performed atomically. The API counts up to 6,000 clicks and completed actions per client-address fingerprint per hour; only a keyed, opaque fingerprint is stored for the rate-limit window.
 
 ### Vercel and Upstash setup
 
@@ -243,7 +307,7 @@ The sample file `chb02_16.edf` included in this repository is obtained from the 
 ## Citations
 **If the diagrams from the website or this GitHub are used for a paper in any way, you must include a citation at the end of the paper AND star this repository:**
 
-- **APA Style (7th Edition):** Tayal, S. (2026). *Neuroscope* (Version 1.2.1) [Computer software]. GitHub. https://github.com/tayal-sarthak/Neuroscope
+- **APA Style (7th Edition):** Tayal, S. (2026). *Neuroscope* (Version 1.3.0) [Computer software]. GitHub. https://github.com/tayal-sarthak/Neuroscope
 - **MLA Style (9th Edition):** Tayal, Sarthak. *Neuroscope*. GitHub, 2026, https://github.com/tayal-sarthak/Neuroscope
 - **Chicago Style (17th Edition):** Tayal, Sarthak. *Neuroscope*. GitHub, 2026. https://github.com/tayal-sarthak/Neuroscope
 

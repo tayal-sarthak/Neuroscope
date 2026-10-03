@@ -204,7 +204,8 @@ const EEGParsers = {
                 patient: header.patientId,
                 recording: header.recordingId,
                 date: header.startDate,
-                time: header.startTime
+                time: header.startTime,
+                prefiltering: Array.from(new Set(signalIndices.map(idx => signals[idx].prefiltering).filter(Boolean)))
             }
         };
     },
